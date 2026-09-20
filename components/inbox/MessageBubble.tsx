@@ -216,8 +216,12 @@ export function MessageBubble({
             : cn(
                 "rounded-2xl px-3 py-2 shadow-sm",
                 temMenu && "pr-8",
+                // Escuro: verde suave em vez do verde-neon sólido (o verde forte fica para
+                // ação). Tudo que mora dentro da bolha (hora, citação, áudio, documento)
+                // usa `primary-foreground`, que é `--color-accent-fg`: reatribuí-lo AQUI,
+                // só para os descendentes, vira texto claro sem tocar nos outros 3 arquivos.
                 isOutbound
-                  ? "rounded-br-sm bg-primary text-primary-foreground"
+                  ? "rounded-br-sm bg-primary text-primary-foreground dark:bg-accent-soft dark:[--color-accent-fg:var(--color-text)]"
                   : "rounded-bl-sm bg-muted text-foreground",
               ),
           isFailed && "border border-destructive",

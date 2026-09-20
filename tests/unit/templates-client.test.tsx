@@ -33,7 +33,7 @@ describe("TemplatesClient", () => {
     busca = "";
     render(wrap(<TemplatesClient canShare={true} currentUserId="u1" />));
     expect(screen.getByText("Meu Pessoal")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /novo template/i }));
+    fireEvent.click(screen.getByRole("button", { name: /nova resposta/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
@@ -81,15 +81,15 @@ describe("TemplatesClient", () => {
     expect(screen.getByText("Meu Pessoal")).toBeInTheDocument();
     expect(screen.getByText("Política da Equipe")).toBeInTheDocument();
     expect(screen.getByText("Pessoal do Outro")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Editar template" })).toHaveLength(1);
-    expect(screen.getAllByRole("button", { name: "Excluir template" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Editar resposta" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Excluir resposta" })).toHaveLength(1);
   });
 
   it("manager vê ações no próprio E no compartilhado, mas não no pessoal de outro", () => {
     busca = "";
     render(wrap(<TemplatesClient canShare={true} currentUserId="u1" />));
     // próprio (u1) + compartilhado (null) editáveis; pessoal de u2 não → 2 pares.
-    expect(screen.getAllByRole("button", { name: "Editar template" })).toHaveLength(2);
-    expect(screen.getAllByRole("button", { name: "Excluir template" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Editar resposta" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Excluir resposta" })).toHaveLength(2);
   });
 });

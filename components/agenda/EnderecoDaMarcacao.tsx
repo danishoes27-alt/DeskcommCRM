@@ -124,7 +124,7 @@ export function EnderecoDaMarcacao({
                 aria-selected={opcao === value}
                 className={cn(
                   "cursor-pointer px-3 py-2 text-sm",
-                  i === destacado && "bg-accent text-accent-foreground",
+                  i === destacado && "bg-accent text-accent-foreground dark:bg-accent-soft dark:text-accent",
                 )}
                 onMouseEnter={() => setDestacado(i)}
                 onClick={() => escolher(opcao)}
@@ -141,7 +141,7 @@ export function EnderecoDaMarcacao({
                 aria-disabled={salvar.isPending || undefined}
                 className={cn(
                   "min-h-11 cursor-pointer px-3 py-2 text-sm",
-                  destacado === conhecidos.length && "bg-accent text-accent-foreground",
+                  destacado === conhecidos.length && "bg-accent text-accent-foreground dark:bg-accent-soft dark:text-accent",
                 )}
                 onMouseEnter={() => setDestacado(conhecidos.length)}
                 onClick={() => {

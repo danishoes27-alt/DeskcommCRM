@@ -73,9 +73,9 @@ interface Props {
  * podem ser mantidas em arquivos diferentes.
  */
 const COR_DO_COMANDO: Record<string, string> = {
-  humano: "bg-blue-500",
-  automatico: "bg-purple-500",
-  aguardando: "bg-amber-500",
+  humano: "bg-info",
+  automatico: "bg-accent",
+  aguardando: "bg-warning",
   ninguem: "bg-muted-foreground/60",
   encerrada: "bg-muted-foreground/30",
 };
@@ -209,7 +209,10 @@ export function ConversationListItem({
       className={cn(
         "group relative flex w-full items-start gap-3 border-b border-border/70 px-3 py-2.5 text-left transition-colors hover:bg-surface-elevated",
         "focus-visible:outline-hidden focus-visible:bg-surface-elevated",
-        isSelected && "bg-accent-50 hover:bg-accent-50",
+        // No escuro o `accent-50` continua sendo o verde quase branco da rampa
+        // clara: a conversa aberta virava um bloco pálido com texto claro por
+        // cima, ilegível. Aqui o fundo é o verde suave do menu (mesmo padrão).
+        isSelected && "bg-accent-50 hover:bg-accent-50 dark:bg-accent-soft dark:hover:bg-accent-soft",
       )}
       aria-current={isSelected ? "true" : undefined}
     >

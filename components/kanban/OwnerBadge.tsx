@@ -77,7 +77,7 @@ export function OwnerBadge({
             : // Preenchido SÓLIDO: a um metro, o humano é uma mancha escura e o
               // agente é um anel claro. Contraste que não depende da borda —
               // fundo suave fazia os dois lerem como "círculo claro".
-              `flex ${compacto ? "h-4 w-4 text-[8px]" : "h-6 w-6 text-[10px]"} shrink-0 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground`
+              `flex ${compacto ? "h-4 w-4 text-[8px]" : "h-6 w-6 text-[10px]"} shrink-0 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground dark:bg-accent-soft dark:text-accent`
         }
         aria-hidden
       >

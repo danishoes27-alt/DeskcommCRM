@@ -2,7 +2,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { useT } from "@/hooks/i18n/useT";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoard } from "@/hooks/kanban/useBoard";
 import { useMoveCard, type RecusaDeCampos, type RetomadaPendente } from "@/hooks/kanban/useMoveCard";
@@ -258,8 +260,14 @@ export function KanbanBoard({
 
   if (data.stages.length === 0) {
     return (
-      <Card className="m-4 p-6 text-sm text-text-muted">
-        {t("Nenhum lead nesta pipeline ainda.")}
+      <Card className="m-4 space-y-3 p-6 text-sm text-text-muted">
+        <p>{t("Este funil ainda não tem etapas.")}</p>
+        <Link
+          href="/app/settings/tenant/pipelines"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          {t("Configurar etapas")}
+        </Link>
       </Card>
     );
   }

@@ -83,7 +83,7 @@ export function RiskRadarList() {
           viola o invariante 5. Esta é a lista que responde "e daí?". */}
       {semPasso.length > 0 ? (
         <section
-          className="rounded-lg border border-warning-border bg-warning-bg/40 p-3"
+          className="rounded-lg border border-warning/40 bg-warning-bg/40 p-3"
           data-testid="radar-sem-proximo-passo"
         >
           <p className="text-sm font-medium">
@@ -241,7 +241,7 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
     <li
       data-testid="radar-item"
       data-risk={lead.risk}
-      className="flex items-start gap-2 pr-3 transition-colors hover:bg-accent/50"
+      className="flex items-start gap-2 pr-3 transition-colors hover:bg-surface-elevated"
     >
       <Link href={href} className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3">
         <Badge variant={meta.variant} className="mt-0.5 shrink-0">

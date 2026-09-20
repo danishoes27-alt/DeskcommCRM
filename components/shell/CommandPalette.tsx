@@ -306,7 +306,7 @@ function Resultados({ aoEscolher }: { aoEscolher: () => void }) {
                 onClick={() => navegar(d)}
                 className={cn(
                   "flex cursor-pointer items-start gap-3 rounded-md px-3 py-2.5 transition-colors",
-                  ativo && "bg-accent text-accent-foreground",
+                  ativo && "bg-accent text-accent-foreground dark:bg-accent-soft dark:text-accent",
                 )}
               >
                 <div

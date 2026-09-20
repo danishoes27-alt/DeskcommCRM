@@ -122,7 +122,7 @@ export function ContactsListClient() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Contatos")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("Customer 360 — busque, filtre e gerencie contatos.")}
+            {t("Busque, filtre e gerencie os seus contatos.")}
           </p>
         </div>
         {/*
@@ -305,7 +305,7 @@ export function ContactsListClient() {
         </Card>
       ) : allContacts.length === 0 ? (
         <Card className="p-2">
-          <EmptyContacts />
+          <EmptyContacts primary={{ label: t("Novo contato"), onClick: () => setCreateOpen(true) }} />
         </Card>
       ) : (
         <>

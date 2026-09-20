@@ -208,7 +208,7 @@ export function CaseChatPanel({ caseId }: { caseId: string }) {
                     // `t(s)`, não `s`: quem lê em espanhol clicaria num botão em
                     // espanhol e veria o campo preencher em português.
                     onClick={() => setPergunta(t(s))}
-                    className="rounded-sm border border-border px-3 py-1.5 text-left text-xs text-text transition-colors hover:border-accent hover:text-accent"
+                    className="rounded-md border border-border px-3 py-1.5 text-left text-xs text-text transition-colors hover:border-accent hover:text-accent"
                   >
                     {t(s)}
                   </button>
@@ -352,7 +352,7 @@ function Faixa({ tom, children }: { tom: "neutro" | "aviso"; children: ReactNode
   return (
     <p
       className={cn(
-        "rounded-sm px-3 py-2 text-xs",
+        "rounded-md px-3 py-2 text-xs",
         tom === "aviso" ? "bg-warning-bg text-text" : "bg-accent-soft text-text",
       )}
     >
@@ -378,7 +378,7 @@ function Bolha({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1 rounded-sm px-3 py-2",
+        "flex flex-col gap-1 rounded-md px-3 py-2",
         falhou
           ? "border border-destructive/40"
           : daIa
@@ -433,7 +433,7 @@ function ErroDaPergunta({ erro, t }: { erro: unknown; t: (s: string) => string }
           daApi.message;
 
   return (
-    <div className="flex flex-col gap-1 rounded-sm border border-destructive/40 px-3 py-2">
+    <div className="flex flex-col gap-1 rounded-md border border-destructive/40 px-3 py-2">
       <p className="text-sm">{texto}</p>
       {daApi !== null && daApi.code !== "rate_limited" ? (
         // O identificador é ANEXO, não a mensagem: quem lê não sabe o que é um

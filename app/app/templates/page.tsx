@@ -28,7 +28,7 @@ export default async function TemplatesPage() {
             o mesmo nome e propósitos opostos confundiam. A URL não muda. */}
         <h1 className="text-2xl font-semibold tracking-tight">{t("Respostas rápidas")}</h1>
         <p className="text-sm text-muted-foreground">
-          {t("Scripts salvos para responder mais rápido; pessoais ou compartilhados com a equipe.")}
+          {t("Textos prontos para responder mais rápido; pessoais ou compartilhados com a equipe.")}
         </p>
       </header>
       <TemplatesClient canShare={canShare} currentUserId={user.id} />

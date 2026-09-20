@@ -32,7 +32,7 @@ export function TemplateMenu({ open, query, templates, onPick, onClose: _onClose
       aria-label={t("Templates de script")}
     >
       {filtered.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-muted-foreground">{t("Nenhum template. Crie em Configurações.")}</div>
+        <div className="px-3 py-2 text-xs text-muted-foreground">{t("Nenhuma resposta rápida ainda. Crie na tela Respostas rápidas.")}</div>
       ) : (
         filtered.map((tpl) => (
           <button

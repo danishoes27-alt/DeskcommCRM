@@ -6714,6 +6714,9 @@ export const DICIONARIO: Traducoes = {
   "Quebrar linha sem enviar": { es: "Salto de línea sin enviar" },
   "Assumir conversa": { es: "Asumir conversación" },
   "Fechar conversa": { es: "Cerrar conversación" },
+  "Ela sai da fila e vai para a aba Fechadas. Você pode reabrir depois.": {
+    es: "Sale de la cola y pasa a la pestaña Cerradas. Puedes reabrirla después.",
+  },
   "Mostrar atalhos": { es: "Mostrar atajos" },
 
   // ─── Inbox: tags de contato/conversa ───
@@ -7661,6 +7664,33 @@ export const DICIONARIO: Traducoes = {
   "Customer 360 — busque, filtre e gerencie contatos.": {
     es: "Customer 360 — busca, filtra y gestiona contactos.",
   },
+  // Celuzap — textos claros para o lojista (revisão visual, set/2026).
+  "Busque, filtre e gerencie os seus contatos.": { es: "Busca, filtra y gestiona tus contactos." },
+  "Eles aparecem aqui quando alguém te chama. Você também pode adicionar o primeiro agora.": {
+    es: "Aparecen aquí cuando alguien te escribe. También puedes agregar el primero ahora.",
+  },
+  "Textos prontos para responder mais rápido; pessoais ou compartilhados com a equipe.": {
+    es: "Textos listos para responder más rápido; personales o compartidos con el equipo.",
+  },
+  "Textos prontos para responder mais rápido no atendimento.": {
+    es: "Textos listos para responder más rápido en la atención.",
+  },
+  "Editar resposta": { es: "Editar respuesta" },
+  "Nova resposta": { es: "Nueva respuesta" },
+  "Excluir resposta": { es: "Eliminar respuesta" },
+  "Excluir esta resposta?": { es: "¿Eliminar esta respuesta?" },
+  "Resposta excluída.": { es: "Respuesta eliminada." },
+  "Nenhuma resposta rápida ainda": { es: "Aún no hay respuestas rápidas" },
+  "Crie textos prontos para responder mais rápido no atendimento.": {
+    es: "Crea textos listos para responder más rápido en la atención.",
+  },
+  "Criar a primeira resposta": { es: "Crear la primera respuesta" },
+  "Nenhuma resposta rápida ainda. Crie na tela Respostas rápidas.": {
+    es: "Aún no hay respuestas rápidas. Crea una en la pantalla Respuestas rápidas.",
+  },
+  "Telefone (com +55 e DDD)": { es: "Teléfono (con código de país)" },
+  "Este funil ainda não tem etapas.": { es: "Este embudo aún no tiene etapas." },
+  "Configurar etapas": { es: "Configurar etapas" },
   "Importar CSV": { es: "Importar CSV" },
   // ── Juntar contatos duplicados ──────────────────────────────────────────
   "Duplicados": { es: "Duplicados" },
@@ -7783,6 +7813,12 @@ export const DICIONARIO: Traducoes = {
   "Resolver via SQL (em breve)": { es: "Resolver vía SQL (próximamente)" },
   "Preencha pelo menos um identificador (email ou telefone).": {
     es: "Completa al menos un identificador (email o teléfono).",
+  },
+  "Preencha pelo menos o nome, o email ou o telefone.": {
+    es: "Completa al menos el nombre, el email o el teléfono.",
+  },
+  "Informe o nome, o email ou o telefone para criar o contato.": {
+    es: "Indica el nombre, el email o el teléfono para crear el contacto.",
   },
   "CPF (opcional)": { es: "CPF (opcional)" },
   "Criar contato": { es: "Crear contacto" },
@@ -9584,6 +9620,9 @@ export const DICIONARIO: Traducoes = {
   "Sem organização ativa": { es: "Sin organización activa" },
   "Sem organização ativa.": { es: "Sin organización activa." },
   "Sessão de canal não encontrada.": { es: "Sesión de canal no encontrada." },
+  "Não achei um WhatsApp conectado para abrir a conversa. Conecte um número em Conexões.": {
+    es: "No encontré un WhatsApp conectado para abrir la conversación. Conecta un número en Conexiones.",
+  },
   "Sessão expirada": { es: "Sesión expirada" },
   "Sessão sem token.": { es: "Sesión sin token." },
   "Skill não encontrada no catálogo de plataforma.": { es: "Skill no encontrada en el catálogo de la plataforma." },

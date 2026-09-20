@@ -327,20 +327,20 @@
 }
 
 [data-theme="dark"] {
-  /* Surfaces (dark — drawn) */
-  --color-bg: #161510;
-  --color-surface: #1d1c17;
-  --color-surface-elevated: #272620;
+  /* Surfaces (dark — Celuzap: docs/02-design-e-marca.md) */
+  --color-bg: #0d1117;
+  --color-surface: #161b22;
+  --color-surface-elevated: #21262d;
   --color-overlay: rgba(0, 0, 0, 0.55);
 
-  /* Text (dark) */
-  --color-text: #f5f4ef;
-  --color-text-muted: #8e8b7f;
-  --color-text-subtle: #605e54;
+  /* Text (dark — Celuzap) */
+  --color-text: #e6edf3;
+  --color-text-muted: #8b949e;
+  --color-text-subtle: #6e7681;
 
-  /* Borders (dark) */
-  --color-border: #33312a;
-  --color-border-strong: #444239;
+  /* Borders (dark — Celuzap) */
+  --color-border: #30363d;
+  --color-border-strong: #484f58;
 
   /* Accent stays same hex stops; default shifts up for dark contrast */
   --color-accent-50:  #f3f6f1;
@@ -536,6 +536,13 @@
     "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, monospace;
+
+  /* Celuzap: o `tracking-tight` do Tailwind (-0.025em) encosta as letras dos
+     títulos em negrito (Atkinson Hyperlegible, `text-2xl`): "Funis", "Contatos".
+     +0.012em dá o respiro mínimo sem soltar o título. Vale para toda classe
+     `tracking-tight`; o `tracking-wide`/`tracking-wider` dos rótulos em
+     maiúsculas não muda. */
+  --tracking-tight: 0.012em;
 
   /* Espaçamento. Os valores são px LITERAIS (`--space-6` = 24px), não rem — e
      essa diferença é carregada por quem consome: ver o cálculo de altura em

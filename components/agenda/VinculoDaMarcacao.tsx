@@ -141,7 +141,7 @@ export function VinculoDaMarcacao({
                   aria-selected={opcao.id === contactId}
                   className={cn(
                     "cursor-pointer px-3 py-2 text-sm",
-                    i === destacado && "bg-accent text-accent-foreground",
+                    i === destacado && "bg-accent text-accent-foreground dark:bg-accent-soft dark:text-accent",
                   )}
                   onMouseEnter={() => setDestacado(i)}
                   onClick={() => escolher(opcao.id, opcao.name)}

@@ -71,6 +71,16 @@ export function NewContactDialog({ open, onOpenChange, nomeInicial, onCriado }: 
     if (values.cpf?.trim()) payload.cpf = values.cpf.trim();
     if (tags.length) payload.tags = tags;
 
+    // O schema não exige campo nenhum (`{ source: "manual" }` passa) e a rota
+    // aceita: o formulário em branco gravava um contato "Sem nome", sem e-mail
+    // nem telefone. A regra é a que a Agenda já usa — o nome sozinho vale (o
+    // termo digitado na marcação vira o nome) —, então a trava é "nome, e-mail
+    // ou telefone", e CPF ou etiqueta sozinhos não identificam ninguém.
+    if (!payload.name && !payload.email && !payload.phone_number) {
+      setServerError(t("Informe o nome, o email ou o telefone para criar o contato."));
+      return;
+    }
+
     // A MESMA régua do servidor: a tela que mostra 'Bilhete' não pode
     // recusá-lo como CPF antes de chegar lá.
     const parsed = contactCreateSchemaDoPais(perfil).safeParse(payload);
@@ -102,7 +112,7 @@ export function NewContactDialog({ open, onOpenChange, nomeInicial, onCriado }: 
         <DialogHeader>
           <DialogTitle>{t("Novo contato")}</DialogTitle>
           <DialogDescription>
-            {t("Preencha pelo menos um identificador (email ou telefone).")}
+            {t("Preencha pelo menos o nome, o email ou o telefone.")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -115,7 +125,7 @@ export function NewContactDialog({ open, onOpenChange, nomeInicial, onCriado }: 
             <Input id="email" type="email" {...form.register("email")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone_number">{t("Telefone (E.164)")}</Label>
+            <Label htmlFor="phone_number">{t("Telefone (com +55 e DDD)")}</Label>
             <Input
               id="phone_number"
               placeholder={perfil.telefoneExemplo}

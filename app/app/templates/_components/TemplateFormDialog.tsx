@@ -106,9 +106,9 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? t("Editar template") : t("Novo template")}</DialogTitle>
+          <DialogTitle>{isEdit ? t("Editar resposta") : t("Nova resposta")}</DialogTitle>
           <DialogDescription>
-            {t("Scripts salvos para responder mais rápido no atendimento.")}
+            {t("Textos prontos para responder mais rápido no atendimento.")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">

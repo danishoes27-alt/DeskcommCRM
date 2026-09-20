@@ -126,7 +126,7 @@ export function EditContactDialog({ contact, open, onOpenChange, customFieldDefs
             <Input id="ec-email" type="email" {...form.register("email")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ec-phone">{t("Telefone (E.164)")}</Label>
+            <Label htmlFor="ec-phone">{t("Telefone (com +55 e DDD)")}</Label>
             <Input id="ec-phone" {...form.register("phone_number")} />
           </div>
           <div className="space-y-2">

@@ -375,7 +375,7 @@ export function InboxFilters({ value, onChange }: Props) {
               "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors",
               "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               value.onlyUnread
-                ? "border-accent bg-accent text-accent-foreground"
+                ? "border-accent bg-accent-soft text-accent"
                 : "border-border bg-transparent text-text-muted hover:bg-surface-elevated",
             )}
           >
