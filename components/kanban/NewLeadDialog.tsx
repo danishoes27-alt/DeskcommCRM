@@ -206,7 +206,7 @@ export function NewLeadDialog({
             <Label htmlFor="title">{t("Título")}</Label>
             <Input
               id="title"
-              placeholder={t("Ex: Pedido Maria — combo presente")}
+              placeholder={t("Ex: Maria Souza — pedido de orçamento")}
               {...form.register("title", { required: true, minLength: 2 })}
             />
           </div>

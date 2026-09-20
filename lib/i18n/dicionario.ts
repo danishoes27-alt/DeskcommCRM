@@ -8362,6 +8362,7 @@ export const DICIONARIO: Traducoes = {
     },
   "Crie um lead manualmente neste pipeline.": { es: "Crea un lead manualmente en este pipeline." },
   "Ex: Pedido Maria — combo presente": { es: "Ej: Pedido María — combo regalo" },
+  "Ex: Maria Souza — pedido de orçamento": { es: "Ej: María Souza — solicitud de presupuesto" },
   "Contexto, observações, links…": { es: "Contexto, observaciones, enlaces…" },
   "Selecione a etapa": { es: "Selecciona la etapa" },
   "Criar lead": { es: "Crear lead" },
