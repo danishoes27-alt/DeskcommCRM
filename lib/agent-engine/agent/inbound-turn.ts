@@ -217,6 +217,7 @@ import {
   respostaFicouObsoleta,
   ultimaInboundJaRespondida,
 } from './turno-ja-respondido';
+import { triarEGravarMensagemRecebida } from '@/lib/ai/triagem/aplicar';
 
 /**
  * Superfície ESTÁTICA das tools do agente (description + inputSchema) — parte do
@@ -4801,6 +4802,21 @@ export function createInboundTurnHandler(deps: InboundTurnDeps) {
         error: (err instanceof Error ? err.message : String(err)).slice(0, 160),
       });
     }
+
+    // Triagem rápida (Jev): só REGISTRA categoria/urgência em messages.metadata.triagem.
+    // Desligada por padrão (JEV_TRIAGEM_ENABLED) — desligada, não faz consulta nenhuma.
+    // Nunca lança e não muda quem responde. Ver lib/ai/triagem/aplicar.ts.
+    // Roda DEPOIS das travas acima (handoff e elegibilidade): conversa que nenhum
+    // agente vai atender não manda texto de cliente ao Jev.
+    await triarEGravarMensagemRecebida(
+      pool,
+      {
+        tenantId: job.organization_id,
+        conversationId: payload.conversation_id,
+        inboundMessageId: payload.inbound_message_id,
+      },
+      { log: deps.log },
+    );
     const resolvedAgent = await resolveConversationTurn(pool, deps.llmCfg, {
       tenantId: job.organization_id,
       leadId: job.contact_id,

@@ -489,6 +489,16 @@ const schema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  // Triagem rápida com o Jev (TypeSafe, via AI Gateway) — DESLIGADA por padrão.
+  // ⛔ Só ligar com dado de TESTE enquanto a conta Vercel for Hobby: o Zero Data
+  // Retention por chamada só vale no plano Pro (docs/03-engenharia.md). Ver
+  // lib/ai/triagem/aplicar.ts.
+  JEV_TRIAGEM_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false")
+    .transform((v) => v === "true"),
+
   // App URLs
   NEXT_PUBLIC_APP_URL: z
     .string()
