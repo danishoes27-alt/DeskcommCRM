@@ -150,9 +150,9 @@ describe('triarEGravarMensagemRecebida — ligada', () => {
 
   it('decisão que não roteia grava só o motivo (código)', async () => {
     const { db, consultas } = bancoQue(LINHA_TEXTO);
-    const { d } = deps({ triar: async () => ({ acao: 'revisao_humana', motivo: 'baixa_confianca' }) });
+    const { d } = deps({ triar: async () => ({ acao: 'llm_principal_decide', motivo: 'baixa_confianca' }) });
     const gravada = await triarEGravarMensagemRecebida(db, ENTRADA, d);
-    expect(gravada).toEqual({ v: 1, acao: 'revisao_humana', motivo: 'baixa_confianca', em: AGORA.toISOString() });
+    expect(gravada).toEqual({ v: 1, acao: 'llm_principal_decide', motivo: 'baixa_confianca', em: AGORA.toISOString() });
     expect(JSON.parse(String(consultas[1]!.values[3]))).not.toHaveProperty('categoria');
   });
 

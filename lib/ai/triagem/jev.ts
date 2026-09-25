@@ -36,9 +36,17 @@ export const CATEGORIAS_DE_ATENDIMENTO: readonly CategoriaAtendimento[] = [
   'outro',
 ];
 
+/**
+ * O Jev só tem DOIS desfechos: decidiu (`rotear`) ou se absteve (`llm_principal_decide`).
+ *
+ * Regra do Berg (24/09/2026, docs/04-agente-ia.md): dúvida do Jev vai para a IA
+ * PRINCIPAL decidir com mais contexto — nunca direto para o humano. Só abre caso para
+ * humano se a IA principal TAMBÉM não conseguir, e quem decide isso é o fluxo que já
+ * existe (sistema de casos), não este módulo. Por isso não existe `revisao_humana` aqui.
+ */
 export type DecisaoDaTriagem =
   | { acao: 'rotear'; categoria: CategoriaAtendimento; urgente: boolean }
-  | { acao: 'revisao_humana' | 'llm_principal_decide'; motivo: MotivoDaTriagem };
+  | { acao: 'llm_principal_decide'; motivo: MotivoDaTriagem };
 
 /** Códigos fixos — NUNCA texto livre, para nada da mensagem do cliente vazar para log. */
 export type MotivoDaTriagem =
@@ -229,9 +237,10 @@ export async function triarMensagem(
     if (confianca === null) return { acao: 'llm_principal_decide', motivo: 'sem_confianca' };
     if (probabilidade === null) return { acao: 'llm_principal_decide', motivo: 'formato_inesperado' };
 
-    if (confianca < LIMIAR_CONFIANCA) return { acao: 'revisao_humana', motivo: 'baixa_confianca' };
+    // Dúvida => a IA principal decide com mais contexto (não o humano): ver o tipo acima.
+    if (confianca < LIMIAR_CONFIANCA) return { acao: 'llm_principal_decide', motivo: 'baixa_confianca' };
     if (probabilidade < LIMIAR_PROBABILIDADE) {
-      return { acao: 'revisao_humana', motivo: 'baixa_probabilidade' };
+      return { acao: 'llm_principal_decide', motivo: 'baixa_probabilidade' };
     }
 
     return {

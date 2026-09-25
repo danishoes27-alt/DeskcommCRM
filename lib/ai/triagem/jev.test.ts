@@ -73,23 +73,38 @@ describe('triarMensagem — decisão', () => {
     expect(d).toMatchObject({ acao: 'rotear', categoria: 'financeiro' });
   });
 
-  it('confiança baixa => revisão humana, mesmo com probabilidade alta', async () => {
+  it('confiança baixa => a IA principal decide (não vai direto ao humano), mesmo com probabilidade alta', async () => {
     const { model } = jevQue({ confianca: 0.4 });
     await expect(triarMensagem('oi', { model })).resolves.toEqual({
-      acao: 'revisao_humana',
+      acao: 'llm_principal_decide',
       motivo: 'baixa_confianca',
     });
   });
 
-  it('probabilidade da opção escolhida baixa => revisão humana, mesmo com confiança alta', async () => {
+  it('probabilidade da opção escolhida baixa => a IA principal decide, mesmo com confiança alta', async () => {
     const { model } = jevQue({
       probsCategoria: { conserto: 0.5, financeiro: 0.3, venda: 0.15, outro: 0.05 },
       confianca: 0.95,
     });
     await expect(triarMensagem('depende', { model })).resolves.toEqual({
-      acao: 'revisao_humana',
+      acao: 'llm_principal_decide',
       motivo: 'baixa_probabilidade',
     });
+  });
+
+  it('REGRA DO BERG: o Jev nunca manda direto para o humano — só decide ou passa para a IA principal', async () => {
+    const cenarios = [
+      jevQue({ confianca: 0.1 }),
+      jevQue({ confianca: 0.59 }),
+      jevQue({ probsCategoria: { conserto: 0.4, financeiro: 0.3, venda: 0.2, outro: 0.1 }, confianca: 0.99 }),
+      jevQue({}),
+    ];
+    for (const { model } of cenarios) {
+      const d = await triarMensagem('qualquer mensagem', { model });
+      expect(['rotear', 'llm_principal_decide']).toContain(d.acao);
+    }
+    // Inclui os caminhos de erro e de texto vazio.
+    expect((await triarMensagem('   ')).acao).toBe('llm_principal_decide');
   });
 
   it('os limiares são "maior OU IGUAL": 0.7 de probabilidade e 0.6 de confiança passam', async () => {
@@ -105,11 +120,11 @@ describe('triarMensagem — decisão', () => {
       probsCategoria: { conserto: 0.69, financeiro: 0.11, venda: 0.1, outro: 0.1 },
     });
     await expect(triarMensagem('x', { model: abaixoProb.model })).resolves.toMatchObject({
-      acao: 'revisao_humana',
+      acao: 'llm_principal_decide',
     });
     const abaixoConf = jevQue({ confianca: 0.59 });
     await expect(triarMensagem('x', { model: abaixoConf.model })).resolves.toMatchObject({
-      acao: 'revisao_humana',
+      acao: 'llm_principal_decide',
     });
   });
 
@@ -292,7 +307,7 @@ describe('triarMensagem — LGPD: ZDR e minimização de dado', () => {
     const vistas: Chamada[] = [];
     const cenarios: Array<() => ReturnType<MockJev['doEvaluate']>> = [
       async () => resposta(), // rotear
-      async () => resposta({ confianca: 0.1 }), // revisão humana
+      async () => resposta({ confianca: 0.1 }), // baixa confiança: a IA principal decide
       async () => resposta({ confianca: null }), // sem confiança
       async () => {
         throw new Error('rede caiu'); // erro
