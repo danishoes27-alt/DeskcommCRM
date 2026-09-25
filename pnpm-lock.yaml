@@ -118,7 +118,7 @@ importers:
         specifier: ^12.11.6
         version: 12.11.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(immer@11.1.15)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       ai:
-        specifier: ^7.0.112
+        specifier: ^7.0.114
         version: 7.0.116(zod@4.6.5)
       class-variance-authority:
         specifier: ^0.7.0

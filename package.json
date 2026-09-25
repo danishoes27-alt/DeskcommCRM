@@ -76,7 +76,7 @@
     "@tanstack/react-virtual": "^3.14.13",
     "@upstash/redis": "^1.39.0",
     "@xyflow/react": "^12.11.6",
-    "ai": "^7.0.112",
+    "ai": "^7.0.114",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
