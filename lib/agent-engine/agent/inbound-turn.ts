@@ -2120,6 +2120,29 @@ async function executarTurnoDoAgente(
     }
   }
 
+  // Triagem rápida (Jev): só REGISTRA categoria/urgência em messages.metadata.triagem.
+  //
+  // Fica AQUI de propósito: depois de TODA saída antecipada do turno (lead em handoff /
+  // robô silenciado, conversa não elegível, janela anti-ban, agente pausado ou
+  // assistido, horário de funcionamento). Chegou aqui = a IA vai atuar nesta mensagem
+  // (exceto os dois avisos fixos mais abaixo — pedido de atendente humano e opt-out —,
+  // que ainda podem sair depois desta linha); conversa com dono humano nunca manda texto
+  // ao Jev. Só no turno de mensagem recebida
+  // (não em follow-up nem prévia). Desligada por padrão (JEV_TRIAGEM_ENABLED) e, ligada,
+  // exige JEV_PLANO_CONFIRMADO — desligada não faz consulta nenhuma. Nunca lança e não
+  // muda quem responde. Ver lib/ai/triagem/aplicar.ts.
+  if (!preview && liveJob().kind === 'inbound_turn' && input.inboundMessageId !== undefined) {
+    await triarEGravarMensagemRecebida(
+      pool,
+      {
+        tenantId,
+        conversationId: input.conversationId,
+        inboundMessageId: input.inboundMessageId,
+      },
+      { log: runLog },
+    );
+  }
+
   // Fase 3: grava a decisão de roteamento e a aderência da conversa ao agente.
   // Fire-and-forget — falha de telemetria nunca derruba a resposta ao lead.
   if (!preview && routed.routerId !== null) {
@@ -4802,21 +4825,6 @@ export function createInboundTurnHandler(deps: InboundTurnDeps) {
         error: (err instanceof Error ? err.message : String(err)).slice(0, 160),
       });
     }
-
-    // Triagem rápida (Jev): só REGISTRA categoria/urgência em messages.metadata.triagem.
-    // Desligada por padrão (JEV_TRIAGEM_ENABLED) — desligada, não faz consulta nenhuma.
-    // Nunca lança e não muda quem responde. Ver lib/ai/triagem/aplicar.ts.
-    // Roda DEPOIS das travas acima (handoff e elegibilidade): conversa que nenhum
-    // agente vai atender não manda texto de cliente ao Jev.
-    await triarEGravarMensagemRecebida(
-      pool,
-      {
-        tenantId: job.organization_id,
-        conversationId: payload.conversation_id,
-        inboundMessageId: payload.inbound_message_id,
-      },
-      { log: deps.log },
-    );
     const resolvedAgent = await resolveConversationTurn(pool, deps.llmCfg, {
       tenantId: job.organization_id,
       leadId: job.contact_id,

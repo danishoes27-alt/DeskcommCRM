@@ -10,10 +10,16 @@
  * 1. LGPD — TODA chamada leva `zeroDataRetention: true`. Existe UM ÚNICO ponto que
  *    chama o modelo (`chamarJev`) e ele monta as opções a partir da constante
  *    `OPCOES_DO_PROVEDOR_JEV`. `lib/ai/triagem/jev.test.ts` reprova se qualquer
- *    outro arquivo de código chamar `experimental_evaluate`, e se a chamada sair
- *    sem a opção.
- * 2. Minimização — o `state` é SÓ o texto da mensagem. Nem telefone, nem nome, nem
- *    organização, nem id.
+ *    outro arquivo de código do repositório falar com o Jev (função da SDK, modelo
+ *    de avaliação do Gateway, `doEvaluate`, o id do modelo ou o endereço do
+ *    serviço), e se a chamada sair sem a opção.
+ * 2. Minimização — o `state` é SÓ o texto que esta função recebe, cortado em
+ *    `JEV_MAX_CHARS_DO_TEXTO`: nem telefone, nem nome, nem organização, nem id
+ *    são anexados aqui. QUEM DECIDE O QUE É ESSE TEXTO é o chamador
+ *    (`aplicar.ts`), que manda SÓ o que a pessoa DIGITOU — nunca transcrição de
+ *    áudio, descrição de foto, texto de PDF nem enquadramento feito para a IA
+ *    principal. Esta função não tem como saber a origem do texto: passar aqui algo
+ *    além do texto digitado quebra a regra de LGPD.
  * 3. Limiar — probabilidade da opção escolhida >= 0.7 E confiança >= 0.6. Abaixo
  *    disso o Jev nunca decide sozinho.
  * 4. Falha ABERTA — qualquer erro vira `llm_principal_decide` com um CÓDIGO de
@@ -22,8 +28,9 @@
  * 5. Timeout curto — para não atrasar o atendimento.
  *
  * ⛔ TRAVA (Berg, 24/09/2026): a conta Vercel é Hobby e ZDR por chamada só vale no
- * Pro. Enquanto for Hobby, o Jev só pode ver dado de TESTE. Quem liga isto em
- * produção é a chave `JEV_TRIAGEM_ENABLED` (desligada por padrão) — ver `aplicar.ts`.
+ * Pro. Enquanto for Hobby, o Jev só pode ver dado de TESTE. Quem liga isto é a chave
+ * `JEV_TRIAGEM_ENABLED` (desligada por padrão) e, além dela, a confirmação do plano em
+ * `JEV_PLANO_CONFIRMADO` — sem ela o Jev nem é chamado. Ver `aplicar.ts`.
  */
 import { experimental_evaluate as evaluate, type Experimental_EvaluationModel } from 'ai';
 
@@ -181,7 +188,7 @@ async function chamarJev(texto: string, opcoes: OpcoesDaTriagem) {
     return await Promise.race([
       evaluate({
         model: opcoes.model ?? JEV_MODEL_ID,
-        state: texto, // SÓ o texto — minimização de dado
+        state: texto, // SÓ o texto recebido (o chamador manda só o digitado) — minimização
         questions: PERGUNTAS,
         providerOptions: OPCOES_DO_PROVEDOR_JEV,
         maxRetries: 0,

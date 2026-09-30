@@ -498,6 +498,20 @@ const schema = z.object({
     .optional()
     .default("false")
     .transform((v) => v === "true"),
+  // SEGUNDA CONFIRMAÇÃO da triagem do Jev: ligar `JEV_TRIAGEM_ENABLED` não basta.
+  // O dono da instalação declara em qual plano da Vercel a conta está:
+  //   pro              — conta Pro/Enterprise: o ZDR por chamada VALE;
+  //   so_dado_de_teste — conta Hobby: o ZDR NÃO vale, e quem liga declara que só passa
+  //                      dado de TESTE por aqui;
+  //   (vazio/outro)    — o Jev se recusa a rodar (código `plano_do_gateway_nao_confirmado`).
+  //
+  // ⚠️ `z.string()` E NÃO `z.enum` — de propósito, e é o mesmo motivo de
+  // `AI_BUDGET_ENFORCEMENT` acima: o `.env.example` entrega esta linha VAZIA, e quem faz
+  // `cp .env.example .env` teria `""`, que um `z.enum` recusa — e o `safeParse` deste
+  // arquivo LANÇA, derrubando o app inteiro por causa de uma chave opcional. Quem
+  // normaliza (tira espaço/caixa e resolve lixo para "não confirmado") é
+  // `planoConfirmadoDoJev`, em lib/ai/triagem/aplicar.ts.
+  JEV_PLANO_CONFIRMADO: z.string().optional(),
 
   // App URLs
   NEXT_PUBLIC_APP_URL: z

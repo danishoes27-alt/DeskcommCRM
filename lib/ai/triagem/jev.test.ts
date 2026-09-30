@@ -3,11 +3,12 @@
  * dado e falha aberta. NENHUM teste chama o Jev de verdade: só o modelo de mentira
  * `Experimental_EvaluationMockModelV4`, da própria SDK.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 
 import { Experimental_EvaluationMockModelV4 as MockJev } from 'ai/test';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   JEV_MAX_CHARS_DO_TEXTO,
@@ -18,6 +19,32 @@ import {
 } from './jev';
 
 type Chamada = Parameters<MockJev['doEvaluate']>[0];
+
+/**
+ * REDE DE SEGURANÇA — nenhum teste deste arquivo pode chegar no Jev de verdade.
+ *
+ * O setup de testes carrega o `.env.local` para o `process.env` (tests/setup/
+ * vitest.setup.ts), e o `.env.local` desta máquina tem a chave real do AI Gateway.
+ * Um `triarMensagem('x')` sem o modelo de mentira usaria o Gateway PADRÃO da SDK e
+ * gastaria uma chamada real. Aqui o provedor padrão da SDK é trocado por um que
+ * explode, e a chave é zerada: esquecer o mock passa a falhar o teste em vez de
+ * chamar a rede.
+ */
+type ProvedorPadrao = { evaluationModel: (id: string) => never };
+const globalDaSdk = globalThis as unknown as { AI_SDK_DEFAULT_PROVIDER?: ProvedorPadrao };
+const provedorPadraoAntes = globalDaSdk.AI_SDK_DEFAULT_PROVIDER;
+beforeAll(() => {
+  vi.stubEnv('AI_GATEWAY_API_KEY', '');
+  globalDaSdk.AI_SDK_DEFAULT_PROVIDER = {
+    evaluationModel: () => {
+      throw new Error('TESTE TENTOU CHAMAR O JEV DE VERDADE — passe sempre o modelo de mentira');
+    },
+  };
+});
+afterAll(() => {
+  vi.unstubAllEnvs();
+  globalDaSdk.AI_SDK_DEFAULT_PROVIDER = provedorPadraoAntes;
+});
 
 interface Cenario {
   probsCategoria?: Record<string, number>;
@@ -104,7 +131,7 @@ describe('triarMensagem — decisão', () => {
       expect(['rotear', 'llm_principal_decide']).toContain(d.acao);
     }
     // Inclui os caminhos de erro e de texto vazio.
-    expect((await triarMensagem('   ')).acao).toBe('llm_principal_decide');
+    expect((await triarMensagem('   ', { model: jevQue().model })).acao).toBe('llm_principal_decide');
   });
 
   it('os limiares são "maior OU IGUAL": 0.7 de probabilidade e 0.6 de confiança passam', async () => {
@@ -344,6 +371,15 @@ describe('triarMensagem — LGPD: ZDR e minimização de dado', () => {
     });
   });
 
+  it('a rede de segurança funciona: sem o mock a chamada bate na armadilha, não na rede', async () => {
+    // Se este teste passar a devolver outra coisa, a armadilha do topo do arquivo
+    // foi desmontada e um teste esquecido do mock voltaria a poder gastar chamada real.
+    await expect(triarMensagem('quero um orçamento')).resolves.toEqual({
+      acao: 'llm_principal_decide',
+      motivo: 'erro_do_modelo',
+    });
+  });
+
   it('o modelo padrão é o Jev via AI Gateway', () => {
     expect(JEV_MODEL_ID).toBe('typesafe-ai/jev');
   });
@@ -388,24 +424,117 @@ describe('triarMensagem — LGPD: ZDR e minimização de dado', () => {
 });
 
 describe('ponto único de chamada', () => {
-  // Se um segundo arquivo passar a chamar `experimental_evaluate`, ele pode esquecer
-  // o ZDR. Este guarda a regra "um só lugar, uma só constante".
-  it('nenhum código fora de lib/ai/triagem/jev.ts chama experimental_evaluate', () => {
-    const raiz = process.cwd();
+  // Se um segundo arquivo falar com o Jev por conta própria, ele pode esquecer o ZDR.
+  // A regra é "um só lugar, uma só constante": só `lib/ai/triagem/jev.ts`.
+  //
+  // A primeira versão só procurava `experimental_evaluate` — e um arquivo que chamasse
+  // `gateway.evaluationModel('typesafe-ai/jev').doEvaluate(...)` passava sem ZDR e sem
+  // essa palavra (provado por sabotagem na auditoria). Por isso agora são TODAS as
+  // portas: a função da SDK, o modelo de avaliação do Gateway, o método que executa, o
+  // id do modelo e o endereço do serviço. E a varredura cobre o repositório inteiro
+  // (pastas de código e a raiz), não só quatro pastas.
+  const PORTAS_PROIBIDAS = [
+    'experimental_evaluate',
+    'evaluationModel',
+    'doEvaluate',
+    'typesafe-ai/jev',
+    'evaluation-model',
+  ];
+  const UNICO_ARQUIVO_PERMITIDO = 'lib/ai/triagem/jev.ts';
+  const PASTAS_IGNORADAS = new Set([
+    'node_modules',
+    '.next',
+    '.git',
+    'docs',
+    '.superpowers',
+    'coverage',
+    'dist',
+    'out',
+    '.turbo',
+    '.vercel',
+    'playwright-report',
+    'test-results',
+  ]);
+  // ⚠️ Os pontos PRECISAM de barra: sem ela `.` casa com qualquer letra e a cerca pulava
+  // arquivo de produção com "test"/"spec" no meio do nome (`especialista.ts`, `latest.ts`,
+  // `aviso-de-teste.ts`) — achado da segunda auditoria.
+  const EXTENSOES_DE_CODIGO = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
+  const ARQUIVO_DE_TESTE = /\.(test|spec)\.[^/]+$/;
+
+  /** Arquivos de código do repositório (relativos à raiz, com barra normal). */
+  function arquivosDeCodigo(raiz: string): string[] {
+    const raizNormal = raiz.split(sep).join('/');
     const varrer = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
         const p = join(dir, e.name);
-        if (e.isDirectory()) {
-          return ['node_modules', '.next', '.git'].includes(e.name) ? [] : varrer(p);
-        }
-        return /\.(ts|tsx|mts|js|mjs)$/.test(e.name) ? [p.split(sep).join('/')] : [];
+        if (e.isDirectory()) return PASTAS_IGNORADAS.has(e.name) ? [] : varrer(p);
+        if (!EXTENSOES_DE_CODIGO.test(e.name) || ARQUIVO_DE_TESTE.test(e.name)) return [];
+        return [p.split(sep).join('/').slice(raizNormal.length + 1)];
       });
-    const raizNormal = raiz.split(sep).join('/');
-    const usam = ['app', 'lib', 'components', 'workers', 'hooks']
-      .flatMap((d) => varrer(join(raiz, d)))
-      .filter((f) => !/\.test\.tsx?$/.test(f))
-      .filter((f) => /experimental_evaluate/.test(readFileSync(f, 'utf8')))
-      .map((f) => f.slice(raizNormal.length + 1));
-    expect(usam).toEqual(['lib/ai/triagem/jev.ts']);
+    return varrer(raiz);
+  }
+
+  function quemFalaComOJev(raiz: string): string[] {
+    return arquivosDeCodigo(raiz)
+      .filter((f) => {
+        const fonte = readFileSync(join(raiz, f), 'utf8');
+        return PORTAS_PROIBIDAS.some((porta) => fonte.includes(porta));
+      })
+      .sort();
+  }
+
+  it('só lib/ai/triagem/jev.ts fala com o Jev (função da SDK, modelo do Gateway, id, endereço)', () => {
+    expect(quemFalaComOJev(process.cwd())).toEqual([UNICO_ARQUIVO_PERMITIDO]);
+  });
+
+  it('a varredura enxerga as pastas de código e a raiz do repositório (não só quatro pastas)', () => {
+    const vistos = arquivosDeCodigo(process.cwd());
+    for (const parte of ['lib/', 'app/', 'components/', 'hooks/', 'workers/', 'scripts/']) {
+      expect(vistos.some((f) => f.startsWith(parte)), parte).toBe(true);
+    }
+    // arquivos soltos na raiz (next.config.ts, proxy.ts, instrumentation.ts ...)
+    expect(vistos.some((f) => !f.includes('/'))).toBe(true);
+    // e o próprio ponto único está no conjunto varrido
+    expect(vistos).toContain(UNICO_ARQUIVO_PERMITIDO);
+  });
+
+  it('a varredura reprova de verdade: numa árvore de mentira, cada porta acusa o arquivo', () => {
+    const raiz = mkdtempSync(join(tmpdir(), 'jev-cerca-'));
+    try {
+      const escreve = (rel: string, conteudo: string) => {
+        mkdirSync(join(raiz, rel, '..'), { recursive: true });
+        writeFileSync(join(raiz, rel), conteudo);
+      };
+      escreve('lib/ai/triagem/jev.ts', "export const ok = 'experimental_evaluate';");
+      escreve('lib/outro/a.ts', "await gateway.evaluationModel('x').doEvaluate({});");
+      escreve('app/b.tsx', "const id = 'typesafe-ai/jev';");
+      escreve('scripts/c.mts', "fetch(base + '/evaluation-model');");
+      escreve('raiz-solta.mjs', 'evaluate = experimental_evaluate;');
+      // nomes de PRODUÇÃO com "test"/"spec"/"latest" no meio NÃO são arquivo de teste:
+      // têm de ser acusados (o ponto sem barra da regex antiga os deixava passar)
+      escreve('lib/especialista.ts', "const id = 'typesafe-ai/jev';");
+      escreve('lib/aviso-de-teste.ts', 'evaluate = experimental_evaluate;');
+      escreve('app/latest.tsx', "gateway.evaluationModel('x');");
+      escreve('lib/legado.jsx', "const id = 'typesafe-ai/jev';");
+      // não devem contar: teste, pasta ignorada e arquivo que não é código
+      escreve('lib/x.test.ts', "'typesafe-ai/jev'");
+      escreve('lib/y.spec.tsx', "'typesafe-ai/jev'");
+      escreve('node_modules/p/i.js', "'typesafe-ai/jev'");
+      escreve('docs/e.ts', "'typesafe-ai/jev'");
+      escreve('lib/leia.md', 'typesafe-ai/jev');
+      expect(quemFalaComOJev(raiz)).toEqual([
+        'app/b.tsx',
+        'app/latest.tsx',
+        'lib/ai/triagem/jev.ts',
+        'lib/aviso-de-teste.ts',
+        'lib/especialista.ts',
+        'lib/legado.jsx',
+        'lib/outro/a.ts',
+        'raiz-solta.mjs',
+        'scripts/c.mts',
+      ]);
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
   });
 });
