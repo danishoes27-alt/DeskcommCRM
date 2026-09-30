@@ -36,10 +36,13 @@
  * ─── TRAVAS ───────────────────────────────────────────────────────────────────
  * - Chave `JEV_TRIAGEM_ENABLED`, DESLIGADA por padrão. Desligada = zero consulta ao
  *   banco e zero chamada ao Jev.
- * - SEGUNDA CONFIRMAÇÃO `JEV_PLANO_CONFIRMADO` (`pro` | `so_dado_de_teste`). Ligada mas
- *   sem ela (ausente ou inválida): não consulta o banco, não chama o Jev, avisa com o
- *   código `plano_do_gateway_nao_confirmado` e sai. É o que impede ligar isto por
- *   engano numa conta Hobby com número real.
+ * - TRAVA CENTRAL `AI_GATEWAY_PLANO_CONFIRMADO` (`lib/ai/gateway.ts`,
+ *   `planoConfirmadoDoGateway`): vale para o Gateway INTEIRO do sistema, não só o Jev.
+ *   Sem ela, avisa `gateway_do_sistema_nao_confirmado` e sai ANTES do banco e do Jev.
+ * - SEGUNDA CONFIRMAÇÃO, SÓ do Jev, `JEV_PLANO_CONFIRMADO` (`pro` | `so_dado_de_teste`).
+ *   Ligada mas sem ela (ausente ou inválida): não consulta o banco, não chama o Jev,
+ *   avisa com o código `plano_do_jev_nao_confirmado` e sai. As DUAS confirmações
+ *   (central + esta) são exigidas — falta uma, o Jev não roda.
  * - ⛔ Conta Vercel Hobby: ZDR por chamada só vale no Pro. Proibido ligar com
  *   WhatsApp real de cliente até o upgrade (docs/03-engenharia.md).
  * - FALHA ABERTA: nada aqui lança. Erro vira log com CÓDIGO (nunca o texto).
@@ -58,6 +61,7 @@ import type { Queryable } from '@/lib/agent-engine/queue/queue';
 import { lerConfigDoJev } from '@/lib/ai/decisao/config';
 import { estadoEfetivoDaTarefa } from '@/lib/ai/decisao/tarefas';
 import { env } from '@/lib/env';
+import { planoConfirmadoDoGateway } from '../gateway';
 import { triarMensagem, type DecisaoDaTriagem } from './jev';
 
 export interface LogDaTriagem {
@@ -89,6 +93,11 @@ export interface DepsDaTriagem {
   log: LogDaTriagem;
   /** Testes. Default: env JEV_TRIAGEM_ENABLED. */
   habilitado?: () => boolean;
+  /**
+   * Testes. Default: `planoConfirmadoDoGateway()` — a TRAVA CENTRAL do Gateway inteiro
+   * (lib/ai/gateway.ts), independente da confirmação própria do Jev logo abaixo.
+   */
+  gatewayCentralConfirmado?: () => boolean;
   /** Testes. Default: env JEV_PLANO_CONFIRMADO (cru — é normalizado aqui). */
   planoConfirmado?: () => string | undefined;
   /** Testes. Default: há chave do AI Gateway. */
@@ -173,8 +182,8 @@ interface LinhaDaMensagem {
 
 /**
  * Triagem de UMA mensagem recebida. NUNCA lança. Devolve `null` quando não fez nada
- * (desligada, plano não confirmado, sem chave, já triada, contato bloqueado, mensagem
- * sumiu) — útil só para teste.
+ * (desligada, trava central do Gateway não confirmada, plano do Jev não confirmado, sem
+ * chave, já triada, contato bloqueado, mensagem sumiu) — útil só para teste.
  */
 export async function triarEGravarMensagemRecebida(
   db: Queryable,
@@ -186,11 +195,25 @@ export async function triarEGravarMensagemRecebida(
     // Desligada: sai ANTES de qualquer consulta ou chamada.
     if (!habilitado()) return null;
 
-    // Segunda confirmação: ligada mas sem o plano declarado => se recusa. Sai ANTES do
-    // banco e do Jev. O aviso leva só um CÓDIGO.
+    // ⛔ TRAVA CENTRAL do AI Gateway inteiro (decisão do Berg, 30/09/2026): além da
+    // confirmação própria do Jev logo abaixo, existe uma segunda chave que vale para o
+    // SISTEMA INTEIRO (`AI_GATEWAY_PLANO_CONFIRMADO`, lib/ai/gateway.ts). Checada aqui —
+    // e não só em `gatewayConfig()` — porque o Jev NÃO passa por ele: a chamada que
+    // `jev.ts` faz lê `AI_GATEWAY_API_KEY` direto do `process.env` (o ÚNICO ponto
+    // autorizado a fazer essa chamada — ver a cerca em `jev.test.ts`).
+    // Sai ANTES do banco e do Jev; o aviso leva só um CÓDIGO.
+    const gatewayCentralConfirmado =
+      deps.gatewayCentralConfirmado ?? (() => planoConfirmadoDoGateway() !== null);
+    if (!gatewayCentralConfirmado()) {
+      deps.log.warn('triagem do Jev pulada', { motivo: 'gateway_do_sistema_nao_confirmado' });
+      return null;
+    }
+
+    // Segunda confirmação (SÓ do Jev): ligada mas sem o plano declarado => se recusa.
+    // Sai ANTES do banco e do Jev. O aviso leva só um CÓDIGO.
     const plano = planoConfirmadoDoJev((deps.planoConfirmado ?? (() => env.JEV_PLANO_CONFIRMADO))());
     if (plano === null) {
-      deps.log.warn('triagem do Jev pulada', { motivo: 'plano_do_gateway_nao_confirmado' });
+      deps.log.warn('triagem do Jev pulada', { motivo: 'plano_do_jev_nao_confirmado' });
       return null;
     }
 

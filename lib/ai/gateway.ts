@@ -84,10 +84,11 @@ export function resolveLanguageModel(model: ModelId): LanguageModel | null {
 }
 
 export function isEmbeddingProviderConfigured(): boolean {
-  // Embeddings go through the gateway when `AI_GATEWAY_API_KEY` is set;
-  // otherwise the worker uses an OpenAI or OpenRouter key from the installation.
+  // Embeddings go through the gateway when it's configured (chave presente E
+  // plano confirmado — ver `gatewayConfig()`); otherwise the worker uses an
+  // OpenAI or OpenRouter key from the installation.
   // Tenant credentials are resolved by temChaveDeEmbedding(organizationId).
-  return Boolean(env.AI_GATEWAY_API_KEY || env.OPENAI_API_KEY || env.OPENROUTER_API_KEY);
+  return Boolean(gatewayConfig() || env.OPENAI_API_KEY || env.OPENROUTER_API_KEY);
 }
 
 /**
@@ -102,14 +103,43 @@ export function gatewayHeaders(opts: { organizationId: string }): Record<string,
   };
 }
 
+/** O que o dono da instalação declarou sobre o plano da conta do AI Gateway. */
+export type PlanoConfirmadoDoGateway = "pro" | "so_dado_de_teste";
+
+/**
+ * ⛔ TRAVA CENTRAL (Berg, 30/09/2026): normaliza `AI_GATEWAY_PLANO_CONFIRMADO`. Só
+ * `pro` e `so_dado_de_teste` (sem se importar com espaço/caixa) contam como
+ * confirmado; ausente, vazio ou qualquer outra coisa é `null` — o lado seguro,
+ * que `gatewayConfig()` trata como "Gateway desligado". Nunca lança.
+ *
+ * Existe porque preencher `AI_GATEWAY_API_KEY` sozinha ligava, sem nenhuma
+ * confirmação, o worker de sentimento, o worker de resposta legado e a busca
+ * por embeddings — a mesma armadilha que `JEV_PLANO_CONFIRMADO` já fechava só
+ * para o Jev (lib/ai/triagem/aplicar.ts). O Jev SOMA as duas confirmações: a
+ * dele e esta.
+ */
+export function planoConfirmadoDoGateway(
+  valor: string | undefined | null = env.AI_GATEWAY_PLANO_CONFIRMADO,
+): PlanoConfirmadoDoGateway | null {
+  const v = typeof valor === "string" ? valor.trim().toLowerCase() : "";
+  return v === "pro" || v === "so_dado_de_teste" ? v : null;
+}
+
 /**
  * The `ai` SDK uses `AI_GATEWAY_API_KEY` from process.env automatically when
  * passing string model ids. We surface it here so the worker can fail fast
  * with a clear skip reason, and so future explicit `createGateway()` callers
  * have the canonical place to read config.
+ *
+ * ⛔ TRAVA CENTRAL: a chave sozinha não basta. Sem `AI_GATEWAY_PLANO_CONFIRMADO`,
+ * este devolve `null` — o Gateway inteiro do sistema é tratado como
+ * DESLIGADO, e todo chamador (`resolveLanguageModel`,
+ * `isEmbeddingProviderConfigured`, `lib/ai/embeddings/chave.ts`) cai no
+ * próximo degrau (provider direto) ou em "sem configuração".
  */
 export function gatewayConfig(): { apiKey: string; baseURL?: string } | null {
   if (!env.AI_GATEWAY_API_KEY) return null;
+  if (planoConfirmadoDoGateway() === null) return null;
   return {
     apiKey: env.AI_GATEWAY_API_KEY,
     baseURL: env.AI_GATEWAY_BASE_URL || undefined,

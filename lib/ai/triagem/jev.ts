@@ -29,8 +29,10 @@
  *
  * ⛔ TRAVA (Berg, 24/09/2026): a conta Vercel é Hobby e ZDR por chamada só vale no
  * Pro. Enquanto for Hobby, o Jev só pode ver dado de TESTE. Quem liga isto é a chave
- * `JEV_TRIAGEM_ENABLED` (desligada por padrão) e, além dela, a confirmação do plano em
- * `JEV_PLANO_CONFIRMADO` — sem ela o Jev nem é chamado. Ver `aplicar.ts`.
+ * `JEV_TRIAGEM_ENABLED` (desligada por padrão) e, além dela, DUAS confirmações de plano
+ * em `aplicar.ts`: a central do Gateway inteiro (`AI_GATEWAY_PLANO_CONFIRMADO`,
+ * `lib/ai/gateway.ts`) e a própria do Jev (`JEV_PLANO_CONFIRMADO`) — falta qualquer uma
+ * das duas, o Jev nem é chamado.
  */
 import { experimental_evaluate as evaluate, type Experimental_EvaluationModel } from 'ai';
 

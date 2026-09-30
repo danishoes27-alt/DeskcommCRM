@@ -87,6 +87,7 @@ function deps(sobrescreve: Partial<DepsDaTriagem> = {}) {
   const d: DepsDaTriagem = {
     log,
     habilitado: () => true,
+    gatewayCentralConfirmado: () => true,
     planoConfirmado: () => 'so_dado_de_teste',
     temChave: () => true,
     aceiteDoJev: async () => true,
@@ -150,7 +151,7 @@ describe('triarEGravarMensagemRecebida — segunda confirmação do plano (trava
     expect(triar).not.toHaveBeenCalled();
     expect(log.warn).toHaveBeenCalledTimes(1);
     expect(log.warn).toHaveBeenCalledWith('triagem do Jev pulada', {
-      motivo: 'plano_do_gateway_nao_confirmado',
+      motivo: 'plano_do_jev_nao_confirmado',
     });
     expect(log.info).not.toHaveBeenCalled();
   });
@@ -173,7 +174,7 @@ describe('triarEGravarMensagemRecebida — segunda confirmação do plano (trava
     const { d, log } = deps({ planoConfirmado: () => 'VALOR-ESTRANHO-DO-OPERADOR' });
     await triarEGravarMensagemRecebida(db, ENTRADA, d);
     const tudo = JSON.stringify([log.warn.mock.calls, log.info.mock.calls]);
-    expect(tudo).toContain('plano_do_gateway_nao_confirmado');
+    expect(tudo).toContain('plano_do_jev_nao_confirmado');
     expect(tudo).not.toContain('SECRETO');
     expect(tudo).not.toContain('ESTRANHO');
   });
@@ -213,6 +214,70 @@ describe('triarEGravarMensagemRecebida — segunda confirmação do plano (trava
       expect(planoConfirmadoDoJev(env.JEV_PLANO_CONFIRMADO)).toBeNull();
     } finally {
       if (antes !== undefined) process.env.JEV_PLANO_CONFIRMADO = antes;
+      vi.resetModules();
+    }
+  });
+});
+
+describe('triarEGravarMensagemRecebida — trava CENTRAL do Gateway (AI_GATEWAY_PLANO_CONFIRMADO)', () => {
+  it('sem a trava central: NÃO consulta o banco, NÃO chama o Jev, avisa com o código, e nem chega a checar a confirmação PRÓPRIA do Jev', async () => {
+    const { db, query } = bancoQue(LINHA_TEXTO);
+    const planoDoJev = vi.fn(() => 'pro');
+    const { d, triar, log } = deps({ gatewayCentralConfirmado: () => false, planoConfirmado: planoDoJev });
+
+    await expect(triarEGravarMensagemRecebida(db, ENTRADA, d)).resolves.toBeNull();
+
+    expect(query).not.toHaveBeenCalled();
+    expect(triar).not.toHaveBeenCalled();
+    expect(planoDoJev).not.toHaveBeenCalled();
+    expect(log.warn).toHaveBeenCalledTimes(1);
+    expect(log.warn).toHaveBeenCalledWith('triagem do Jev pulada', {
+      motivo: 'gateway_do_sistema_nao_confirmado',
+    });
+  });
+
+  it('trava central confirmada MAS a confirmação própria do Jev não: ainda pula (as duas são exigidas)', async () => {
+    const { db, query } = bancoQue(LINHA_TEXTO);
+    const { d, triar, log } = deps({ gatewayCentralConfirmado: () => true, planoConfirmado: () => undefined });
+
+    await expect(triarEGravarMensagemRecebida(db, ENTRADA, d)).resolves.toBeNull();
+
+    expect(query).not.toHaveBeenCalled();
+    expect(triar).not.toHaveBeenCalled();
+    expect(log.warn).toHaveBeenCalledWith('triagem do Jev pulada', {
+      motivo: 'plano_do_jev_nao_confirmado',
+    });
+  });
+
+  it('as duas confirmadas: roda normal', async () => {
+    const { db } = bancoQue(LINHA_TEXTO);
+    const { d, triar } = deps({ gatewayCentralConfirmado: () => true, planoConfirmado: () => 'pro' });
+    const gravada = await triarEGravarMensagemRecebida(db, ENTRADA, d);
+    expect(gravada).not.toBeNull();
+    expect(triar).toHaveBeenCalledTimes(1);
+  });
+
+  it('o padrão de gatewayCentralConfirmado lê planoConfirmadoDoGateway() de lib/ai/gateway.ts — sem AI_GATEWAY_PLANO_CONFIRMADO no ambiente, pula', async () => {
+    const antes = process.env.AI_GATEWAY_PLANO_CONFIRMADO;
+    delete process.env.AI_GATEWAY_PLANO_CONFIRMADO;
+    vi.resetModules();
+    try {
+      const { triarEGravarMensagemRecebida: triarSemMock } = await import('./aplicar');
+      const { db, query } = bancoQue(LINHA_TEXTO);
+      const log = { info: vi.fn(), warn: vi.fn() };
+      const resultado = await triarSemMock(db, ENTRADA, {
+        log,
+        habilitado: () => true,
+        planoConfirmado: () => 'pro',
+        temChave: () => true,
+      });
+      expect(resultado).toBeNull();
+      expect(query).not.toHaveBeenCalled();
+      expect(log.warn).toHaveBeenCalledWith('triagem do Jev pulada', {
+        motivo: 'gateway_do_sistema_nao_confirmado',
+      });
+    } finally {
+      if (antes !== undefined) process.env.AI_GATEWAY_PLANO_CONFIRMADO = antes;
       vi.resetModules();
     }
   });

@@ -503,7 +503,7 @@ const schema = z.object({
   //   pro              — conta Pro/Enterprise: o ZDR por chamada VALE;
   //   so_dado_de_teste — conta Hobby: o ZDR NÃO vale, e quem liga declara que só passa
   //                      dado de TESTE por aqui;
-  //   (vazio/outro)    — o Jev se recusa a rodar (código `plano_do_gateway_nao_confirmado`).
+  //   (vazio/outro)    — o Jev se recusa a rodar (código `plano_do_jev_nao_confirmado`).
   //
   // ⚠️ `z.string()` E NÃO `z.enum` — de propósito, e é o mesmo motivo de
   // `AI_BUDGET_ENFORCEMENT` acima: o `.env.example` entrega esta linha VAZIA, e quem faz
@@ -512,6 +512,22 @@ const schema = z.object({
   // normaliza (tira espaço/caixa e resolve lixo para "não confirmado") é
   // `planoConfirmadoDoJev`, em lib/ai/triagem/aplicar.ts.
   JEV_PLANO_CONFIRMADO: z.string().optional(),
+
+  // ⛔ TRAVA CENTRAL do AI Gateway INTEIRO (decisão do Berg, 30/09/2026). Preencher
+  // `AI_GATEWAY_API_KEY` sozinha não basta mais: sem esta confirmação, TODO o sistema
+  // trata o Gateway como DESLIGADO — `gatewayConfig()`, `resolveLanguageModel()`,
+  // `isEmbeddingProviderConfigured()` e a busca por embeddings (lib/ai/gateway.ts,
+  // lib/ai/embeddings/chave.ts). Fecha o buraco achado numa investigação: preencher só a
+  // chave já ligava sozinho o worker de sentimento, o worker de resposta legado e a
+  // busca por embeddings, sem nenhuma confirmação de plano — a mesma trava que o Jev já
+  // tinha, mas que faltava para o resto do sistema. O motor da IA principal
+  // (agent-engine) NÃO passa por aqui: ele fala direto com os provedores (BYOK).
+  //   pro              — conta Pro/Enterprise: o ZDR por chamada VALE;
+  //   so_dado_de_teste — conta Hobby: o ZDR NÃO vale, só dado de TESTE por aqui;
+  //   (vazio/outro)    — o Gateway inteiro fica DESLIGADO, mesmo com a chave preenchida.
+  // `z.string()` e não `z.enum`, pelo mesmo motivo de `JEV_PLANO_CONFIRMADO` acima.
+  // Normaliza `planoConfirmadoDoGateway()`, em lib/ai/gateway.ts.
+  AI_GATEWAY_PLANO_CONFIRMADO: z.string().optional(),
 
   // App URLs
   NEXT_PUBLIC_APP_URL: z
@@ -654,6 +670,26 @@ if (
       "cadastrada em IA › Credenciais. A falta real só é conhecida quando a resolução completa " +
       "do turno não encontra chave em nenhum degrau.",
   );
+}
+
+// ⛔ TRAVA CENTRAL (achado da 2ª auditoria do Jev, 30/09/2026): sem este aviso, a chave
+// preenchida SEM `AI_GATEWAY_PLANO_CONFIRMADO` falha em silêncio — o worker de sentimento e
+// o worker de resposta legado pulam com `ai_gateway_key_missing` mesmo com a chave presente
+// (o motivo mente), e o aviso de cima, que só olha "a chave existe", fica calado. O
+// comportamento (Gateway desligado) já é o seguro; faltava só o boot ENXERGAR e avisar.
+// Duplica a normalização de `planoConfirmadoDoGateway()` (lib/ai/gateway.ts) em vez de
+// importá-la: `gateway.ts` importa `env` DESTE arquivo, e o caminho inverso criaria um
+// import circular.
+if (env.AI_GATEWAY_API_KEY) {
+  const plano = env.AI_GATEWAY_PLANO_CONFIRMADO?.trim().toLowerCase();
+  if (plano !== "pro" && plano !== "so_dado_de_teste") {
+    console.warn(
+      "[env] AI_GATEWAY_API_KEY está preenchida, mas AI_GATEWAY_PLANO_CONFIRMADO não foi " +
+        "confirmada ('pro' ou 'so_dado_de_teste') — o AI Gateway inteiro fica DESLIGADO " +
+        "(worker de sentimento, worker de resposta legado e busca por embeddings caem no " +
+        "provider direto ou pulam). Ver lib/ai/gateway.ts e docs/03-engenharia.md.",
+    );
+  }
 }
 // Este aviso ANUNCIAVA UM DESFECHO que o boot não tem como saber, e a correção
 // aqui é a mesma que o bloco de cima já pagou uma vez. Ele dizia "RAG embedding

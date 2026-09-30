@@ -10,6 +10,8 @@ const state = vi.hoisted(() => ({
   env: {
     AI_GATEWAY_API_KEY: "",
     AI_GATEWAY_BASE_URL: "",
+    // A TRAVA CENTRAL (lib/ai/gateway.ts): a chave do gateway só vale com o plano confirmado.
+    AI_GATEWAY_PLANO_CONFIRMADO: "pro",
     OPENAI_API_KEY: "",
     OPENROUTER_API_KEY: "",
     OPENROUTER_BASE_URL: "",
@@ -17,7 +19,11 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/env", () => ({ env: state.env }));
-vi.mock("@/lib/ai/gateway", () => ({ OPENROUTER_BASE_URL: "https://openrouter.ai/api/v1" }));
+// Mock PARCIAL: `gatewayConfig` (e a trava central dentro dele) roda de verdade contra o `env` falso.
+vi.mock("@/lib/ai/gateway", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/ai/gateway")>()),
+  OPENROUTER_BASE_URL: "https://openrouter.ai/api/v1",
+}));
 vi.mock("@/lib/logger", () => ({ logger: { warn: vi.fn() } }));
 // A chamada de rede do AI SDK é a única parte dublada do caminho da pergunta:
 // resolvedor, `embedText` e `buscarConhecimento` rodam de verdade no cenário
@@ -96,6 +102,7 @@ beforeEach(() => {
   state.versions = [];
   state.falhas = new Set();
   state.env.AI_GATEWAY_API_KEY = "";
+  state.env.AI_GATEWAY_PLANO_CONFIRMADO = "pro";
   state.env.OPENAI_API_KEY = "";
   state.env.OPENROUTER_API_KEY = "";
 });
@@ -176,6 +183,23 @@ describe("resolverChaveDeEmbedding", () => {
       provedor: "gateway",
       origem: "gateway_da_instalacao",
     });
+  });
+
+  it("a chave do gateway SEM o plano confirmado não vira o degrau do gateway (trava central)", async () => {
+    state.env.AI_GATEWAY_API_KEY = "gateway-ficticio";
+    state.env.AI_GATEWAY_PLANO_CONFIRMADO = "";
+    state.credentials = [credential({})];
+
+    expect(await resolverChaveDeEmbedding("org-1")).toMatchObject({
+      origem: "credencial_da_organizacao",
+    });
+  });
+
+  it("só a chave do gateway, sem plano confirmado e sem nenhuma outra via: não há chave de embedding", async () => {
+    state.env.AI_GATEWAY_API_KEY = "gateway-ficticio";
+    state.env.AI_GATEWAY_PLANO_CONFIRMADO = "";
+
+    expect(await resolverChaveDeEmbedding("org-1")).toBeNull();
   });
 
   it("a credencial OpenRouter da organização vence a OPENROUTER_API_KEY da instalação", async () => {

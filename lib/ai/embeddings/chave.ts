@@ -88,10 +88,11 @@
  * provedor (`PUT /api/v1/ai/knowledge/provedor`) refaz a base inteira.
  */
 import { byteaToBuffer, decryptKey } from "@/lib/crypto/aes_gcm";
-import { OPENROUTER_BASE_URL } from "@/lib/ai/gateway";
+import { gatewayConfig, OPENROUTER_BASE_URL } from "@/lib/ai/gateway";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+
 
 /** Os dois pontos de IA que consomem embedding (`lib/ai/pontos/registro.ts`). */
 export type PontoDeEmbedding = "embedding_indexar" | "embedding_consultar";
@@ -290,7 +291,9 @@ export async function resolverChaveDeEmbedding(
     if (openAiDaOrg) return daOrganizacao(openAiDaOrg);
 
     // 3 · O gateway da instalação. A chave não sai daqui: o SDK a lê do process.env.
-    if (env.AI_GATEWAY_API_KEY) {
+    // `gatewayConfig()` já aplica a TRAVA CENTRAL (AI_GATEWAY_PLANO_CONFIRMADO) — sem ela,
+    // este degrau nem existe, mesmo com AI_GATEWAY_API_KEY preenchida.
+    if (gatewayConfig()) {
       return {
         apiKey: null,
         baseUrl: env.AI_GATEWAY_BASE_URL || null,

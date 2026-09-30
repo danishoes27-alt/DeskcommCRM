@@ -80,3 +80,42 @@ describe("aviso de chave de IA no boot", () => {
     expect(avisos.some((texto) => texto.startsWith(PREFIXO))).toBe(false);
   });
 });
+
+describe("aviso da TRAVA CENTRAL do Gateway no boot (achado da 2ª auditoria do Jev, 30/09/2026)", () => {
+  const PREFIXO_TRAVA = "[env] AI_GATEWAY_API_KEY está preenchida";
+
+  it("chave do Gateway preenchida SEM AI_GATEWAY_PLANO_CONFIRMADO: avisa", async () => {
+    vi.stubEnv("AI_GATEWAY_API_KEY", "vck_teste");
+
+    const avisos = await avisosDoBoot();
+
+    expect(avisos.some((texto) => texto.startsWith(PREFIXO_TRAVA))).toBe(true);
+  });
+
+  it.each(["pro", "so_dado_de_teste", "  PRO  "])(
+    "chave do Gateway + AI_GATEWAY_PLANO_CONFIRMADO='%s': NÃO avisa",
+    async (valor) => {
+      vi.stubEnv("AI_GATEWAY_API_KEY", "vck_teste");
+      vi.stubEnv("AI_GATEWAY_PLANO_CONFIRMADO", valor);
+
+      const avisos = await avisosDoBoot();
+
+      expect(avisos.some((texto) => texto.startsWith(PREFIXO_TRAVA))).toBe(false);
+    },
+  );
+
+  it("sem AI_GATEWAY_API_KEY: não avisa, mesmo sem o plano confirmado (nada pra travar)", async () => {
+    const avisos = await avisosDoBoot();
+
+    expect(avisos.some((texto) => texto.startsWith(PREFIXO_TRAVA))).toBe(false);
+  });
+
+  it("plano com valor inválido conta como não confirmado: avisa", async () => {
+    vi.stubEnv("AI_GATEWAY_API_KEY", "vck_teste");
+    vi.stubEnv("AI_GATEWAY_PLANO_CONFIRMADO", "talvez");
+
+    const avisos = await avisosDoBoot();
+
+    expect(avisos.some((texto) => texto.startsWith(PREFIXO_TRAVA))).toBe(true);
+  });
+});

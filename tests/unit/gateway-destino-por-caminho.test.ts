@@ -90,8 +90,9 @@ afterEach(() => {
 });
 
 describe("destino real de cada caminho de resolveLanguageModel", () => {
-  it("gateway da Vercel → a requisição vai para o gateway", async () => {
+  it("gateway da Vercel → a requisição vai para o gateway (trava central confirmada)", async () => {
     envMock.AI_GATEWAY_API_KEY = "gw-key";
+    envMock.AI_GATEWAY_PLANO_CONFIRMADO = "pro";
     // O SDK lê esta chave do process.env por conta própria quando o model é
     // string — é justamente esse acoplamento implícito que originou o bug.
     process.env.AI_GATEWAY_API_KEY = "gw-key";
@@ -99,6 +100,18 @@ describe("destino real de cada caminho de resolveLanguageModel", () => {
     const model = resolveLanguageModel(MODELO);
     expect(model).not.toBeNull();
     expect(await destinoDe(model!)).toContain("ai-gateway.vercel.sh");
+  });
+
+  it("⛔ TRAVA CENTRAL: chave preenchida sem AI_GATEWAY_PLANO_CONFIRMADO → a requisição NÃO vai para o gateway", async () => {
+    envMock.AI_GATEWAY_API_KEY = "gw-key";
+    process.env.AI_GATEWAY_API_KEY = "gw-key";
+    envMock.ANTHROPIC_API_KEY = "sk-ant-xxx";
+
+    const model = resolveLanguageModel(MODELO);
+    expect(model).not.toBeNull();
+    const hosts = await destinoDe(model!);
+    expect(hosts, "a chave sozinha não pode ligar o gateway").not.toContain("ai-gateway.vercel.sh");
+    expect(hosts).toContain("api.anthropic.com");
   });
 
   it("OpenRouter → a requisição vai para a OpenRouter, não para a Anthropic", async () => {
@@ -127,6 +140,7 @@ describe("destino real de cada caminho de resolveLanguageModel", () => {
     // pega uma inversão de precedência que aponte para o endpoint errado —
     // este caso pega, porque compara os dois hosts possíveis.
     envMock.AI_GATEWAY_API_KEY = "gw-key";
+    envMock.AI_GATEWAY_PLANO_CONFIRMADO = "pro";
     process.env.AI_GATEWAY_API_KEY = "gw-key";
     envMock.OPENROUTER_API_KEY = "sk-or-xxx";
 

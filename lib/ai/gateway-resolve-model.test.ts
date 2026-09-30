@@ -33,11 +33,21 @@ beforeEach(() => {
 });
 
 describe("resolveLanguageModel", () => {
-  it("com gateway da Vercel devolve a STRING (o gateway roteia e fatura)", () => {
+  it("com gateway da Vercel E a trava central confirmada devolve a STRING (o gateway roteia e fatura)", () => {
     envMock.AI_GATEWAY_API_KEY = "gw-key";
+    envMock.AI_GATEWAY_PLANO_CONFIRMADO = "pro";
     expect(resolveLanguageModel("anthropic/claude-haiku-4-5")).toBe(
       "anthropic/claude-haiku-4-5",
     );
+  });
+
+  it("⛔ TRAVA CENTRAL: com a chave mas SEM AI_GATEWAY_PLANO_CONFIRMADO, o gateway conta como null — cai para o próximo provider", () => {
+    envMock.AI_GATEWAY_API_KEY = "gw-key";
+    // sem AI_GATEWAY_PLANO_CONFIRMADO
+    envMock.ANTHROPIC_API_KEY = "sk-ant-xxx";
+    const model = resolveLanguageModel("anthropic/claude-haiku-4-5");
+    expect(model).not.toBeNull();
+    expect(typeof model, "a chave sozinha não pode ligar o gateway").not.toBe("string");
   });
 
   it("só com ANTHROPIC_API_KEY devolve PROVIDER, não string — o bug do worker", () => {
@@ -54,8 +64,9 @@ describe("resolveLanguageModel", () => {
     expect(typeof model).not.toBe("string");
   });
 
-  it("gateway da Vercel tem precedência sobre OpenRouter", () => {
+  it("gateway da Vercel tem precedência sobre OpenRouter (com a trava central confirmada)", () => {
     envMock.AI_GATEWAY_API_KEY = "gw-key";
+    envMock.AI_GATEWAY_PLANO_CONFIRMADO = "pro";
     envMock.OPENROUTER_API_KEY = "sk-or-xxx";
     expect(typeof resolveLanguageModel("anthropic/claude-haiku-4-5")).toBe("string");
   });

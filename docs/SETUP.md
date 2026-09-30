@@ -332,9 +332,19 @@ Confira em <http://localhost:3030/dashboard/> que o WAHA está respondendo (pain
 AI_GATEWAY_API_KEY=<chave-do-gateway>
 AI_GATEWAY_BASE_URL=https://ai-gateway.vercel.sh/v1
 VERCEL_AI_GATEWAY_URL=https://ai-gateway.vercel.sh/v1
+# A chave sozinha NÃO liga o Gateway — diga em que plano a conta Vercel está:
+#   pro              = conta Pro/Enterprise (o Zero Data Retention por chamada vale)
+#   so_dado_de_teste = conta Hobby (ZDR NÃO vale; só dado de teste)
+#   vazio (padrão)   = o Gateway fica DESLIGADO, mesmo com a chave preenchida
+AI_GATEWAY_PLANO_CONFIRMADO=
 ```
 
 > 💡 Com o Gateway, o código usa strings tipo `"anthropic/claude-sonnet-4-6"` — o Gateway resolve qual provedor chamar. Se Anthropic estiver fora, ele tenta o backup automaticamente.
+>
+> ⛔ Sem `AI_GATEWAY_PLANO_CONFIRMADO` preenchida, o Gateway conta como desligado (mesmo com a chave
+> certa) — é uma trava de propósito, porque o Zero Data Retention por chamada só vale nos planos
+> Pro/Enterprise da Vercel. Numa conta Hobby, use `so_dado_de_teste` só enquanto não houver
+> conversa real passando pelo sistema.
 
 ### Opção B — Anthropic direto (fallback ou se preferir)
 
