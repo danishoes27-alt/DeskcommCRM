@@ -36,6 +36,8 @@
  */
 import { experimental_evaluate as evaluate, type Experimental_EvaluationModel } from 'ai';
 
+import { planoConfirmadoDoGateway } from '../gateway';
+
 export type CategoriaAtendimento = 'conserto' | 'financeiro' | 'venda' | 'outro';
 
 export const CATEGORIAS_DE_ATENDIMENTO: readonly CategoriaAtendimento[] = [
@@ -65,6 +67,7 @@ export type MotivoDaTriagem =
   | 'formato_inesperado'
   | 'sem_confianca'
   | 'sem_provedor_zdr'
+  | 'gateway_nao_confirmado'
   | 'timeout'
   | 'erro_de_rede'
   | 'erro_http_4xx'
@@ -219,6 +222,16 @@ export async function triarMensagem(
   try {
     const texto = (textoDaMensagem ?? '').trim().slice(0, JEV_MAX_CHARS_DO_TEXTO);
     if (texto === '') return { acao: 'llm_principal_decide', motivo: 'sem_texto' };
+
+    // TRAVA CENTRAL dentro da própria função (defesa em profundidade). O modelo padrão
+    // é uma STRING (`JEV_MODEL_ID`) e, no SDK, string com barra vai ao AI Gateway lendo
+    // `AI_GATEWAY_API_KEY` direto do `process.env` — sem passar por `gatewayConfig()`.
+    // `aplicar.ts` já confere antes de chegar aqui, mas esta função é exportada: quem a
+    // chamar de outro lugar sem `AI_GATEWAY_PLANO_CONFIRMADO` não faz o SDK sair. Modelo
+    // injetado (testes) não vai ao Gateway, então não precisa da confirmação.
+    if (opcoes.model === undefined && planoConfirmadoDoGateway() === null) {
+      return { acao: 'llm_principal_decide', motivo: 'gateway_nao_confirmado' };
+    }
 
     const resultado = await chamarJev(texto, opcoes);
 

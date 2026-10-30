@@ -20,6 +20,10 @@ import {
 
 type Chamada = Parameters<MockJev['doEvaluate']>[0];
 
+// A trava central é lida de `../gateway`; aqui ela vira um botão do teste, sem depender do `env`.
+const trava = vi.hoisted(() => ({ plano: null as 'pro' | 'so_dado_de_teste' | null }));
+vi.mock('../gateway', () => ({ planoConfirmadoDoGateway: () => trava.plano }));
+
 /**
  * REDE DE SEGURANÇA — nenhum teste deste arquivo pode chegar no Jev de verdade.
  *
@@ -80,6 +84,33 @@ function jevQue(c: Cenario = {}) {
   });
   return { model, chamadas };
 }
+
+describe('triarMensagem — trava central do Gateway dentro da própria função', () => {
+  it('sem modelo injetado e sem AI_GATEWAY_PLANO_CONFIRMADO: o SDK nem é chamado', async () => {
+    trava.plano = null;
+    // Se a trava falhasse, o provedor padrão de mentira (acima) explodiria e o motivo seria `erro_do_modelo`.
+    await expect(triarMensagem('meu celular caiu e a tela quebrou')).resolves.toEqual({
+      acao: 'llm_principal_decide',
+      motivo: 'gateway_nao_confirmado',
+    });
+  });
+
+  it('com o plano confirmado e sem modelo injetado: segue para o SDK (que aqui é o de mentira e falha aberto)', async () => {
+    trava.plano = 'pro';
+    const d = await triarMensagem('meu celular caiu e a tela quebrou');
+    expect(d.acao).toBe('llm_principal_decide');
+    expect(d).not.toMatchObject({ motivo: 'gateway_nao_confirmado' });
+    trava.plano = null;
+  });
+
+  it('modelo injetado (teste) não depende da confirmação do plano', async () => {
+    trava.plano = null;
+    const { model } = jevQue();
+    await expect(triarMensagem('meu celular caiu e a tela quebrou', { model })).resolves.toMatchObject({
+      acao: 'rotear',
+    });
+  });
+});
 
 describe('triarMensagem — decisão', () => {
   it('categoria clara + confiança alta => rotear', async () => {
@@ -374,10 +405,16 @@ describe('triarMensagem — LGPD: ZDR e minimização de dado', () => {
   it('a rede de segurança funciona: sem o mock a chamada bate na armadilha, não na rede', async () => {
     // Se este teste passar a devolver outra coisa, a armadilha do topo do arquivo
     // foi desmontada e um teste esquecido do mock voltaria a poder gastar chamada real.
-    await expect(triarMensagem('quero um orçamento')).resolves.toEqual({
-      acao: 'llm_principal_decide',
-      motivo: 'erro_do_modelo',
-    });
+    // O plano fica confirmado só aqui: sem ele a trava da própria função responderia antes do SDK.
+    trava.plano = 'pro';
+    try {
+      await expect(triarMensagem('quero um orçamento')).resolves.toEqual({
+        acao: 'llm_principal_decide',
+        motivo: 'erro_do_modelo',
+      });
+    } finally {
+      trava.plano = null;
+    }
   });
 
   it('o modelo padrão é o Jev via AI Gateway', () => {
