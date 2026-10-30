@@ -61,7 +61,7 @@ const diasDeRetencao = (nome: string, padrao: number) =>
       return padrao;
     });
 
-const schema = z.object({
+const schemaBase = z.object({
   // Node
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
@@ -168,10 +168,17 @@ const schema = z.object({
    */
   SUPABASE_DB_ADMIN_URL: z.string().optional().default(""),
 
-  // WAHA
-  WAHA_API_BASE_URL: required("WAHA_API_BASE_URL"),
-  WAHA_API_KEY: required("WAHA_API_KEY"),
-  WAHA_WEBHOOK_BASE_URL: required("WAHA_WEBHOOK_BASE_URL"),
+  // WAHA — o WAHA GLOBAL da instalação (modo compartilhado). Com um WAHA por empresa (colunas da migration
+  // 9001) nenhuma destas é obrigatória: o app sobe só com os WAHAs dos canais. Preenchidas, valem como o
+  // WAHA dos canais que não têm o próprio.
+  //
+  //   WAHA_API_BASE_URL / WAHA_API_KEY   vão JUNTAS: uma sem a outra é erro de configuração (abaixo).
+  //   WAHA_WEBHOOK_BASE_URL              a base pública do app que o WAHA chama; usada para montar o webhook
+  //                                      por sessão. Sem ela, conectar um canal com WAHA próprio recusa com
+  //                                      `webhook_base_url_missing` (o contêiner não saberia para onde mandar).
+  WAHA_API_BASE_URL: z.string().optional().default(""),
+  WAHA_API_KEY: z.string().optional().default(""),
+  WAHA_WEBHOOK_BASE_URL: z.string().optional().default(""),
   // Segredo com que o WAHA assina os webhooks. O compose já o entrega ao
   // contêiner do WAHA; o app precisa dele para CONFERIR a assinatura — e não o
   // declarava aqui, então nunca teve como verificar nada.
@@ -614,6 +621,39 @@ const schema = z.object({
    */
   VAPID_PUBLIC_KEY: z.string().optional().default(""),
   VAPID_PRIVATE_KEY: z.string().optional().default(""),
+});
+
+/**
+ * O WAHA global é opcional, mas pela METADADE é um erro: o endereço sem a chave (ou a chave sem o endereço)
+ * não leva a lugar nenhum e esconde a causa — o resolvedor trataria o global como "não configurado" e o
+ * operador procuraria o defeito no lugar errado. É a mesma exigência que `required()` já fazia, só que agora
+ * condicionada à outra metade estar preenchida. Exportada para o teste prender a regra.
+ */
+export function problemasDoWahaGlobal(src: { WAHA_API_BASE_URL?: string; WAHA_API_KEY?: string }): Array<{ campo: "WAHA_API_BASE_URL" | "WAHA_API_KEY"; mensagem: string }> {
+  const url = (src.WAHA_API_BASE_URL ?? "").trim();
+  const chave = (src.WAHA_API_KEY ?? "").trim();
+  if (url && !chave) {
+    return [{
+      campo: "WAHA_API_KEY",
+      mensagem: "WAHA_API_BASE_URL está preenchida, mas WAHA_API_KEY não: o WAHA global precisa do endereço E da chave (ou de nenhum dos dois — cada empresa pode ter o WAHA dela).",
+    }];
+  }
+  if (chave && !url) {
+    return [{
+      campo: "WAHA_API_BASE_URL",
+      mensagem: "WAHA_API_KEY está preenchida, mas WAHA_API_BASE_URL não: o WAHA global precisa do endereço E da chave (ou de nenhum dos dois — cada empresa pode ter o WAHA dela).",
+    }];
+  }
+  return [];
+}
+
+const schema = schemaBase.superRefine((valores, ctx) => {
+  // Só em produção, como o `required()` que isto substitui: em desenvolvimento o `.env` é montado aos
+  // poucos (o `.env.example` traz o endereço de dev e a chave em branco), e recusar o boot ali não ajuda ninguém.
+  if (!isProd) return;
+  for (const p of problemasDoWahaGlobal(valores)) {
+    ctx.addIssue({ code: "custom", path: [p.campo], message: p.mensagem });
+  }
 });
 
 let parsed = schema.safeParse(process.env);
