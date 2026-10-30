@@ -25,6 +25,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { alvoDe, classificarFalhaDeAlcance, type FalhaDeAlcance } from "@/lib/net/alcance";
 import { validarConfigRedisRest } from "@/lib/redis-config";
 import { urlDoSupabaseNoServidor } from "@/lib/supabase/url-do-servidor";
@@ -49,6 +50,12 @@ type Check = {
   reason?: MotivoDeFalha;
   /** Protocolo + host + porta que tentamos. Só com `?verbose=1` autenticado. */
   target?: string;
+  /**
+   * Os canais WhatsApp que têm WAHA PRÓPRIO (um por empresa): só CONTAGENS, nunca nomes, endereços nem
+   * empresas — esta rota é pública. `com_falha` = canais `STOPPED`/`FAILED`; os que esperam o QR ou
+   * estão subindo contam no total e em nenhum dos dois.
+   */
+  canais?: { total: number; ok: number; com_falha: number };
 };
 
 const TIMEOUT_MS = 3_000;
@@ -196,7 +203,54 @@ async function checkRedis(): Promise<Check> {
   }
 }
 
+/**
+ * Quantos canais com WAHA próprio estão de pé e quantos caíram, lido do espelho no banco (o vigia e o cron
+ * de saúde o mantêm). NÃO sonda os WAHAs das empresas daqui: esta rota é pública e roda a cada poucos
+ * segundos, e o WAHA de uma empresa que cai é problema DELA, não do app. `null` = não deu para saber
+ * (banco fora do ar, schema antigo sem a coluna): a rota segue sem o resumo, nunca falha por isso.
+ */
+async function resumoDosCanais(): Promise<Check["canais"] | null> {
+  try {
+    const { data, error } = await withTimeout(
+      Promise.resolve(
+        createAdminClient().from("channel_sessions").select("status").not("waha_base_url", "is", null).is("archived_at", null),
+      ),
+    );
+    if (error || !data) return null;
+    const estados = (data as Array<{ status: string | null }>).map((l) => l.status);
+    return {
+      total: estados.length,
+      ok: estados.filter((s) => s === "WORKING").length,
+      com_falha: estados.filter((s) => s === "STOPPED" || s === "FAILED").length,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * O WAHA, em duas camadas: o GLOBAL do ambiente (modo compartilhado), que é sondado como sempre foi, e os
+ * WAHAs POR EMPRESA, que entram só como contagem. Canal de empresa caído deixa a resposta `degraded` — e a
+ * rota 200 —, nunca `unhealthy`/503: o app está de pé, e um monitor que reiniciasse o app por causa do
+ * WhatsApp de uma empresa só pioraria as outras.
+ */
 async function checkWaha(): Promise<Check> {
+  const [global, canais] = await Promise.all([checkWahaGlobal(), resumoDosCanais()]);
+  const temCanais = canais != null && canais.total > 0;
+  if (!temCanais) return global;
+
+  const comFalha = canais.com_falha > 0;
+  if (global.reason === "nao_configurado") {
+    // Sem WAHA global, mas com canais próprios: o estado do WhatsApp é o dos canais.
+    return { status: comFalha ? "degraded" : "ok", latency_ms: 0, canais, ...(comFalha ? { error: "canais_com_falha" } : {}) };
+  }
+  if (global.status === "ok" && comFalha) {
+    return { ...global, status: "degraded", error: "canais_com_falha", canais };
+  }
+  return { ...global, canais };
+}
+
+async function checkWahaGlobal(): Promise<Check> {
   const t0 = Date.now();
   const base = env.WAHA_API_BASE_URL;
   if (!base) {

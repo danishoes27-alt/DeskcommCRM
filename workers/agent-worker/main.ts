@@ -375,25 +375,25 @@ export async function startWorker(
     loopsAbort.signal,
   );
 
-  // Watchdog de sessão (4A-2): reconcilia channel_sessions×WAHA + redrive de
-  // queued. Liga só com as credenciais do WAHA no env (sem elas: warn + off).
-  const sessionWatchdogLoop =
-    env.WAHA_API_BASE_URL !== undefined && env.WAHA_API_KEY !== undefined
-      ? runSessionWatchdogLoop(
-          pool,
-          {
-            wahaBaseUrl: env.WAHA_API_BASE_URL,
-            wahaApiKey: env.WAHA_API_KEY,
-            intervalMs: env.WATCHDOG_INTERVAL_MS,
-            redriveMinAgeMs: env.WATCHDOG_REDRIVE_MIN_AGE_MS,
-            redriveBatchSize: env.WATCHDOG_REDRIVE_BATCH_SIZE,
-            redriveSpacingMs: env.WATCHDOG_REDRIVE_SPACING_MS,
-          },
-          log,
-          loopsAbort.signal,
-        )
-      : (log.warn("watchdog de sessão OFF — WAHA_API_BASE_URL/WAHA_API_KEY ausentes no env", {}),
-        Promise.resolve());
+  // Watchdog de sessão (4A-2): reconcilia channel_sessions×WAHA + redrive de queued. Fala com o WAHA DE
+  // CADA CANAL (colunas da migration 9001); o WAHA global do env é só o do modo compartilhado e é
+  // opcional — sem ele, o vigia cuida dos canais com WAHA próprio e avisa dos que ficaram sem destino.
+  if (env.WAHA_API_BASE_URL === undefined || env.WAHA_API_KEY === undefined) {
+    log.info("watchdog de sessão: sem WAHA global no env — vigia só os canais com WAHA próprio", {});
+  }
+  const sessionWatchdogLoop = runSessionWatchdogLoop(
+    pool,
+    {
+      wahaBaseUrl: env.WAHA_API_BASE_URL,
+      wahaApiKey: env.WAHA_API_KEY,
+      intervalMs: env.WATCHDOG_INTERVAL_MS,
+      redriveMinAgeMs: env.WATCHDOG_REDRIVE_MIN_AGE_MS,
+      redriveBatchSize: env.WATCHDOG_REDRIVE_BATCH_SIZE,
+      redriveSpacingMs: env.WATCHDOG_REDRIVE_SPACING_MS,
+    },
+    log,
+    loopsAbort.signal,
+  );
 
   // Ponte de eventos WaCalls (spec 18, §4.2) — chamada de voz, opt-in por
   // org. Sem a env, fica OFF: instalação que não usa a feature não paga o

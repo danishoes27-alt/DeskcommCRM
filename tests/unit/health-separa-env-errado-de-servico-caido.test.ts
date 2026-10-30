@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
+
+// A rota agora lê do banco a contagem dos canais com WAHA próprio; estes testes não têm banco.
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => {
+    throw new Error("sem banco neste teste");
+  },
+}));
+
 /**
  * "SEU ARQUIVO ESTÁ ERRADO" E "O SERVIÇO CAIU" SÃO DIAGNÓSTICOS OPOSTOS.
  *

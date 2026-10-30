@@ -88,7 +88,7 @@ const envSchema = z.object({
   // Watchdog de sessão (Fase 4A-2) — o ÚNICO ponto do engine que fala com o
   // WAHA direto (admin-plane, regra dura nº 4): reconcilia o espelho
   // channel_sessions com o status real e reenvia mensagens AI presas em queued.
-  // Opcionais no boot: sem WAHA_API_BASE_URL/KEY o watchdog fica OFF (warn).
+  // Opcionais no boot: são o WAHA GLOBAL (modo compartilhado); cada canal pode ter o WAHA próprio.
   WAHA_API_BASE_URL: z.string().url().optional(),
   WAHA_API_KEY: z.string().min(1).optional(),
   WATCHDOG_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),

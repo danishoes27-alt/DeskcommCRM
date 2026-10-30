@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
+
+// A rota agora lê do banco a contagem dos canais com servidor próprio; estes testes não têm banco.
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => {
+    throw new Error("sem banco neste teste");
+  },
+}));
+
 /**
  * GET /api/v1/health — o ping do banco pergunta pelo schema QUE O APP USA.
  *

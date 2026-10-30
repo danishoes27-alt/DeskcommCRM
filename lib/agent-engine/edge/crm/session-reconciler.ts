@@ -27,14 +27,20 @@
  */
 import type pg from 'pg';
 
+import { enderecoDaLinha, enderecoDoAmbiente, fonteViaPg, WahaDoCanalError } from '@/lib/channels/waha-endpoint';
 import { parseWahaMessageId, wahaEchoExternalIds } from '@/lib/waha/message-id';
 import { lerNumerosDeTeste, numeroPodeTestar, preGoLiveAtivo } from '@/lib/ai/elegibilidade/pre-go-live';
 
 import type { Logger } from '../../obs/logger';
 
 export interface WatchdogConfig {
-  wahaBaseUrl: string;
-  wahaApiKey: string;
+  /**
+   * O WAHA GLOBAL do ambiente do worker (modo compartilhado). Opcional: cada canal pode ter o WAHA
+   * próprio (migration 9001), e o vigia fala com o de cada um. Sem o global, os canais que não têm
+   * WAHA próprio simplesmente não são vigiados (um aviso por tick), e os que têm seguem normais.
+   */
+  wahaBaseUrl?: string;
+  wahaApiKey?: string;
   /** intervalo do tick (knob WATCHDOG_INTERVAL_MS) */
   intervalMs: number;
   /** idade mínima de uma queued para redrive — evita corrida com o insert do handler */
@@ -50,6 +56,66 @@ interface WahaSession {
   status: string;
 }
 
+/** Com quem falar: o endereço e a chave de UM WAHA. */
+interface Destino {
+  baseUrl: string;
+  apiKey: string;
+}
+
+/** O que o vigia precisa saber de um canal para achar o WAHA dele. */
+interface WahaDoCanalNaLinha {
+  id: string;
+  /** `to_jsonb(cs) ->> 'waha_base_url'`: NULL = WAHA global (e clone sem a migration 9001 também cai aqui). */
+  waha_base_url: string | null;
+  /** `to_jsonb(cs) ->> 'waha_api_key_encrypted'`: bytea em hex (`\x…`). */
+  waha_cifra: string | null;
+}
+
+/**
+ * O WAHA de um canal: o PRÓPRIO (colunas da migration 9001, com a chave decifrada no banco) ou, sem
+ * cadastro próprio, o global do ambiente do worker. `null` = não há para onde ir; o motivo já foi
+ * avisado, só com o CÓDIGO (nunca endereço nem chave). Cadastro quebrado NUNCA cai no global.
+ *
+ * `lembrados` vale por tick: o mesmo cadastro decifra uma vez só.
+ */
+async function destinoDoCanal(
+  pool: pg.Pool,
+  cfg: WatchdogConfig,
+  canal: WahaDoCanalNaLinha,
+  log: Logger,
+  lembrados: Map<string, Destino | null>,
+): Promise<Destino | null> {
+  const temPropio = Boolean(canal.waha_base_url?.trim()) || Boolean(canal.waha_cifra);
+  if (!temPropio) {
+    const global = enderecoDoAmbiente({ WAHA_API_BASE_URL: cfg.wahaBaseUrl, WAHA_API_KEY: cfg.wahaApiKey });
+    if (!global) {
+      log.warn('watchdog: canal sem WAHA próprio e sem WAHA global configurado — não vigiado', {
+        channel_session_id: canal.id,
+      });
+      return null;
+    }
+    return { baseUrl: global.baseUrl, apiKey: global.apiKey };
+  }
+  const chave = `${canal.waha_base_url ?? ''}\n${canal.waha_cifra ?? ''}`;
+  if (lembrados.has(chave)) return lembrados.get(chave) ?? null;
+  let destino: Destino | null = null;
+  try {
+    const achado = await enderecoDaLinha(
+      { waha_base_url: canal.waha_base_url, waha_api_key_encrypted: canal.waha_cifra },
+      fonteViaPg(pool).decifrar,
+      {},
+    );
+    destino = achado ? { baseUrl: achado.baseUrl, apiKey: achado.apiKey } : null;
+  } catch (err) {
+    log.warn('watchdog: cadastro do WAHA do canal quebrado — canal não vigiado neste tick', {
+      channel_session_id: canal.id,
+      code: err instanceof WahaDoCanalError ? err.code : 'erro',
+    });
+  }
+  lembrados.set(chave, destino);
+  return destino;
+}
+
 /**
  * Só STOPPED: a credencial no disco ainda vale e o start a reaproveita.
  * FAILED pode ser banimento — religar sozinho é o que o vigia de saúde recusa.
@@ -59,13 +125,13 @@ export function deveRetomarSessao(status: string): boolean {
   return status.toUpperCase() === 'STOPPED';
 }
 
-async function startWahaSession(cfg: WatchdogConfig, name: string): Promise<boolean> {
+async function startWahaSession(destino: Destino, name: string): Promise<boolean> {
   try {
     const res = await fetch(
-      `${cfg.wahaBaseUrl}/api/sessions/${encodeURIComponent(name)}/start`,
+      `${destino.baseUrl}/api/sessions/${encodeURIComponent(name)}/start`,
       {
         method: 'POST',
-        headers: { 'X-Api-Key': cfg.wahaApiKey, 'Content-Type': 'application/json' },
+        headers: { 'X-Api-Key': destino.apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
         signal: AbortSignal.timeout(15_000),
       },
@@ -77,10 +143,10 @@ async function startWahaSession(cfg: WatchdogConfig, name: string): Promise<bool
   }
 }
 
-async function fetchWahaSessions(cfg: WatchdogConfig): Promise<WahaSession[] | null> {
+async function fetchWahaSessions(destino: Destino): Promise<WahaSession[] | null> {
   try {
-    const res = await fetch(`${cfg.wahaBaseUrl}/api/sessions?all=true`, {
-      headers: { 'X-Api-Key': cfg.wahaApiKey },
+    const res = await fetch(`${destino.baseUrl}/api/sessions?all=true`, {
+      headers: { 'X-Api-Key': destino.apiKey },
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return null;
@@ -91,63 +157,85 @@ async function fetchWahaSessions(cfg: WatchdogConfig): Promise<WahaSession[] | n
   }
 }
 
-/** Corrige o espelho channel_sessions para o status REAL do WAHA e retoma STOPPED. */
+/**
+ * Corrige o espelho channel_sessions para o status REAL do WAHA e retoma STOPPED.
+ *
+ * Um WAHA por empresa: os canais são agrupados pelo WAHA a que pertencem e cada WAHA é reconciliado
+ * por si. Um WAHA fora do ar pula só os canais dele neste tick — os das outras empresas seguem.
+ */
 export async function reconcileSessions(
   pool: pg.Pool,
   cfg: WatchdogConfig,
   log: Logger,
 ): Promise<number> {
-  const sessions = await fetchWahaSessions(cfg);
-  if (sessions === null) {
-    log.warn('watchdog: WAHA indisponível — tick de reconciliação pulado', {});
-    return 0;
+  // Arquivada não é nossa: a exclusão desloga o aparelho. Uma sessão STOPPED órfã no transporte não pode
+  // voltar a receber mensagem num canal que a UI já não mostra.
+  const { rows: canais } = await pool.query<WahaDoCanalNaLinha & { name: string }>(
+    // `to_jsonb(cs) ->> '…'` em vez de `cs.coluna`, como em `agent/followup-turn.ts:254` e pelo mesmo
+    // motivo: `archived_at` nasce na migration 0106 e o WAHA próprio na 9001, e num clone que subiu o
+    // código sem aplicá-las, referenciar a coluna direto derruba o tick INTEIRO com 42703 — levando
+    // junto o redrive das mensagens em fila, que roda depois desta função.
+    `select cs.id, cs.waha_session_name as name,
+            to_jsonb(cs) ->> 'waha_base_url' as waha_base_url,
+            to_jsonb(cs) ->> 'waha_api_key_encrypted' as waha_cifra
+       from channel_sessions cs
+      where cs.waha_session_name is not null
+        and to_jsonb(cs) ->> 'archived_at' is null`,
+  );
+
+  const lembrados = new Map<string, Destino | null>();
+  const grupos = new Map<string, { destino: Destino; nomes: Set<string> }>();
+  for (const canal of canais) {
+    const destino = await destinoDoCanal(pool, cfg, canal, log, lembrados);
+    if (!destino) continue;
+    const chave = `${destino.baseUrl}\n${destino.apiKey}`;
+    const grupo = grupos.get(chave) ?? { destino, nomes: new Set<string>() };
+    grupo.nomes.add(canal.name);
+    grupos.set(chave, grupo);
   }
+
   let fixed = 0;
-  for (const s of sessions) {
-    const wahaStatus = (s.status ?? '').toUpperCase();
-    // Arquivada não é nossa: a exclusão desloga o aparelho. Uma sessão STOPPED
-    // órfã no transporte não pode voltar a receber mensagem num canal que a UI
-    // já não mostra.
-    const { rows: nossas } = await pool.query<{ id: string; status: string }>(
-      // `to_jsonb(cs) ->> 'archived_at'` em vez de `cs.archived_at`, como em
-      // `agent/followup-turn.ts:254` e pelo mesmo motivo: a coluna nasce na
-      // migration 0106 e, num clone que subiu o código sem aplicá-la,
-      // referenciá-la direto derruba o tick INTEIRO com 42703 — levando junto o
-      // redrive das mensagens em fila, que roda depois desta função.
-      `select cs.id, cs.status from channel_sessions cs
-       where cs.waha_session_name = $1 and to_jsonb(cs) ->> 'archived_at' is null`,
-      [s.name],
-    );
-    if (nossas.length === 0) continue;
-
-    let nextStatus = wahaStatus;
-    if (deveRetomarSessao(wahaStatus)) {
-      const started = await startWahaSession(cfg, s.name);
-      if (started) {
-        nextStatus = 'STARTING';
-        // O info sai só quando o espelho REALMENTE muda (logo abaixo, no
-        // `returning`). Aqui ele sairia a cada tick de 60 s enquanto a sessão
-        // continuasse parada — 1440 linhas por dia repetindo a mesma boa
-        // notícia é o caminho mais curto para o operador parar de ler o log.
-      }
-    }
-
-    const { rows } = await pool.query<{ id: string; status: string }>(
-      `update channel_sessions
-          set status = $2, updated_at = now()
-        where waha_session_name = $1
-          and to_jsonb(channel_sessions) ->> 'archived_at' is null
-          and status is distinct from $2
-       returning id, status`,
-      [s.name, nextStatus],
-    );
-    for (const row of rows) {
-      fixed += 1;
-      log.warn('watchdog: espelho de sessão reconciliado com o WAHA real', {
-        channel_session_id: row.id,
-        waha_session: s.name,
-        status: nextStatus,
+  for (const { destino, nomes } of grupos.values()) {
+    const sessions = await fetchWahaSessions(destino);
+    if (sessions === null) {
+      log.warn('watchdog: WAHA indisponível — tick de reconciliação pulado para os canais dele', {
+        canais: nomes.size,
       });
+      continue;
+    }
+    for (const s of sessions) {
+      if (!nomes.has(s.name)) continue;
+      const wahaStatus = (s.status ?? '').toUpperCase();
+
+      let nextStatus = wahaStatus;
+      if (deveRetomarSessao(wahaStatus)) {
+        const started = await startWahaSession(destino, s.name);
+        if (started) {
+          nextStatus = 'STARTING';
+          // O info sai só quando o espelho REALMENTE muda (logo abaixo, no
+          // `returning`). Aqui ele sairia a cada tick de 60 s enquanto a sessão
+          // continuasse parada — 1440 linhas por dia repetindo a mesma boa
+          // notícia é o caminho mais curto para o operador parar de ler o log.
+        }
+      }
+
+      const { rows } = await pool.query<{ id: string; status: string }>(
+        `update channel_sessions
+            set status = $2, updated_at = now()
+          where waha_session_name = $1
+            and to_jsonb(channel_sessions) ->> 'archived_at' is null
+            and status is distinct from $2
+         returning id, status`,
+        [s.name, nextStatus],
+      );
+      for (const row of rows) {
+        fixed += 1;
+        log.warn('watchdog: espelho de sessão reconciliado com o WAHA real', {
+          channel_session_id: row.id,
+          waha_session: s.name,
+          status: nextStatus,
+        });
+      }
     }
   }
   return fixed;
@@ -165,6 +253,10 @@ interface QueuedRow {
   phone_number: string | null;
   is_group: boolean;
   group_chat_id: string | null;
+  /** O WAHA do canal desta mensagem (migration 9001); ausente/NULL = o global. */
+  channel_session_id?: string;
+  waha_base_url?: string | null;
+  waha_cifra?: string | null;
 }
 
 /**
@@ -305,7 +397,10 @@ export async function redriveQueued(
 ): Promise<number> {
   const { rows } = await pool.query<QueuedRow>(
     `select m.id, m.organization_id, m.conversation_id, m.body, s.waha_session_name,
-            c.wa_identity, c.wa_lid, c.phone_number, v.is_group, v.group_chat_id
+            c.wa_identity, c.wa_lid, c.phone_number, v.is_group, v.group_chat_id,
+            s.id as channel_session_id,
+            to_jsonb(s) ->> 'waha_base_url' as waha_base_url,
+            to_jsonb(s) ->> 'waha_api_key_encrypted' as waha_cifra
      from messages m
      join channel_sessions s on s.id = m.channel_session_id and s.organization_id = m.organization_id
      join conversations v on v.id = m.conversation_id and v.organization_id = m.organization_id
@@ -353,6 +448,7 @@ export async function redriveQueued(
   }
 
   let sent = 0;
+  const lembrados = new Map<string, Destino | null>();
   for (const m of rows) {
     const chatId = chatIdOf(m);
     if (chatId === null || m.body === null) {
@@ -390,9 +486,22 @@ export async function redriveQueued(
         log.info('watchdog: reenvio bloqueado pelo modo de teste', { message_id: m.id });
         continue;
       }
-      const res = await fetch(`${cfg.wahaBaseUrl}/api/sendText`, {
+      // Reenvia SÓ pelo WAHA do próprio canal desta mensagem. Sem destino (cadastro quebrado, ou canal
+      // sem WAHA próprio num worker sem WAHA global), ela fica `queued` para o próximo tick.
+      const destino = await destinoDoCanal(
+        pool,
+        cfg,
+        { id: m.channel_session_id ?? '', waha_base_url: m.waha_base_url ?? null, waha_cifra: m.waha_cifra ?? null },
+        log,
+        lembrados,
+      );
+      if (!destino) {
+        log.warn('watchdog: canal sem WAHA para reenviar — mantida queued', { message_id: m.id });
+        continue;
+      }
+      const res = await fetch(`${destino.baseUrl}/api/sendText`, {
         method: 'POST',
-        headers: { 'X-Api-Key': cfg.wahaApiKey, 'Content-Type': 'application/json' },
+        headers: { 'X-Api-Key': destino.apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({ session: m.waha_session_name, chatId, text: m.body }),
         signal: AbortSignal.timeout(15_000),
       });

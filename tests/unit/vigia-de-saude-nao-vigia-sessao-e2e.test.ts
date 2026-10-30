@@ -62,6 +62,7 @@ const duble = vi.hoisted(() => {
     is(coluna: string, valor: unknown): Cadeia;
     in(coluna: string, valores: readonly unknown[]): Cadeia;
     limit(n: number): Cadeia;
+    order(coluna: string, opcoes?: unknown): Cadeia;
     insert(payload?: unknown): Cadeia;
     update(payload?: unknown): Cadeia;
     upsert(payload?: unknown): Cadeia;
@@ -84,6 +85,7 @@ const duble = vi.hoisted(() => {
         is: () => cadeia,
         in: () => cadeia,
         limit: () => cadeia,
+        order: () => cadeia,
         insert(payload?: unknown) {
           estado.ops.push({ tabela, op: "insert", payload });
           return cadeia;

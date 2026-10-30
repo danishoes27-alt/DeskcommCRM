@@ -64,7 +64,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: () => {
       const cadeia: Record<string, unknown> = {};
-      for (const m of ["select", "is", "eq"]) cadeia[m] = () => cadeia;
+      for (const m of ["select", "is", "eq", "order"]) cadeia[m] = () => cadeia;
       cadeia.update = (patch: unknown) => {
         atualizou(patch);
         return cadeia;

@@ -60,7 +60,13 @@ import { autorizaCron } from "@/lib/auth/cron-auth";
 
 export const dynamic = "force-dynamic";
 
-/** Teto por rodada. Cada sessão é uma chamada de rede ao transporte. */
+/**
+ * Teto por rodada. Cada sessão é uma chamada de rede ao transporte.
+ *
+ * Com um servidor de WhatsApp por empresa o número de canais cresce, e um teto SEM ordem deixava sempre as mesmas 50
+ * linhas à frente: as outras ficavam sem vigia. Por isso a consulta ordena pela verificação mais antiga
+ * (nunca verificada primeiro) e cada tentativa é carimbada — o teto vira rodízio, não corte.
+ */
 const LIMITE = 50;
 
 type LinhaDeSessao = ChannelSessionRef & {
@@ -90,6 +96,7 @@ async function handle(req: NextRequest): Promise<Response> {
       `id, organization_id, status, display_name, phone_number, archived_at, ${CHANNEL_SESSION_REF_COLUMNS}`,
     )
     .is("archived_at", null)
+    .order("last_health_check_at", { ascending: true, nullsFirst: true })
     .limit(LIMITE);
 
   if (error) {
@@ -159,12 +166,20 @@ async function handle(req: NextRequest): Promise<Response> {
       // gravar por cima com um erro de rede transitório trocaria informação boa
       // por ruído, e é o mesmo cuidado que a tela de conexões já toma.
       let statusFinal = s.status;
+      const agora = new Date().toISOString();
       if (saude.reachable && saude.status && saude.status !== s.status) {
         statusFinal = saude.status;
-        const agora = new Date().toISOString();
         await admin
           .from("channel_sessions")
-          .update({ status: saude.status, last_status_change_at: agora })
+          .update({ status: saude.status, last_status_change_at: agora, last_health_check_at: agora })
+          .eq("id", s.id)
+          .eq("organization_id", s.organization_id);
+      } else {
+        // Carimba a TENTATIVA (alcançou ou não): é o que faz o rodízio andar. Sem isto, um canal que não
+        // responde ficaria para sempre na frente da fila e empurraria os outros para fora do teto.
+        await admin
+          .from("channel_sessions")
+          .update({ last_health_check_at: agora })
           .eq("id", s.id)
           .eq("organization_id", s.organization_id);
       }
