@@ -53,6 +53,12 @@ export interface DependenciasDoRetrato {
    * exige o client de serviço, e este módulo não deve escolher isso sozinho.
    */
   contarCanais?: () => Promise<{ total: number; conectados: number } | null>;
+  /**
+   * A EMPRESA tem WhatsApp pronto (o dela, cadastrado pelo operador)? Injetado pelo mesmo motivo de `contarCanais`: a
+   * resposta exige o client de serviço. Com WhatsApp por empresa o ambiente da instalação pode nem ter servidor global, e
+   * dizer "o WhatsApp não subiu" só por isso seria mentir.
+   */
+  wahaDaEmpresaPronto?: () => Promise<boolean>;
 }
 
 export async function lerRetratoDaInstalacao(
@@ -145,7 +151,9 @@ export async function lerRetratoDaInstalacao(
       prontaParaPublicar: origemDaChave !== "nenhuma" && Boolean(modeloCurado),
     },
     whatsapp: {
-      transporteApontado: ambiente.transporteDeWhatsapp.apontado && ambiente.transporteDeWhatsapp.comChave,
+      transporteApontado:
+        (ambiente.transporteDeWhatsapp.apontado && ambiente.transporteDeWhatsapp.comChave) ||
+        (deps.wahaDaEmpresaPronto ? await deps.wahaDaEmpresaPronto().catch(() => false) : false),
       canais: deps.contarCanais ? await deps.contarCanais() : null,
     },
     email: { configurado: ambiente.email },

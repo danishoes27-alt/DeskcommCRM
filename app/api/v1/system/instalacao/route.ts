@@ -21,6 +21,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listSelectableChannels } from "@/lib/channels/selectable";
+import { empresaTemWhatsappPronto } from "@/lib/channels/whatsapp-da-empresa";
 import { lerRetratoDaInstalacao } from "@/lib/instalacao/retrato";
 import { provarSaldo } from "@/lib/instalacao/prova-de-credito";
 import { loadCredential, CredentialUnavailableError } from "@/lib/ai/credentials";
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest) {
     supabase,
     orgId: org.orgId,
     contarCanais: () => contarCanaisDaOrg(org.orgId),
+    wahaDaEmpresaPronto: () => empresaTemWhatsappPronto(org.orgId),
   });
 
   const querProvar = req.nextUrl.searchParams.get("provar") === "1";

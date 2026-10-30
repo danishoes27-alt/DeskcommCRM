@@ -167,3 +167,27 @@ describe("o retrato da instalação", () => {
     expect(r.empresa.aindaSemNomeProprio).toBe(true);
   });
 });
+
+describe("o retrato — WhatsApp por empresa", () => {
+  const retratar = (extra: { wahaDaEmpresaPronto?: () => Promise<boolean> }, ambiente: Record<string, string> = SEM_AMBIENTE) =>
+    lerRetratoDaInstalacao({ supabase: clientFalso(tabelas([])), orgId: ORG, ambiente, ...extra });
+
+  it("⭐ sem servidor global, mas com o WhatsApp DA EMPRESA pronto: o WhatsApp conta como de pé", async () => {
+    const r = await retratar({ wahaDaEmpresaPronto: async () => true });
+    expect(r.whatsapp.transporteApontado).toBe(true);
+  });
+
+  it("sem servidor global e sem WhatsApp da empresa: ainda não está pronto", async () => {
+    expect((await retratar({ wahaDaEmpresaPronto: async () => false })).whatsapp.transporteApontado).toBe(false);
+    expect((await retratar({})).whatsapp.transporteApontado).toBe(false);
+  });
+
+  it("erro ao consultar o WhatsApp da empresa não derruba o retrato: vale 'não pronto'", async () => {
+    const r = await retratar({
+      wahaDaEmpresaPronto: async () => {
+        throw new Error("boom");
+      },
+    });
+    expect(r.whatsapp.transporteApontado).toBe(false);
+  });
+});

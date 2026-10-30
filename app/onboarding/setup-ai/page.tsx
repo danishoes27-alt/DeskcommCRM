@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { createClient } from "@/lib/supabase/server";
+import { empresaTemWhatsappPronto } from "@/lib/channels/whatsapp-da-empresa";
 import { lerRetratoDaInstalacao } from "@/lib/instalacao/retrato";
 import { SetupAiForm } from "./_form";
 import { InteligenciaDele } from "./_inteligencia";
@@ -33,7 +34,11 @@ export default async function SetupAiPage() {
   const idioma = user.idioma;
 
   const supabase = await createClient();
-  const retrato = await lerRetratoDaInstalacao({ supabase, orgId: activeOrg.orgId });
+  const retrato = await lerRetratoDaInstalacao({
+    supabase,
+    orgId: activeOrg.orgId,
+    wahaDaEmpresaPronto: () => empresaTemWhatsappPronto(activeOrg.orgId),
+  });
 
   const porNome = new Map(TOOL_CATALOG.map((c) => [c.name, c]));
   const capacidades = capacidadesPadraoDoOnboarding()

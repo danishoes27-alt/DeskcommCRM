@@ -46,7 +46,7 @@ export function JaEstaPronto({
       pronto: retrato.whatsapp.transporteApontado,
       texto: retrato.whatsapp.transporteApontado
         ? t("WhatsApp pronto para conectar seu número")
-        : t("O WhatsApp desta instalação ainda não subiu"),
+        : t("Estamos preparando o seu WhatsApp"),
     },
     {
       pronto: Boolean(retrato.funil),
