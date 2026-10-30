@@ -43874,6 +43874,46 @@ create trigger trg_fechar_aviso_do_jev_ao_bloquear
  execute function public.fn_fechar_aviso_do_jev_ao_bloquear();
 
 notify pgrst, 'reload schema';
+-- ---- WAHA por empresa: guarda das colunas do canal (migration 9001) ----
+-- Mora ANTES da varredura de anon (nenhuma função é criada depois dela). É a metade da migration 9001 que cria a função e o
+-- gatilho; a outra metade (as duas colunas) está no fim do arquivo. A função só consulta as colunas quando roda, então a
+-- ordem entre as duas metades não importa.
+-- ─── Quem escreve nas duas colunas ──────────────────────────────────────────────────────────────
+-- A policy de escrita de `channel_sessions` deixa o ADMIN da empresa atualizar a linha do próprio canal
+-- pelo PostgREST, com o JWT dele. Sem esta guarda, ele poderia apontar `waha_base_url` para um servidor
+-- seu (o app mandaria a chave de API até lá e leria a resposta). Então as duas colunas só mudam por quem
+-- NÃO é `anon` nem `authenticated`: service_role (a tela do operador e a conexão do número) e o dono do
+-- banco (migrations, funções SECURITY DEFINER). Quem não mexe nessas colunas não nota diferença nenhuma.
+create or replace function public.fn_guard_channel_sessions_waha() returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $fn$
+begin
+  if current_user in ('anon', 'authenticated') then
+    if tg_op = 'INSERT' then
+      if new.waha_base_url is not null or new.waha_api_key_encrypted is not null then
+        raise exception 'waha_por_canal: o endereço e a chave do WAHA de um canal só mudam pelo operador da plataforma'
+          using errcode = '42501';
+      end if;
+    elsif new.waha_base_url is distinct from old.waha_base_url
+       or new.waha_api_key_encrypted is distinct from old.waha_api_key_encrypted then
+      raise exception 'waha_por_canal: o endereço e a chave do WAHA de um canal só mudam pelo operador da plataforma'
+        using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end;
+$fn$;
+
+-- Função exclusiva de trigger: nenhuma sessão deve chamá-la como RPC.
+revoke execute on function public.fn_guard_channel_sessions_waha()
+  from public, anon, authenticated, service_role;
+
+drop trigger if exists trg_channel_sessions_guard_waha on public.channel_sessions;
+create trigger trg_channel_sessions_guard_waha
+  before insert or update on public.channel_sessions
+  for each row execute function public.fn_guard_channel_sessions_waha();
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria
@@ -45422,14 +45462,14 @@ alter table public.ai_agent_versions
 -- ---- WAHA por empresa: endereço e chave por canal (migration 9001) ----
 -- 9001 (numeração escolhida pelo Celuzap; ver o arquivo da migration): o canal passa a poder carregar o endereço e a chave do
 -- PRÓPRIO WAHA, em vez de depender só do WAHA global da instalação. Duas colunas opcionais, sem
--- default, sem constraint, sem índice e sem função (nada a revogar de anon); NULL nas duas =
--- usa o WAHA global, como antes. A chave é cifrada por `fn_encrypt_oauth` e só service_role a
+-- default, sem constraint e sem índice; NULL nas duas = usa o WAHA global, como antes. Um gatilho de guarda
+-- (bloco anterior, antes da varredura de anon) recusa que anon e authenticated escrevam nas duas colunas. A chave é cifrada por `fn_encrypt_oauth` e só service_role a
 -- decifra. Reaplicável: `add column if not exists` e `comment on` não falham na segunda passada.
 alter table public.channel_sessions
   add column if not exists waha_base_url text,
   add column if not exists waha_api_key_encrypted bytea;
 
 comment on column public.channel_sessions.waha_base_url is
-  'Endereço interno do WAHA DESTE canal (http/https). NULL = usa o WAHA global da instalação (modo compartilhado). Só o operador da plataforma escreve; nunca vai ao navegador do lojista.';
+  'Endereço interno do WAHA DESTE canal (http/https). NULL = usa o WAHA global da instalação (modo compartilhado). Só o operador da plataforma escreve (um gatilho recusa anon e authenticated); nunca vai ao navegador do lojista.';
 comment on column public.channel_sessions.waha_api_key_encrypted is
   'Chave de API do WAHA deste canal, cifrada por public.fn_encrypt_oauth (pgp_sym AES-256). NUNCA em claro: só service_role decifra (fn_decrypt_oauth). NULL = sem chave própria. Nunca vai ao navegador.';

@@ -3,12 +3,14 @@
  *
  * Quatro coisas se medem aqui, no Postgres descartável que nasce do `supabase/baseline.sql`:
  *
- *  1. A mudança é ADITIVA — duas colunas opcionais, sem default, sem constraint: a imagem anterior
- *     (que não conhece as colunas) continua funcionando sobre o banco já migrado, e quem não
- *     preencheu nada continua no WAHA global.
+ *  1. A mudança é ADITIVA — duas colunas opcionais, sem default, sem constraint, mais UM gatilho de
+ *     guarda: a imagem anterior (que não conhece as colunas) continua funcionando sobre o banco já
+ *     migrado, e quem não preencheu nada continua no WAHA global.
  *  2. Os dois artefatos (arquivo da migration e apêndice do baseline) são o MESMO comando, e os dois
  *     são reaplicáveis — `update.sh` roda o baseline de novo, e o Supabase CLI roda a migration.
  *  3. ISOLAMENTO: a empresa B não lê o endereço nem a chave da empresa A (RLS por organização).
+ *  3b. O ADMIN da própria empresa não consegue gravar as colunas do próprio canal (o gatilho recusa
+ *     anon e authenticated): sem isso ele apontaria o canal para um servidor seu e receberia a chave.
  *  4. A chave é CIFRADA e só o service_role a decifra: nem o administrador da própria empresa alcança
  *     o valor em claro pelo PostgREST. (O endereço, em texto, é legível pela própria empresa na linha
  *     do canal — por isso as rotas do app não o devolvem ao navegador do lojista; isso é testado em
@@ -50,11 +52,37 @@ function codigoSql(texto: string): string {
     .toLowerCase();
 }
 
-/** O apêndice da 9001 no baseline: da marca até o fim do arquivo (é o último bloco). */
+/**
+ * Os DOIS blocos da 9001 no baseline, na ordem em que estão no arquivo.
+ *
+ *  - a GUARDA (função + gatilho) mora ANTES da varredura de anon — regra do invariante
+ *    `varredura-anon-e-o-ultimo-bloco`: nenhuma função é criada depois dela;
+ *  - as COLUNAS moram no fim do arquivo, como todo apêndice sem função.
+ *
+ * Cada bloco vai da sua marca até a marca seguinte (`-- ---- `), ou até o fim do arquivo.
+ */
 function apendiceDoBaseline(): string {
-  const marca = BASELINE.search(/^-- ---- .* \(migration 9001\) ----/m);
-  if (marca < 0) throw new Error("apêndice da migration 9001 não encontrado no baseline");
-  return BASELINE.slice(marca);
+  const marcas = [...BASELINE.matchAll(/^-- ---- .* \(migration 9001\) ----/gm)].map((m) => m.index);
+  if (marcas.length !== 2) throw new Error(`esperava 2 blocos da migration 9001 no baseline, achei ${marcas.length}`);
+  return marcas
+    .map((ini) => {
+      const resto = BASELINE.slice(ini);
+      const proxima = resto.slice(5).search(/^-- ---- /m);
+      return proxima < 0 ? resto : resto.slice(0, proxima + 5);
+    })
+    .join("\n");
+}
+
+/** Os comandos de um SQL, em ordem alfabética: compara o QUE é feito sem depender da ORDEM dos blocos. */
+function comandosOrdenados(texto: string): string[] {
+  const corpos: string[] = [];
+  const semCorpos = codigoSql(texto).replace(/\$fn\$[\s\S]*?\$fn\$/g, (corpo) => `$fn${corpos.push(corpo) - 1}$`);
+  return semCorpos
+    .split(";")
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .map((c) => c.replace(/\$fn(\d+)\$/g, (_, i: string) => corpos[Number(i)] ?? ""))
+    .sort();
 }
 
 beforeAll(() => {
@@ -142,21 +170,35 @@ describe("9001 · as duas colunas chegam ao clone, opcionais e sem default", () 
 });
 
 describe("9001 · migration e apêndice do baseline são o mesmo comando, e reaplicáveis", () => {
-  it("a migration é aditiva: só `add column if not exists` e `comment on column`", () => {
-    // Sem os textos entre aspas: o `;` e as palavras dentro de um COMMENT não são comando.
-    const codigo = codigoSql(MIGRATION).replace(/'(?:[^']|'')*'/g, "''");
+  it("a migration é aditiva: colunas opcionais, comentários e UM gatilho de guarda — nada mais", () => {
+    // Sem os textos entre aspas e sem o corpo da função: o `;` e as palavras dentro de um COMMENT ou de um
+    // bloco plpgsql não são comando (o corpo do gatilho é conferido por comportamento, nos casos de baixo).
+    const codigo = codigoSql(MIGRATION)
+      .replace(/\$fn\$[\s\S]*?\$fn\$/g, () => "$fn$$fn$")
+      .replace(/'(?:[^']|'')*'/g, "''");
     const comandos = codigo.split(";").map((c) => c.trim()).filter(Boolean);
-    expect(comandos.length).toBe(3);
+    expect(comandos.length).toBe(7);
+    const permitidos = [
+      /^alter table public\.channel_sessions add column if not exists /,
+      /^comment on column public\.channel_sessions\.waha_/,
+      /^create or replace function public\.fn_guard_channel_sessions_waha\(\) returns trigger /,
+      /^revoke execute on function public\.fn_guard_channel_sessions_waha\(\) from public, anon, authenticated, service_role$/,
+      /^drop trigger if exists trg_channel_sessions_guard_waha on public\.channel_sessions$/,
+      /^create trigger trg_channel_sessions_guard_waha before insert or update on public\.channel_sessions for each row execute function public\.fn_guard_channel_sessions_waha\(\)$/,
+    ];
     for (const c of comandos) {
-      expect(c).toMatch(/^(alter table public\.channel_sessions add column if not exists |comment on column public\.channel_sessions\.waha_)/);
+      expect(permitidos.some((re) => re.test(c)), `comando fora do que a migration pode fazer: ${c.slice(0, 80)}`).toBe(true);
     }
-    for (const proibido of [" drop ", " not null", " default ", " constraint ", "create index", "create function", "create or replace", "create trigger", " update ", " delete ", " insert ", " revoke ", " grant "]) {
+    // O que NUNCA pode aparecer: apagar coluna/tabela, exigir valor, índice, constraint, apagar linha, conceder. (Mexer em linha já
+    // está barrado acima: nenhum comando que comece com update/insert é permitido; "before insert or update" é só o gatilho.)
+    for (const proibido of [" drop column", " drop table", " not null", " default ", " constraint ", "create index", "create table", " delete ", " grant ", " alter column"]) {
       expect(` ${codigo} `, `a migration não pode conter "${proibido.trim()}"`).not.toContain(proibido);
     }
   });
 
   it("o apêndice do baseline faz exatamente o que a migration faz", () => {
-    expect(codigoSql(apendiceDoBaseline())).toBe(codigoSql(MIGRATION));
+    // Os mesmos comandos (corpos inclusive), sem depender da ordem dos dois blocos do baseline.
+    expect(comandosOrdenados(apendiceDoBaseline())).toEqual(comandosOrdenados(MIGRATION));
   });
 
   it("aplicar a migration e o apêndice de novo, num banco que já os tem, não falha", () => {
@@ -193,6 +235,85 @@ describe("9001 · isolamento entre empresas", () => {
       .pop();
     expect(afetadas).toBe("0");
     expect(sql(`select waha_base_url from public.channel_sessions where id = '${SESSAO_A}'`)).toBe("http://waha-a:3000");
+  });
+});
+
+describe("9001 · o ADMIN da própria empresa não grava o endereço nem a chave do canal", () => {
+  /** Roda o comando como o admin da empresa A (papel authenticated); devolve o erro de psql, ou null se passou. */
+  function comoAdminDeA(comando: string): string | null {
+    try {
+      sql(`
+        set role authenticated;
+        select set_config('request.jwt.claims', '{"sub":"${USER_A}"}', false);
+        ${comando}
+      `);
+      return null;
+    } catch (err) {
+      return motivoDoErro(err);
+    }
+  }
+  const guardado = () => sql(`select coalesce(waha_base_url, '-') || '|' || (waha_api_key_encrypted is not null)::text from public.channel_sessions where id = '${SESSAO_A}'`);
+
+  it("⭐ UPDATE do endereço do PRÓPRIO canal é recusado (42501) e o valor não muda", () => {
+    const erro = comoAdminDeA(`update public.channel_sessions set waha_base_url = 'https://atacante.exemplo' where id = '${SESSAO_A}';`);
+    expect(erro, "o admin da empresa conseguiu apontar o canal para outro servidor").not.toBeNull();
+    expect(erro).toContain("waha_por_canal");
+    expect(guardado()).toBe("http://waha-a:3000|true");
+  });
+
+  it("⭐ UPDATE da chave cifrada do próprio canal também é recusado", () => {
+    const erro = comoAdminDeA(`update public.channel_sessions set waha_api_key_encrypted = '\\x00'::bytea where id = '${SESSAO_A}';`);
+    expect(erro).not.toBeNull();
+    expect(erro).toContain("waha_por_canal");
+    expect(guardado()).toBe("http://waha-a:3000|true");
+  });
+
+  it("apagar o endereço (NULL) também conta como mudar — não dá para soltar o canal do próprio WAHA", () => {
+    const erro = comoAdminDeA(`update public.channel_sessions set waha_base_url = null where id = '${SESSAO_A}';`);
+    expect(erro).not.toBeNull();
+    expect(guardado()).toBe("http://waha-a:3000|true");
+  });
+
+  it("INSERT de canal já com endereço ou chave é recusado; sem eles, passa (controle)", () => {
+    const nome = "waha9001-insert-admin";
+    try {
+      const recusado = comoAdminDeA(
+        `insert into public.channel_sessions (organization_id, waha_session_name, webhook_secret_encrypted, waha_base_url)
+         values ('${ORG_A}', '${nome}', '\\x00'::bytea, 'https://atacante.exemplo');`,
+      );
+      expect(recusado).not.toBeNull();
+      expect(recusado).toContain("waha_por_canal");
+
+      const aceito = comoAdminDeA(
+        `insert into public.channel_sessions (organization_id, waha_session_name, webhook_secret_encrypted)
+         values ('${ORG_A}', '${nome}', '\\x00'::bytea);`,
+      );
+      expect(aceito, "o gatilho barrou um INSERT comum").toBeNull();
+    } finally {
+      sql(`delete from public.channel_sessions where waha_session_name = '${nome}'`);
+    }
+  });
+
+  it("controle: o admin continua atualizando as OUTRAS colunas do próprio canal (o gatilho não atrapalha o resto)", () => {
+    const erro = comoAdminDeA(`update public.channel_sessions set display_name = 'Vendas' where id = '${SESSAO_A}';`);
+    expect(erro, "o gatilho barrou uma atualização que não toca nas colunas do WAHA").toBeNull();
+    expect(sql(`select display_name from public.channel_sessions where id = '${SESSAO_A}'`)).toBe("Vendas");
+  });
+
+  it("controle: service_role (a tela do operador) e o dono do banco continuam gravando as colunas", () => {
+    sql(`set role service_role; update public.channel_sessions set waha_base_url = 'http://waha-a2:3000' where id = '${SESSAO_A}';`);
+    expect(guardado()).toBe("http://waha-a2:3000|true");
+    sql(`update public.channel_sessions set waha_base_url = 'http://waha-a:3000' where id = '${SESSAO_A}';`);
+    expect(guardado()).toBe("http://waha-a:3000|true");
+  });
+
+  it("a função do gatilho não é chamável por ninguém como RPC", () => {
+    for (const papel of ["anon", "authenticated", "service_role"]) {
+      expect(
+        sql(`select has_function_privilege('${papel}', 'public.fn_guard_channel_sessions_waha()', 'execute')::text`),
+        papel,
+      ).toBe("false");
+    }
   });
 });
 
