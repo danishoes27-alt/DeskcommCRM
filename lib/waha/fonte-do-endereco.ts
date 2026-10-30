@@ -10,10 +10,11 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type {
-  FonteDoWahaDaOrganizacao,
-  FonteDoWahaDoCanal,
-  LinhaDoWahaDoCanal,
+import {
+  registroDoWahaNasConfiguracoes,
+  type FonteDoWahaDaOrganizacao,
+  type FonteDoWahaDoCanal,
+  type LinhaDoWahaDoCanal,
 } from "@/lib/channels/waha-endpoint";
 import { decryptWebhookSecret } from "@/lib/webhooks/secrets";
 
@@ -33,9 +34,14 @@ export function fonteViaSupabase(admin: SupabaseClient): FonteDoWahaDoCanal {
   };
 }
 
-/** App (Next): o canal mais recente da empresa com endereço próprio, pelo admin client. */
+/** App (Next): o cadastro da empresa e, na falta dele, o canal mais recente com endereço próprio. */
 export function fonteDaOrganizacaoViaSupabase(admin: SupabaseClient): FonteDoWahaDaOrganizacao {
   return {
+    async registroDaEmpresa(organizationId) {
+      const { data, error } = await admin.from("organizations").select("settings").eq("id", organizationId).maybeSingle();
+      if (error) throw new Error("consulta_falhou");
+      return registroDoWahaNasConfiguracoes((data as { settings?: unknown } | null)?.settings);
+    },
     async canalMaisRecenteComEndereco(organizationId) {
       const { data, error } = await admin
         .from("channel_sessions")

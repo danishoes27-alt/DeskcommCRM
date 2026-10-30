@@ -218,11 +218,31 @@ export async function enderecoDaLinha(
 
 // ─── O WAHA da EMPRESA (para o canal novo herdar) ───────────────────────────
 /**
- * O operador cadastra o WAHA de uma empresa uma vez; cada número novo que o lojista conecta depois
- * nasce no MESMO WAHA. Como o cadastro mora nas colunas do canal, o canal novo herda o do canal
- * mais recente da empresa que tem endereço próprio (arquivado conta: o WAHA é da empresa).
+ * O CADASTRO DA EMPRESA: o operador registra o WAHA dela uma vez (`organizations.settings.waha`, sem
+ * canal nenhum ainda), e cada número que o lojista conecta depois nasce no MESMO WAHA — o canal novo copia
+ * esse cadastro para as próprias colunas (migration 9001). O formato guardado é o mesmo das colunas do
+ * canal: `{ base_url, api_key_encrypted }`, com a chave cifrada (nunca em claro).
+ *
+ * Esta função é pura: lê o `settings` já carregado e devolve o par, ou `null` se não há cadastro.
+ */
+export function registroDoWahaNasConfiguracoes(settings: unknown): LinhaDoWahaDoCanal | null {
+  if (!settings || typeof settings !== "object") return null;
+  const bruto = (settings as { waha?: unknown }).waha;
+  if (!bruto || typeof bruto !== "object") return null;
+  const { base_url: url, api_key_encrypted: chave } = bruto as Record<string, unknown>;
+  const waha_base_url = typeof url === "string" && url.trim() !== "" ? url : null;
+  const waha_api_key_encrypted = typeof chave === "string" && chave !== "" ? chave : null;
+  if (!waha_base_url && !waha_api_key_encrypted) return null;
+  return { waha_base_url, waha_api_key_encrypted };
+}
+
+/**
+ * Onde achar o WAHA da EMPRESA para um canal novo herdar, em ordem: (1) o cadastro da empresa; (2) o canal
+ * mais recente dela que já tem endereço próprio (arquivado conta: o WAHA é da empresa) — é o caso de quem
+ * conectou antes de existir o cadastro da empresa.
  */
 export interface FonteDoWahaDaOrganizacao {
+  registroDaEmpresa(organizationId: string): Promise<LinhaDoWahaDoCanal | null>;
   canalMaisRecenteComEndereco(organizationId: string): Promise<LinhaDoWahaDoCanal | null>;
   decifrar: FonteDoWahaDoCanal["decifrar"];
 }
@@ -241,7 +261,7 @@ export async function resolverWahaDaOrganizacao(
 ): Promise<WahaDaOrganizacao | null> {
   let linha: LinhaDoWahaDoCanal | null;
   try {
-    linha = await fonte.canalMaisRecenteComEndereco(organizationId);
+    linha = (await fonte.registroDaEmpresa(organizationId)) ?? (await fonte.canalMaisRecenteComEndereco(organizationId));
   } catch {
     throw new WahaDoCanalError("consulta_falhou", "não consegui ler o cadastro do WhatsApp desta empresa.");
   }

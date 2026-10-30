@@ -13713,6 +13713,50 @@ export const DICIONARIO: Traducoes = {
   "Não dá para ver daqui": { es: "No se puede ver desde aquí" },
   "Ajustar": { es: "Ajustar" },
   "Tudo o que se liga e desliga, se está ligado e onde se ajusta.": { es: "Todo lo que se activa y desactiva, si está activado y dónde se ajusta." },
+  // Tela do operador: o WhatsApp de cada empresa
+  "WhatsApp": { es: "WhatsApp" },
+  "WhatsApp desta empresa": { es: "WhatsApp de esta empresa" },
+  "Cadastrado": { es: "Registrado" },
+  "Falta cadastrar": { es: "Falta registrar" },
+  "Falta cadastrar o WhatsApp desta empresa. Enquanto isso, o lojista vê “Estamos preparando o seu WhatsApp”.": {
+    es: "Falta registrar el WhatsApp de esta empresa. Mientras tanto, el comerciante ve “Estamos preparando tu WhatsApp”.",
+  },
+  "A URL pública do aviso de mensagens não está configurada neste servidor: sem ela, um número não consegue ser conectado.": {
+    es: "La URL pública del aviso de mensajes no está configurada en este servidor: sin ella, no se puede conectar un número.",
+  },
+  "Endereço do WhatsApp desta empresa": { es: "Dirección del WhatsApp de esta empresa" },
+  "Deixe em branco para manter a chave que já está cadastrada.": { es: "Déjalo en blanco para mantener la clave que ya está registrada." },
+  "A chave não volta a ser mostrada depois de salva.": { es: "La clave no vuelve a mostrarse después de guardada." },
+  "Salvar cadastro": { es: "Guardar registro" },
+  "Salvar e passar para os canais atuais": { es: "Guardar y pasar a los canales actuales" },
+  "Cadastro salvo.": { es: "Registro guardado." },
+  "Conexão funcionando.": { es: "Conexión funcionando." },
+  "Canais desta empresa": { es: "Canales de esta empresa" },
+  "Há canais caídos nesta empresa. Confira o servidor do WhatsApp dela.": {
+    es: "Hay canales caídos en esta empresa. Revisa el servidor de WhatsApp de la empresa.",
+  },
+  "Reaplicar aviso de mensagens": { es: "Reaplicar aviso de mensajes" },
+  "Aviso de mensagens conferido em todos os canais.": { es: "Aviso de mensajes verificado en todos los canales." },
+  "O aviso de mensagens não foi reaplicado em alguns canais. Confira a conexão com o servidor.": {
+    es: "El aviso de mensajes no se reaplicó en algunos canales. Revisa la conexión con el servidor.",
+  },
+  "Criar o servidor desta empresa": { es: "Crear el servidor de esta empresa" },
+  "Gere uma chave nova, crie o serviço com os valores abaixo e depois cole a chave aqui. A chave aparece uma única vez.": {
+    es: "Genera una clave nueva, crea el servicio con los valores de abajo y luego pega la clave aquí. La clave aparece una sola vez.",
+  },
+  "Gerar chave nova": { es: "Generar clave nueva" },
+  "Chave (cole no cadastro acima)": { es: "Clave (pégala en el registro de arriba)" },
+  "Valor da variável de acesso no serviço": { es: "Valor de la variable de acceso en el servicio" },
+  "Não foi possível carregar o WhatsApp desta empresa. Tente recarregar a página.": {
+    es: "No se pudo cargar el WhatsApp de esta empresa. Intenta recargar la página.",
+  },
+  "Não foi possível testar a conexão.": { es: "No se pudo probar la conexión." },
+  "Não foi possível salvar o cadastro.": { es: "No se pudo guardar el registro." },
+  "Não foi possível reaplicar o aviso de mensagens.": { es: "No se pudo reaplicar el aviso de mensajes." },
+  "Não foi possível gerar a chave.": { es: "No se pudo generar la clave." },
+  "A chave de acesso foi recusada pelo WhatsApp (WAHA) desta empresa.": { es: "La clave de acceso fue rechazada por el WhatsApp (WAHA) de esta empresa." },
+  "O endereço respondeu, mas não parece ser um WAHA.": { es: "La dirección respondió, pero no parece ser un WAHA." },
+  "Informe a chave de acesso para testar.": { es: "Indica la clave de acceso para probar." },
 };
 
 /**

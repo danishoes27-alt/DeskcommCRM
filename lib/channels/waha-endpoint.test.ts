@@ -14,6 +14,7 @@ import {
   fonteViaPg,
   limparCacheDoWaha,
   normalizarEnderecoDoWaha,
+  registroDoWahaNasConfiguracoes,
   resolverEnderecoDoWaha,
   validarEnderecoDoWaha,
   type FonteDoWahaDoCanal,
@@ -300,5 +301,29 @@ describe("fontes", () => {
   it("fonteViaPg: sessão inexistente -> null", async () => {
     const fonte = fonteViaPg({ query: (async () => ({ rows: [] })) as never });
     await expect(fonte.porSessionRef("nada")).resolves.toBeNull();
+  });
+});
+
+describe("registroDoWahaNasConfiguracoes — o cadastro da empresa em organizations.settings.waha", () => {
+  it("lê o par endereço + chave cifrada", () => {
+    expect(registroDoWahaNasConfiguracoes({ outra: 1, waha: { base_url: "http://waha-a:3000", api_key_encrypted: "\\xaa" } })).toEqual({
+      waha_base_url: "http://waha-a:3000",
+      waha_api_key_encrypted: "\\xaa",
+    });
+  });
+
+  it("sem cadastro, com lixo ou vazio: null", () => {
+    for (const settings of [null, undefined, "texto", 42, {}, { waha: null }, { waha: "x" }, { waha: {} }, { waha: { base_url: "  ", api_key_encrypted: "" } }]) {
+      expect(registroDoWahaNasConfiguracoes(settings)).toBeNull();
+    }
+  });
+
+  it("cadastro pela metade volta como está (quem decide o que fazer é o resolvedor, que recusa)", () => {
+    expect(registroDoWahaNasConfiguracoes({ waha: { base_url: "http://waha-a:3000" } })).toEqual({ waha_base_url: "http://waha-a:3000", waha_api_key_encrypted: null });
+    expect(registroDoWahaNasConfiguracoes({ waha: { api_key_encrypted: "\\xaa" } })).toEqual({ waha_base_url: null, waha_api_key_encrypted: "\\xaa" });
+  });
+
+  it("ignora campos de outro tipo (número, objeto) em vez de lançar", () => {
+    expect(registroDoWahaNasConfiguracoes({ waha: { base_url: 3000, api_key_encrypted: { x: 1 } } })).toBeNull();
   });
 });

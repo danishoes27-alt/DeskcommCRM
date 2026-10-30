@@ -6,13 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const banco = vi.hoisted(() => ({
   porSessao: new Map<string, { waha_base_url: string | null; waha_api_key_encrypted: string | null }>(),
   porOrganizacao: new Map<string, { waha_base_url: string | null; waha_api_key_encrypted: string | null }>(),
+  settings: new Map<string, Record<string, unknown>>(), // organization_id -> organizations.settings
   chaves: new Map<string, string | null>(), // cifra -> chave em claro (null = RPC falha)
   consultaFalha: false,
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
-    from: (_tabela: string) => {
+    from: (tabela: string) => {
       const filtros: Record<string, unknown> = {};
       const builder = {
         select: () => builder,
@@ -22,6 +23,10 @@ vi.mock("@/lib/supabase/admin", () => ({
         limit: () => builder,
         maybeSingle: async () => {
           if (banco.consultaFalha) return { data: null, error: { message: "boom" } };
+          if (tabela === "organizations") {
+            const settings = banco.settings.get(String(filtros.id));
+            return { data: settings ? { settings } : null, error: null };
+          }
           if ("waha_session_name" in filtros) return { data: banco.porSessao.get(filtros.waha_session_name as string) ?? null, error: null };
           return { data: banco.porOrganizacao.get(filtros.organization_id as string) ?? null, error: null };
         },
@@ -43,6 +48,7 @@ const COLUNAS_ACME = { waha_base_url: "http://waha-acme:3000", waha_api_key_encr
 beforeEach(() => {
   banco.porSessao.clear();
   banco.porOrganizacao.clear();
+  banco.settings.clear();
   banco.chaves.clear();
   banco.chaves.set("\\xaaaa", "chave-da-acme");
   banco.consultaFalha = false;
@@ -118,5 +124,38 @@ describe("wahaDaOrganizacaoParaRota — o canal novo herda o WAHA da empresa", (
     vi.stubEnv("WAHA_API_KEY", "chave-global");
     banco.porOrganizacao.set("org-1", { ...COLUNAS_ACME, waha_api_key_encrypted: "\\xbbbb" });
     expect(await wahaDaOrganizacaoParaRota("org-1")).toEqual({ ok: false, motivo: "cadastro_quebrado", code: "chave_ilegivel" });
+  });
+});
+
+describe("wahaDaOrganizacaoParaRota — o cadastro DA EMPRESA vem antes do canal", () => {
+  it("⭐ com cadastro da empresa e sem nenhum canal ainda: o número novo herda o cadastro", async () => {
+    banco.settings.set("org-9", { waha: { base_url: "http://waha-acme:3000", api_key_encrypted: "\\xaaaa" } });
+    const r = await wahaDaOrganizacaoParaRota("org-9");
+    expect(r.ok, JSON.stringify(r)).toBe(true);
+    if (r.ok) {
+      expect(r.valor.endereco).toEqual({ baseUrl: "http://waha-acme:3000", apiKey: "chave-da-acme", origem: "canal" });
+      expect(r.valor.colunas).toEqual({ waha_base_url: "http://waha-acme:3000", waha_api_key_encrypted: "\\xaaaa" });
+    }
+  });
+
+  it("o cadastro da empresa vence o endereço de um canal antigo", async () => {
+    banco.settings.set("org-9", { waha: { base_url: "http://waha-novo:3000", api_key_encrypted: "\\xaaaa" } });
+    banco.porOrganizacao.set("org-9", { waha_base_url: "http://waha-velho:3000", waha_api_key_encrypted: "\\xaaaa" });
+    const r = await wahaDaOrganizacaoParaRota("org-9");
+    expect(r.ok && r.valor.endereco.baseUrl).toBe("http://waha-novo:3000");
+  });
+
+  it("sem cadastro da empresa, cai no canal que já tinha endereço (quem conectou antes do cadastro)", async () => {
+    banco.porOrganizacao.set("org-9", COLUNAS_ACME);
+    const r = await wahaDaOrganizacaoParaRota("org-9");
+    expect(r.ok && r.valor.endereco.baseUrl).toBe("http://waha-acme:3000");
+  });
+
+  it("⭐ cadastro da empresa quebrado (sem chave): cadastro_quebrado — não cai no canal nem no global", async () => {
+    vi.stubEnv("WAHA_API_BASE_URL", "http://waha-global:3000");
+    vi.stubEnv("WAHA_API_KEY", "chave-global");
+    banco.settings.set("org-9", { waha: { base_url: "http://waha-acme:3000" } });
+    banco.porOrganizacao.set("org-9", COLUNAS_ACME);
+    expect(await wahaDaOrganizacaoParaRota("org-9")).toEqual({ ok: false, motivo: "cadastro_quebrado", code: "canal_sem_chave" });
   });
 });
