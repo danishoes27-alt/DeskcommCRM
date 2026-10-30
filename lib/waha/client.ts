@@ -147,6 +147,29 @@ const sessionSnapshotSchema = z.object({
 export type WahaSessionSnapshot = z.infer<typeof sessionSnapshotSchema>;
 type SessionOperation = "create" | "start" | "stop" | "logout" | "delete";
 
+/**
+ * O webhook POR SESSÃO (`config.webhooks[]` do WAHA): para onde mandar os eventos e com que segredo
+ * assinar. Estrutural de propósito: quem o monta mora em `lib/channels/waha-webhook.ts`.
+ */
+export interface WebhookDaSessaoDoWaha {
+  url: string;
+  events: readonly string[];
+  hmacKey: string;
+}
+
+function webhookNoFormatoDoWaha(w: WebhookDaSessaoDoWaha) {
+  return { url: w.url, events: [...w.events], hmac: { key: w.hmacKey } };
+}
+
+/** O webhook que a sessão tem já é este? (URL, eventos em qualquer ordem e a chave de assinatura.) */
+function webhookJaConfere(atual: unknown, desejado: ReturnType<typeof webhookNoFormatoDoWaha>): boolean {
+  if (!atual || typeof atual !== "object") return false;
+  const a = atual as { url?: unknown; events?: unknown; hmac?: { key?: unknown } | null };
+  if (a.url !== desejado.url || a.hmac?.key !== desejado.hmac.key) return false;
+  if (!Array.isArray(a.events) || a.events.length !== desejado.events.length) return false;
+  return [...a.events].map(String).sort().join("|") === [...desejado.events].sort().join("|");
+}
+
 /** Mantém o prefixo/status que checkHealth e os callers já classificam. */
 export class WahaSessionError extends Error {
   constructor(
@@ -248,12 +271,22 @@ export class WahaClient {
       !(key in ignore) || (ignore as Record<string, unknown>)[key] === value);
   }
 
-  /** Porta granular para a futura reserva: created nunca significa ownership. */
-  async createSession(name: string): Promise<{ created: boolean; session: WahaSessionSnapshot }> {
+  /**
+   * Porta granular para a futura reserva: created nunca significa ownership.
+   *
+   * `webhook` (opcional) registra na própria sessão para onde ir e com que segredo assinar — é como o
+   * contêiner de uma empresa fica genérico, sem `WHATSAPP_HOOK_URL`. Sem ele, a sessão herda o webhook
+   * global do contêiner (modo compartilhado), como sempre foi.
+   */
+  async createSession(name: string, webhook?: WebhookDaSessaoDoWaha): Promise<{ created: boolean; session: WahaSessionSnapshot }> {
+    const config = {
+      ignore: CONVERSAS_IGNORADAS,
+      ...(webhook ? { webhooks: [webhookNoFormatoDoWaha(webhook)] } : {}),
+    };
     const res = await this.fetchComTeto(`${this.baseUrl}/api/sessions`, {
       method: "POST",
       headers: { "X-Api-Key": this.apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ name, start: false, config: { ignore: CONVERSAS_IGNORADAS } }),
+      body: JSON.stringify({ name, start: false, config }),
     });
     if (!res.ok && !knownSessionConflict(await res.json().catch(() => null), res.status, "create", name)) {
       throw new WahaSessionError("create", res.status);
@@ -416,6 +449,35 @@ export class WahaClient {
         erro: err instanceof Error ? err.message : "unknown",
       });
     }
+  }
+
+  /**
+   * Põe (ou corrige) o webhook por sessão numa sessão que JÁ existe: o "Reaplicar webhook" do operador, para
+   * quando a base pública do app muda ou o segredo do canal foi trocado.
+   *
+   * Idempotente: se a sessão já tem exatamente este webhook (URL, eventos e chave) não faz nada — o `PUT` da
+   * API de sessões REINICIA a sessão quando ela não está parada ("stopped and started with the new
+   * configuration"), uma janela de segundos sem canal que só vale a pena quando algo realmente mudou.
+   * Preserva o resto da `config` (inclusive o filtro de conversas) e troca só `webhooks`.
+   */
+  async aplicarWebhookNaSessao(name: string, webhook: WebhookDaSessaoDoWaha): Promise<"aplicado" | "ja_estava"> {
+    const url = `${this.baseUrl}/api/sessions/${encodeURIComponent(name)}`;
+    const atual = await this.fetchComTeto(url, { headers: { "X-Api-Key": this.apiKey } });
+    if (!atual.ok) throw new Error(`waha_webhook_${atual.status}`);
+    const parsed = sessionSnapshotSchema.safeParse(await atual.json().catch(() => null));
+    if (!parsed.success || parsed.data.name !== name || !parsed.data.config) throw new Error("waha_webhook_sessao_invalida");
+
+    const desejado = webhookNoFormatoDoWaha(webhook);
+    const existentes = Array.isArray(parsed.data.config.webhooks) ? (parsed.data.config.webhooks as unknown[]) : [];
+    if (existentes.length === 1 && webhookJaConfere(existentes[0], desejado)) return "ja_estava";
+
+    const res = await this.fetchComTeto(url, {
+      method: "PUT",
+      headers: { "X-Api-Key": this.apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ name, config: { ...parsed.data.config, webhooks: [desejado] } }),
+    });
+    if (!res.ok) throw new Error(`waha_webhook_${res.status}`);
+    return "aplicado";
   }
 
   /**

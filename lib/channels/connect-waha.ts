@@ -9,6 +9,12 @@ import type { WahaClient } from "@/lib/waha/client";
 import { WahaSessionError } from "@/lib/waha/client";
 import { sincronizarRecebimentoDeGrupos } from "@/lib/grupos/sincronizar-filtro";
 import { limparCacheDoWaha } from "@/lib/channels/waha-endpoint";
+import {
+  novoSegredoDoWebhook,
+  TAMANHO_MINIMO_DO_SEGREDO_DO_WEBHOOK,
+  webhookDaSessao,
+} from "@/lib/channels/waha-webhook";
+import { decryptWebhookSecret, encryptWebhookSecret } from "@/lib/webhooks/secrets";
 
 const channelSchema = z.object({
   id: z.string().uuid(), organization_id: z.string().uuid(), waha_session_name: z.string(),
@@ -34,6 +40,12 @@ export interface ConnectChannelInput {
    * mesmo WAHA que `waha` aqui. `null`/ausente = modo compartilhado (nada a gravar).
    */
   wahaDoCanal?: { waha_base_url: string; waha_api_key_encrypted: string } | null;
+  /**
+   * A base pública do app que o WAHA da empresa chama (`WAHA_WEBHOOK_BASE_URL`). Obrigatória quando o canal
+   * usa WAHA próprio: é com ela que o webhook POR SESSÃO é montado (`<base>/api/v1/webhooks/waha/<token>`).
+   * No modo compartilhado o contêiner já traz o webhook global e nada é registrado na sessão.
+   */
+  urlBaseDoWebhook?: string | null;
 }
 
 /** Única reserva WAHA: auth client reserva, service client confirma por lease+org.
@@ -52,6 +64,14 @@ export async function connectWahaChannel(authDb: SupabaseClient, serviceDb: Supa
     throw new ChannelConnectionError(code ?? "connection_reservation_failed", error.code === "42501" ? 403 : code ? 409 : 500);
   }
   const receipt = receiptSchema.parse(data);
+  // O token do webhook e o segredo cifrado vêm na mesma linha da reserva, mas ficam FORA do `channelSchema`
+  // de propósito: `channel` é devolvido às rotas (e ao navegador), e o token não aparece em tela nenhuma.
+  const segredosDaLinha = z
+    .object({ channel: z.object({
+      webhook_path_token: z.string().optional(),
+      webhook_secret_encrypted: z.string().nullable().optional(),
+    }).passthrough().nullable() })
+    .safeParse(data);
   const channel = receipt.channel;
   if (!channel || channel.organization_id !== input.organizationId) throw new ChannelConnectionError("connection_reservation_missing", 410);
   if (receipt.replay) return { channel, replay: true };
@@ -106,9 +126,40 @@ export async function connectWahaChannel(authDb: SupabaseClient, serviceDb: Supa
     }
     limparCacheDoWaha(channel.waha_session_name);
   }
+  // Webhook POR SESSÃO, só para quem usa WAHA próprio. O segredo de assinatura é do canal (aleatório,
+  // cifrado em `webhook_secret_encrypted`, reaproveitado se a conexão for retentada) e a URL leva o token
+  // do canal: o contêiner da empresa fica genérico e cada evento só confere com a sessão que o emitiu.
+  let webhook: ReturnType<typeof webhookDaSessao> | undefined;
+  if (input.wahaDoCanal) {
+    try {
+      const linha = segredosDaLinha.success ? segredosDaLinha.data.channel : null;
+      if (!input.urlBaseDoWebhook?.trim()) throw new ChannelConnectionError("webhook_base_url_missing", 503);
+      if (!linha?.webhook_path_token) throw new Error("webhook_token_ausente");
+      let segredo: string | null = null;
+      if (linha.webhook_secret_encrypted) segredo = await decryptWebhookSecret(serviceDb, linha.webhook_secret_encrypted);
+      if (!segredo || segredo.length < TAMANHO_MINIMO_DO_SEGREDO_DO_WEBHOOK) {
+        const novo = novoSegredoDoWebhook();
+        const cifrado = await encryptWebhookSecret(serviceDb, novo);
+        if (!cifrado) throw new Error("webhook_cifra_indisponivel");
+        const { error: gravouSegredo } = await serviceDb.from("channel_sessions")
+          .update({ webhook_secret_encrypted: cifrado })
+          .eq("organization_id", input.organizationId).eq("id", channel.id);
+        if (gravouSegredo) throw new Error("webhook_segredo_nao_gravado");
+        segredo = novo;
+      }
+      webhook = webhookDaSessao(input.urlBaseDoWebhook, linha.webhook_path_token, segredo);
+    } catch (cause) {
+      await finish("FAILED", "webhook_not_prepared");
+      if (cause instanceof ChannelConnectionError) throw cause;
+      throw new ChannelConnectionError("connection_webhook_not_prepared", 503);
+    }
+  }
   try {
     if (input.restart) await waha.stopSession(channel.waha_session_name);
-    const creation = await waha.createSession(channel.waha_session_name);
+    // Só passa o 2º argumento quando há webhook próprio: no modo compartilhado a chamada é a de sempre.
+    const creation = webhook
+      ? await waha.createSession(channel.waha_session_name, webhook)
+      : await waha.createSession(channel.waha_session_name);
     created = creation.created;
     if (created) await finish("remote_created");
     const remote = await waha.startExistingSession(channel.waha_session_name);

@@ -6,6 +6,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { wahaDaOrganizacaoParaRota, wahaDoCanalParaRota } from "@/lib/channels/waha-endpoint-app";
+import { env } from "@/lib/env";
 import { connectWahaChannel, ChannelConnectionError } from "@/lib/channels/connect-waha";
 import { loadOnboardingChannel } from "@/lib/channels/onboarding-session";
 
@@ -47,6 +48,7 @@ export async function POST(req: Request): Promise<Response> {
       organizationId: auth.org.orgId, idempotencyKey: req.headers.get("Idempotency-Key") ?? "",
       userId: auth.user.id, requestId, onboarding: true, restart: new URL(req.url).searchParams.get("restart") === "1",
       wahaDoCanal: wahaDaEmpresa.valor.colunas as { waha_base_url: string; waha_api_key_encrypted: string } | null,
+      urlBaseDoWebhook: env.WAHA_WEBHOOK_BASE_URL,
     });
     return ok({ status: result.channel.status, session: result.channel.waha_session_name, channel_session_id: result.channel.id }, { requestId });
   } catch (error) {

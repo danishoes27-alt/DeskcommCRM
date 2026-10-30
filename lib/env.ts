@@ -176,12 +176,22 @@ const schema = z.object({
   // contêiner do WAHA; o app precisa dele para CONFERIR a assinatura — e não o
   // declarava aqui, então nunca teve como verificar nada.
   WAHA_HMAC_SECRET: z.string().optional().default(""),
-  // "true" exige assinatura válida em todo webhook do WAHA. Fica desligado por
-  // padrão porque o WAHA Core não assina (medido: 2026.7.2 CORE manda os
-  // eventos sem header mesmo com WHATSAPP_HOOK_HMAC configurado), e exigir
-  // derrubaria a ingestão de mensagens. Ligue se usa WAHA Plus ou um proxy que
-  // assine — aí a verificação passa a ser obrigatória.
+  // "true" exige assinatura válida em todo webhook do WAHA. O WAHA Core assina (provado em 3 versões)
+  // quando o contêiner usa `WHATSAPP_HOOK_HMAC_KEY` — com `_KEY`; o nome sem `_KEY` é ignorado e foi ele
+  // que gerou a conclusão antiga de que "o Core não assina". Fica desligado por padrão porque um contêiner
+  // compartilhado já instalado pode ainda estar com o nome antigo e exigir derrubaria a ingestão; com o
+  // nome certo, ligue. Canal com WAHA próprio assina sempre, com o segredo do canal, e ignora isto.
   WAHA_WEBHOOK_REQUIRE_SIGNATURE: z.string().optional().default("false"),
+  // A rota GLOBAL de webhook (`/api/v1/webhooks/waha`, sem token) acha o canal pelo nome da sessão que vem
+  // no corpo. Com um WAHA por empresa cada canal tem a sua rota com token, e a global só atende o contêiner
+  // compartilhado. "false" a desliga (404): numa instalação sem proxy na frente ela é alcançável da internet.
+  // `z.string()` e NÃO `z.enum`, pelo mesmo motivo de `APP_ACCENT_HEX`: um valor torto lançaria no import e
+  // derrubaria todas as telas. Só "false" desliga; qualquer outra coisa deixa a rota como sempre foi.
+  WAHA_WEBHOOK_GLOBAL_ENABLED: z
+    .string()
+    .optional()
+    .default("true")
+    .transform((v) => v.trim().toLowerCase() !== "false"),
 
   // ─── Chamada de voz WhatsApp (WaCalls, spec 18) ───
   //

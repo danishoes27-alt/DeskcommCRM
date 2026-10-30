@@ -10,24 +10,28 @@
  * alheio, escolhia o remetente e fazia o WhatsApp da vítima responder para um
  * número arbitrário (provado nesta VPS, com `curl` sem header nenhum).
  *
- * Três regras, nesta ordem:
+ * Quatro regras, nesta ordem:
  *
+ *  0. Canal com WAHA PRÓPRIO (`canalComWahaProprio`, migration 9001) ⇒ a assinatura é SEMPRE exigida e
+ *     só vale o segredo do CANAL. O app registrou esse segredo na própria sessão ao criá-la, então o
+ *     WAHA da empresa assina todo evento; evento sem assinatura, ou assinado com outro segredo (inclusive
+ *     o global `WAHA_HMAC_SECRET`), é recusado. A exigência global e o segredo global não afrouxam isto.
  *  1. Assinatura presente que NÃO confere ⇒ rejeita. Sempre. Não existe motivo
  *     legítimo para alguém assinar errado, e era o buraco mais óbvio.
  *  2. `WAHA_WEBHOOK_REQUIRE_SIGNATURE=true` ⇒ exige assinatura válida em tudo.
- *     Fica desligado por padrão porque o WAHA **Core** não assina: medido nesta
- *     VPS (2026.7.2 CORE), os eventos reais chegam sem header algum mesmo com
- *     `WHATSAPP_HOOK_HMAC` configurado no contêiner. Ligar isso por default
- *     derrubaria a ingestão de mensagens de todo mundo — remédio pior que a
- *     doença. Quem roda WAHA Plus (ou um proxy que assina) liga e ganha a
- *     verificação forte.
+ *     O WAHA Core ASSINA — provado contra o WAHA real em 3 versões —, desde que a variável do contêiner
+ *     seja `WHATSAPP_HOOK_HMAC_KEY` (com `_KEY`) ou que o segredo vá por sessão (`hmac.key`). O nome SEM
+ *     `_KEY` (`WHATSAPP_HOOK_HMAC`) é ignorado pelo WAHA e fazia o contêiner mandar eventos sem
+ *     assinatura: foi a medição feita com o nome errado que deu o "o Core não assina" que este arquivo
+ *     repetia. A exigência continua desligada por padrão porque um contêiner COMPARTILHADO já instalado
+ *     pode ainda estar com o nome antigo, e ligá-la derrubaria a ingestão de todo mundo até ele ser
+ *     corrigido; com o nome certo, ligue.
  *  3. Sem assinatura e sem exigência ⇒ aceita, mas devolve `signatureVerified:
  *     false` — e quem chama grava ESSA verdade no log. Antes o log registrava
  *     `valid_signature = true` para evento não verificado.
  *
- * A defesa que não depende do WAHA saber assinar é de rede: a rota global (sem
- * token) deixa de ser publicada pelo Caddy, porque o WAHA fala com o app pela
- * rede interna do Docker e nunca precisou dela pela internet. Ver Caddyfile.
+ * A defesa de rede continua valendo e é independente: a rota global (sem token) pode ser DESLIGADA
+ * (`WAHA_WEBHOOK_GLOBAL_ENABLED=false`), e canal com WAHA próprio nunca entra por ela.
  */
 import { env } from "@/lib/env";
 import { exigirAssinaturaNoWebhookDaInstalacao } from "@/lib/instalacao/comportamento";
@@ -46,10 +50,23 @@ export interface WahaWebhookAuthInput {
   signatureHeader: string | null;
   /** Segredo por sessão já decifrado (null quando não há/não decifrou). */
   sessionSecret: string | null;
+  /**
+   * O canal usa WAHA próprio: assina com o segredo do canal, sempre. Ver a regra 0 acima. Ausente = canal
+   * do modo compartilhado (comportamento de antes).
+   */
+  canalComWahaProprio?: boolean;
 }
 
 export function authenticateWahaWebhook(input: WahaWebhookAuthInput): WahaWebhookAuth {
   const { rawBody, signatureHeader, sessionSecret } = input;
+
+  if (input.canalComWahaProprio) {
+    if (!signatureHeader) return { ok: false, reason: "signature_required" };
+    if (!sessionSecret || sessionSecret.length < MIN_SECRET_LEN) return { ok: false, reason: "bad_signature" };
+    return verifyHmacSha512(rawBody, signatureHeader, sessionSecret)
+      ? { ok: true, signatureVerified: true }
+      : { ok: false, reason: "bad_signature" };
+  }
 
   const envSecret = (env.WAHA_HMAC_SECRET ?? "").trim();
   const secret =

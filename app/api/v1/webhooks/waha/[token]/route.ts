@@ -100,7 +100,7 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
     admin
       .from("channel_sessions")
       .select(
-        "id, organization_id, waha_session_name, webhook_secret_encrypted, status, is_warmup_complete, warmup_started_at",
+        "id, organization_id, waha_session_name, webhook_secret_encrypted, waha_base_url, status, is_warmup_complete, warmup_started_at",
       )
       .eq("webhook_path_token", token);
   const { data: session, error: sessErr } = await queryTolerantToMissingArchived(
@@ -133,7 +133,14 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<NextRespons
   // e a escolha feita em /admin/sistema não vale para a entrada de mensagens.
   // O memo de 30 s faz disto no máximo uma leitura por janela; nunca lança.
   await carregarComportamentoDaInstalacao();
-  const auth = authenticateWahaWebhook({ rawBody, signatureHeader: sigHeader, sessionSecret });
+  const auth = authenticateWahaWebhook({
+    rawBody,
+    signatureHeader: sigHeader,
+    sessionSecret,
+    // Canal com WAHA próprio: o app registrou o segredo do canal na sessão, então o evento VEM assinado com
+    // ele. Só ele vale, e a assinatura é obrigatória.
+    canalComWahaProprio: Boolean((session as { waha_base_url?: string | null }).waha_base_url),
+  });
   if (!auth.ok) {
     await audit({
       action: "webhook.hmac_invalid",

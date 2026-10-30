@@ -21,6 +21,7 @@ import { PROVIDERS_DE_MENSAGEM } from "@/lib/channels/capabilities";
 import { createChannelSchema } from "@/lib/schemas/channels";
 import { createClient } from "@/lib/supabase/server";
 import { wahaDaOrganizacaoParaRota } from "@/lib/channels/waha-endpoint-app";
+import { env } from "@/lib/env";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       organizationId: activeOrg.orgId, idempotencyKey: req.headers.get("Idempotency-Key") ?? "",
       userId: user.id, requestId, displayName: parsed.data.display_name,
       wahaDoCanal: wahaDaEmpresa.valor.colunas as { waha_base_url: string; waha_api_key_encrypted: string } | null,
+      urlBaseDoWebhook: env.WAHA_WEBHOOK_BASE_URL,
     });
     return ok(result.channel, { requestId, status: result.replay ? 200 : 201 });
   } catch (error) {

@@ -17,6 +17,7 @@ import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { carregarComportamentoDaInstalacao } from "@/lib/instalacao/comportamento-servidor";
+import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { conferirContratoWaha, lerRoteamentoWaha } from "@/lib/waha/envelope";
@@ -28,6 +29,14 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const requestId = randomUUID();
+
+  // A rota global acha o canal pelo nome da sessão que vem NO CORPO. Sem proxy na frente ela é alcançável da
+  // internet; com um WAHA por empresa cada canal tem a sua rota com token, e a global só atende o contêiner
+  // compartilhado. `WAHA_WEBHOOK_GLOBAL_ENABLED=false` a desliga: responde como se ela não existisse.
+  // `=== false` e não `!valor`: o `env` entrega `true` por padrão; só um "false" explícito desliga a rota.
+  if (env.WAHA_WEBHOOK_GLOBAL_ENABLED === false) {
+    return fail("not_found", "webhook global desligado", 404, { requestId });
+  }
 
   const rawBody = await req.text();
   // ─── O contrato do fio, em DOIS momentos ─────────────────────────────────
@@ -92,7 +101,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     admin
       .from("channel_sessions")
       .select(
-        "id, organization_id, waha_session_name, webhook_secret_encrypted, status, is_warmup_complete, warmup_started_at",
+        "id, organization_id, waha_session_name, webhook_secret_encrypted, waha_base_url, status, is_warmup_complete, warmup_started_at",
       )
       .eq("waha_session_name", sessionName);
   const { data: session, error: sessErr } = await queryTolerantToMissingArchived(
@@ -113,6 +122,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { accepted: false, reason: "session_not_registered", session: sessionName },
       { requestId },
     );
+  }
+
+  // Canal com WAHA próprio NÃO entra por aqui: o contêiner dele chama a rota com o token do canal, e esta
+  // identifica o canal só pelo nome da sessão no corpo. Aceitar aqui deixaria a porta pública mais larga que
+  // a do canal sem ganho nenhum. 200 e ignorado, como `session_not_registered` — não é defeito do corpo.
+  if ((session as { waha_base_url?: string | null }).waha_base_url) {
+    return ok({ accepted: false, reason: "canal_com_webhook_proprio", session: sessionName }, { requestId });
   }
 
   // Autenticação fail-closed — regras e o porquê em lib/waha/webhook-auth.ts.
