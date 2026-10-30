@@ -130,8 +130,18 @@ export const wahaAdapter: ChannelAdapter = {
 
   // A resposta PRECISA: este canal tem WAHA (o do canal ou o global)? Cadastro do canal quebrado = false.
   // É o que o handler de mensagens usa para decidir "fila com motivo" antes de gravar o envio.
+  // Nunca lança: quem pergunta decide entre "fila com motivo" e "pode seguir", e uma falha ao consultar o cadastro
+  // (banco fora do ar, cifra indisponível) é "não consigo garantir que há WAHA" — `false`, não um 500 depois de a
+  // mensagem já ter sido gravada.
   async isConfiguredForSession(sessionRef: string): Promise<boolean> {
-    return (await clienteOuNull(sessionRef)) !== null;
+    try {
+      return (await clienteOuNull(sessionRef)) !== null;
+    } catch (err) {
+      logger.warn("[waha.adapter] não consegui conferir o WAHA do canal", {
+        erro: err instanceof Error ? err.message.slice(0, 80) : "desconhecido",
+      });
+      return false;
+    }
   },
 
   // `unknownError` é gravado em `messages.error_message` quando o throw não é

@@ -88,6 +88,11 @@ export async function testarConexaoDaEmpresa(
   if (!apiKey) {
     const { data: org } = await admin.from("organizations").select("settings").eq("id", entrada.organizationId).maybeSingle();
     const registro = registroDoWahaNasConfiguracoes((org as { settings?: unknown } | null)?.settings);
+    // A chave guardada só é usada contra o endereço a que ela pertence. Sem esta trava, "testar" com um endereço
+    // digitado mandaria a chave cadastrada (no cabeçalho) para onde quer que o formulário apontasse.
+    if (registro && registro.waha_base_url !== baseUrl) {
+      return { ok: false, motivo: "Para testar um endereço diferente do cadastrado, informe também a chave de acesso.", codigo: "chave_obrigatoria" };
+    }
     try {
       const achado = registro
         ? await enderecoDaLinha({ waha_base_url: baseUrl, waha_api_key_encrypted: registro.waha_api_key_encrypted }, (c) => decryptWebhookSecret(admin, c), {})
@@ -122,7 +127,8 @@ export interface EntradaDoCadastro {
 /**
  * Grava o WAHA da empresa em `organizations.settings.waha` (endereço + chave CIFRADA por `fn_encrypt_oauth`).
  * É o que cada número novo herda ao conectar. Com `atualizarCanais`, repassa o mesmo cadastro às colunas dos
- * canais ativos — é como a troca de endereço passa a valer para quem já está conectado.
+ * canais ativos QUE JÁ USAM o servidor próprio da empresa — é como a troca de endereço passa a valer para quem já
+ * está conectado nele. Canais em modo compartilhado não são tocados (ver o comentário no ponto da gravação).
  */
 export async function cadastrarTransporteDaEmpresa(
   admin: Admin,
@@ -161,12 +167,16 @@ export async function cadastrarTransporteDaEmpresa(
 
   let canaisAtualizados = 0;
   if (entrada.atualizarCanais) {
+    // SÓ os canais que JÁ moram no servidor próprio da empresa (endereço preenchido). Um canal em modo compartilhado
+    // está pareado no contêiner antigo: apontá-lo para um servidor que não tem a sessão o derrubaria e deixaria as
+    // mensagens dele sem destino. Esses canais seguem como estão até serem reconectados (o número novo já herda o cadastro).
     const { data, error } = await admin
       .from("channel_sessions")
       .update({ waha_base_url: baseUrl, waha_api_key_encrypted: chaveCifrada })
       .eq("organization_id", entrada.organizationId)
       .eq("provider", "waha")
       .is("archived_at", null)
+      .not("waha_base_url", "is", null)
       .select("id");
     if (error) throw new CadastroDoTransporteError("falha_ao_gravar", "o cadastro da empresa foi gravado, mas não consegui repassá-lo aos canais.");
     canaisAtualizados = Array.isArray(data) ? data.length : 0;
@@ -208,7 +218,7 @@ export async function lerEstadoDoTransporteDaEmpresa(
   organizationId: string,
   ambiente: { WAHA_API_BASE_URL?: string; WAHA_API_KEY?: string; WAHA_WEBHOOK_BASE_URL?: string } = ambienteDoApp(),
 ): Promise<EstadoDoTransporteDaEmpresa> {
-  const [{ data: org }, { data: canais }] = await Promise.all([
+  const [{ data: org, error: erroDaEmpresa }, { data: canais, error: erroDosCanais }] = await Promise.all([
     admin.from("organizations").select("settings").eq("id", organizationId).maybeSingle(),
     admin
       .from("channel_sessions")
@@ -218,6 +228,9 @@ export async function lerEstadoDoTransporteDaEmpresa(
       .is("archived_at", null)
       .order("created_at", { ascending: true }),
   ]);
+  // Erro de leitura NÃO vira "nenhum canal / falta cadastrar": a tela mostraria que a empresa não tem nada, e o
+  // operador poderia cadastrar por cima de um cadastro que existe. Quem chama responde com erro.
+  if (erroDaEmpresa || erroDosCanais) throw new Error("consulta_falhou");
   const registro = registroDoWahaNasConfiguracoes((org as { settings?: unknown } | null)?.settings);
   const lista = ((canais ?? []) as Array<{ id: string; display_name: string | null; phone_number: string | null; status: string | null; waha_base_url: string | null }>).map(
     (c): CanalParaOperador => ({

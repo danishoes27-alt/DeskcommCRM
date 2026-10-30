@@ -13728,7 +13728,6 @@ export const DICIONARIO: Traducoes = {
   "Deixe em branco para manter a chave que já está cadastrada.": { es: "Déjalo en blanco para mantener la clave que ya está registrada." },
   "A chave não volta a ser mostrada depois de salva.": { es: "La clave no vuelve a mostrarse después de guardada." },
   "Salvar cadastro": { es: "Guardar registro" },
-  "Salvar e passar para os canais atuais": { es: "Guardar y pasar a los canales actuales" },
   "Cadastro salvo.": { es: "Registro guardado." },
   "Conexão funcionando.": { es: "Conexión funcionando." },
   "Canais desta empresa": { es: "Canales de esta empresa" },
@@ -13808,6 +13807,30 @@ export const DICIONARIO: Traducoes = {
   },
   "Não conseguimos falar com o WhatsApp desta empresa agora. Tente de novo em instantes; se continuar, fale com o suporte.": {
     es: "No pudimos comunicarnos con el WhatsApp de esta empresa ahora. Inténtalo de nuevo en unos instantes; si continúa, habla con soporte.",
+  },
+  "Para testar um endereço diferente do cadastrado, informe também a chave de acesso.": {
+    es: "Para probar una dirección distinta de la registrada, indica también la clave de acceso.",
+  },
+  "Salvar e atualizar os canais que já usam este servidor": {
+    es: "Guardar y actualizar los canales que ya usan este servidor",
+  },
+  "Números já conectados em outro servidor continuam nele. Para mudá-los, conecte o número de novo.": {
+    es: "Los números ya conectados en otro servidor siguen en él. Para cambiarlos, conecta el número de nuevo.",
+  },
+  "Estamos preparando o seu WhatsApp. Assim que estiver pronto, você poderá conectar o seu número.": {
+    es: "Estamos preparando tu WhatsApp. En cuanto esté listo, podrás conectar tu número.",
+  },
+  "O WhatsApp desta empresa está com um problema. Fale com o suporte.": {
+    es: "El WhatsApp de esta empresa tiene un problema. Habla con soporte.",
+  },
+  "O WhatsApp desta empresa ainda não pode ser conectado: falta uma configuração do servidor. Fale com o suporte.": {
+    es: "El WhatsApp de esta empresa aún no se puede conectar: falta una configuración del servidor. Habla con soporte.",
+  },
+  "O WhatsApp desta empresa não está pronto agora. Tente de novo em instantes; se continuar, fale com o suporte.": {
+    es: "El WhatsApp de esta empresa no está listo ahora. Inténtalo de nuevo en unos instantes; si continúa, habla con soporte.",
+  },
+  "O WhatsApp desta empresa não está pronto agora, e sem ele o número não pode ser desconectado do aparelho. Tente de novo em instantes; se continuar, fale com o suporte.": {
+    es: "El WhatsApp de esta empresa no está listo ahora y, sin él, el número no se puede desconectar del dispositivo. Inténtalo de nuevo en unos instantes; si continúa, habla con soporte.",
   },
 };
 

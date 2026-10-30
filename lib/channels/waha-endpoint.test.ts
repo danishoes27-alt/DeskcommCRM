@@ -10,6 +10,7 @@ import {
   CHAVE_DE_ENFEITE_DO_WAHA,
   WahaDoCanalError,
   clienteDoWaha,
+  colunaDoWahaAusente,
   enderecoDoAmbiente,
   fonteViaPg,
   limparCacheDoWaha,
@@ -325,5 +326,66 @@ describe("registroDoWahaNasConfiguracoes — o cadastro da empresa em organizati
 
   it("ignora campos de outro tipo (número, objeto) em vez de lançar", () => {
     expect(registroDoWahaNasConfiguracoes({ waha: { base_url: 3000, api_key_encrypted: { x: 1 } } })).toBeNull();
+  });
+});
+
+describe("normalizarEnderecoDoWaha — destinos de metadado de nuvem (todas as grafias)", () => {
+  it.each([
+    "http://169.254.169.254/",
+    "http://169.254.170.2/",
+    "http://[::ffff:169.254.169.254]/",
+    "http://[::ffff:a9fe:a9fe]/",
+    "http://metadata.google.internal/",
+    "http://metadata.google.internal./",
+    "http://METADATA.GOOG/",
+    "http://168.63.129.16/",
+    "http://100.100.100.200/",
+    "http://[fd00:ec2::254]/",
+    "http://[fe80::1]/",
+    "http://0.0.0.0:3000/",
+  ])("recusa %s", (endereco) => {
+    expect(() => normalizarEnderecoDoWaha(endereco), endereco).toThrow(WahaDoCanalError);
+  });
+
+  it.each([
+    "http://waha-acme:3000",
+    "http://celuzap_waha-grau-cell:3000",
+    "http://10.0.0.5:3000",
+    "http://172.20.0.4:3000",
+    "http://127.0.0.1:3000",
+    "http://[::1]:3000",
+    "https://waha.exemplo.com.br",
+  ])("controle: rede interna e nome comum continuam permitidos (%s)", (endereco) => {
+    expect(() => normalizarEnderecoDoWaha(endereco), endereco).not.toThrow();
+  });
+});
+
+describe("banco que ainda não recebeu a migration 9001 (a imagem nova subiu antes)", () => {
+  const colunaInexistente = { code: "42703", message: "column channel_sessions.waha_base_url does not exist" };
+
+  it("colunaDoWahaAusente: reconhece o erro das duas colunas, e só ele", () => {
+    expect(colunaDoWahaAusente(colunaInexistente)).toBe(true);
+    expect(colunaDoWahaAusente({ code: "PGRST204", message: "Could not find the 'waha_api_key_encrypted' column of 'channel_sessions' in the schema cache" })).toBe(true);
+    expect(colunaDoWahaAusente({ code: "42703", message: "column channel_sessions.archived_at does not exist" })).toBe(false);
+    expect(colunaDoWahaAusente({ message: "boom" })).toBe(false);
+    expect(colunaDoWahaAusente(null)).toBe(false);
+  });
+
+  it("⭐ o canal vira 'sem cadastro próprio' e fala com o WAHA GLOBAL — o WhatsApp não cai", async () => {
+    const fonte = fonteViaSupabase({
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: colunaInexistente }) }) }) }),
+    } as never);
+
+    const r = await resolverEnderecoDoWaha(fonte, "org_a", { ambiente: GLOBAL });
+
+    expect(r).toMatchObject({ baseUrl: "http://waha-global:3000", apiKey: "chave-global", origem: "ambiente" });
+  });
+
+  it("outro erro de banco continua sendo erro (consulta_falhou) — só a coluna ausente é perdoada", async () => {
+    const fonte = fonteViaSupabase({
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { code: "57P01", message: "terminating connection" } }) }) }) }),
+    } as never);
+
+    await expect(resolverEnderecoDoWaha(fonte, "org_a", { ambiente: GLOBAL })).rejects.toMatchObject({ code: "consulta_falhou" });
   });
 });

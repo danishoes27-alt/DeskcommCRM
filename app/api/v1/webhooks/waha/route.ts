@@ -16,6 +16,7 @@ import type { NextRequest, NextResponse } from "next/server";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
+import { colunaDoWahaAusente } from "@/lib/channels/waha-endpoint";
 import { carregarComportamentoDaInstalacao } from "@/lib/instalacao/comportamento-servidor";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -104,10 +105,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         "id, organization_id, waha_session_name, webhook_secret_encrypted, waha_base_url, status, is_warmup_complete, warmup_started_at",
       )
       .eq("waha_session_name", sessionName);
-  const { data: session, error: sessErr } = await queryTolerantToMissingArchived(
+  // O mesmo sem a coluna `waha_base_url`: banco que ainda não recebeu a migration 9001 (imagem nova subiu antes).
+  // Nele nenhum canal tem WAHA próprio, então a leitura sem a coluna é a leitura exata — e a entrada de mensagens
+  // não cai por causa da ordem do deploy.
+  const baseSemEndereco = () =>
+    admin
+      .from("channel_sessions")
+      .select("id, organization_id, waha_session_name, webhook_secret_encrypted, status, is_warmup_complete, warmup_started_at")
+      .eq("waha_session_name", sessionName);
+  let leitura = await queryTolerantToMissingArchived(
     () => base().is(ARCHIVED_AT, null).maybeSingle(),
     () => base().maybeSingle(),
   );
+  if (colunaDoWahaAusente(leitura.error)) {
+    leitura = (await queryTolerantToMissingArchived(
+      () => baseSemEndereco().is(ARCHIVED_AT, null).maybeSingle(),
+      () => baseSemEndereco().maybeSingle(),
+    )) as unknown as typeof leitura;
+  }
+  const { data: session, error: sessErr } = leitura;
 
   if (sessErr) {
     return fail("internal_error", sessErr.message, 500, { requestId });

@@ -86,12 +86,20 @@ export async function POST(req: NextRequest): Promise<Response> {
   // quebrado fecha a ação: nunca se conecta um número novo no WAHA de outra empresa.
   const wahaDaEmpresa = await wahaDaOrganizacaoParaRota(activeOrg.orgId);
   if (!wahaDaEmpresa.ok) {
+    const preparando = wahaDaEmpresa.motivo === "nao_configurado";
     return fail(
-      wahaDaEmpresa.motivo === "nao_configurado" ? "waha_not_configured" : "waha_cadastro_quebrado",
-      t("O WhatsApp (WAHA) não está configurado neste ambiente: faltam WAHA_API_BASE_URL e/ou WAHA_API_KEY. Configure-as e tente de novo."),
+      preparando ? "waha_not_configured" : "waha_cadastro_quebrado",
+      preparando
+        ? t("Estamos preparando o seu WhatsApp. Assim que estiver pronto, você poderá conectar o seu número.")
+        : t("O WhatsApp desta empresa está com um problema. Fale com o suporte."),
       503,
       { requestId },
     );
+  }
+  // WAHA próprio exige a URL pública do webhook; sem ela a conexão só falharia DEPOIS de reservar o canal — e cada
+  // clique deixaria uma linha `FAILED` a mais. Recusa antes de criar qualquer coisa.
+  if (wahaDaEmpresa.valor.colunas && !env.WAHA_WEBHOOK_BASE_URL?.trim()) {
+    return fail("webhook_base_url_missing", t("O WhatsApp desta empresa ainda não pode ser conectado: falta uma configuração do servidor. Fale com o suporte."), 503, { requestId });
   }
   const waha = wahaDaEmpresa.valor.client;
 

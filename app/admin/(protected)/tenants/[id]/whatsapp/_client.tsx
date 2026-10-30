@@ -180,10 +180,13 @@ export function TenantWhatsappClient({ id }: { id: string }) {
           </Button>
           {e.canais.length > 0 && (
             <Button variant="outline" disabled={!podeSalvar || salvar.isPending} onClick={() => salvar.mutate(true)}>
-              {t("Salvar e passar para os canais atuais")}
+              {t("Salvar e atualizar os canais que já usam este servidor")}
             </Button>
           )}
         </div>
+        <p className="text-xs text-muted-foreground">
+          {t("Números já conectados em outro servidor continuam nele. Para mudá-los, conecte o número de novo.")}
+        </p>
 
         {teste && (
           <p className={teste.ok ? "text-sm text-success-fg" : "text-sm text-error-fg"} role="status">

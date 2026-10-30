@@ -11,6 +11,7 @@ const CHAVE_GERADA = "a".repeat(48);
 
 const mundo = vi.hoisted(() => ({
   platformAdmin: true,
+  escopo: "full" as "full" | "support_readonly",
   suporteBloqueia: null as Response | null,
   empresaExiste: true,
   auditorias: [] as Array<Record<string, unknown>>,
@@ -21,7 +22,7 @@ const mundo = vi.hoisted(() => ({
 vi.mock("@/lib/auth/requirePlatformAdmin", () => ({
   requirePlatformAdmin: async () => {
     if (!mundo.platformAdmin) throw new Error("NEXT_REDIRECT");
-    return { user: { id: OPERADOR }, platformAdmin: {} };
+    return { user: { id: OPERADOR }, platformAdmin: { scope: mundo.escopo } };
   },
 }));
 vi.mock("@/lib/impersonate/support", () => ({ requireSupportWrite: async () => mundo.suporteBloqueia }));
@@ -63,6 +64,7 @@ const get = (id = TENANT) => GET(new NextRequest(`http://localhost/api/v1/admin/
 
 beforeEach(() => {
   mundo.platformAdmin = true;
+  mundo.escopo = "full";
   mundo.suporteBloqueia = null;
   mundo.empresaExiste = true;
   mundo.auditorias.length = 0;
@@ -77,6 +79,23 @@ describe("quem pode", () => {
     expect((await post({ acao: "gerar_chave" })).status).toBe(403);
     expect(mundo.chamadas).toEqual([]);
     expect(mundo.auditorias).toEqual([]);
+  });
+
+  it.each([
+    ["testar", { acao: "testar", base_url: "https://atacante.exemplo" }],
+    ["cadastrar", { acao: "cadastrar", base_url: "http://waha:3000", api_key: "k" }],
+    ["reaplicar_webhook", { acao: "reaplicar_webhook" }],
+    ["gerar_chave", { acao: "gerar_chave" }],
+  ])("⭐ operador com escopo de suporte somente-leitura leva 403 em %s, sem tocar em nada", async (_acao, corpo) => {
+    mundo.escopo = "support_readonly";
+    expect((await post(corpo)).status).toBe(403);
+    expect(mundo.chamadas).toEqual([]);
+    expect(mundo.auditorias).toEqual([]);
+  });
+
+  it("o mesmo operador com escopo somente-leitura ainda LÊ o estado (GET)", async () => {
+    mundo.escopo = "support_readonly";
+    expect((await get()).status).toBe(200);
   });
 
   it("modo suporte somente-leitura bloqueia o POST (a barreira de suporte vale aqui também)", async () => {

@@ -84,6 +84,17 @@ export interface AvisoDeConexao {
   episodio: string;
 }
 
+/**
+ * O detalhe que vai para o aviso. Os códigos do cadastro do WhatsApp da empresa (`waha_do_canal_chave_ilegivel`,
+ * `transporte_nao_configurado`...) são para log, não para quem lê a Central: viram uma frase com a saída.
+ */
+function detalheLegivel(detalhe: string | null): string | null {
+  if (detalhe && /waha_do_canal_|transporte_nao_configurado|waha_not_configured/.test(detalhe)) {
+    return "O cadastro do WhatsApp desta empresa está incompleto ou com problema. Fale com o suporte.";
+  }
+  return detalhe;
+}
+
 export interface SaudeObservada {
   reachable: boolean;
   status: string | null;
@@ -115,7 +126,7 @@ export function avisoDaConexao(saude: SaudeObservada, apelido: string): AvisoDeC
         severity: "critical",
         title: `Conexão "${apelido}": o servidor de WhatsApp recusou a chave de acesso`,
         body:
-          "Escanear o QR não resolve: a chave que o CRM usa para falar com o servidor de WhatsApp não confere com a que o servidor espera. Enquanto isso durar, nenhuma mensagem entra nem sai por NENHUMA conexão. Quem cuida do servidor precisa conferir a WAHA_API_KEY do .env e recriar o contêiner do WhatsApp.",
+          "Escanear o QR não resolve: a chave que o CRM usa para falar com o servidor de WhatsApp desta empresa não confere com a que o servidor espera. Enquanto isso durar, nenhuma mensagem entra nem sai por esta conexão. Fale com o suporte para conferir a chave do servidor de WhatsApp.",
         episodio: "CREDENCIAL_RECUSADA",
       };
     }
@@ -128,7 +139,7 @@ export function avisoDaConexao(saude: SaudeObservada, apelido: string): AvisoDeC
       kind: "channel_number_alert",
       severity: "warn",
       title: `Não foi possível verificar a conexão "${apelido}"`,
-      body: saude.detail,
+      body: detalheLegivel(saude.detail),
       episodio: "UNREACHABLE",
     };
   }

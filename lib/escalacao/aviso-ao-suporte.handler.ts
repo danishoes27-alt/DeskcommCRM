@@ -137,7 +137,12 @@ export async function criarTransporteDoAviso(
     async configurado(organizationId, canal) {
       const ref = await refDoCanal(organizationId, canal.id);
       if (!ref) return false;
-      return getAdapter(ref.provider as never).isConfigured();
+      const adapter = getAdapter(ref.provider as never);
+      // O canal que tem servidor de WhatsApp por empresa responde pela SESSÃO (cadastro quebrado = não configurado); os demais, pelo ambiente.
+      if (adapter.isConfiguredForSession) {
+        return ref.sessionRef ? adapter.isConfiguredForSession(ref.sessionRef) : false;
+      }
+      return adapter.isConfigured();
     },
 
     async resolveDestino(organizationId, canal, telefone) {

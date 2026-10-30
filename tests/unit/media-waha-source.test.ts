@@ -93,6 +93,30 @@ describe("fetchWahaMedia", () => {
     expect(media.mime).toBe("audio/ogg; codecs=opus");
   });
 
+  it.each([
+    "http://waha//169.254.169.254/latest/meta-data",
+    "http://waha//evil.example/steal?x=1",
+    "http://waha///evil.example/steal",
+  ])("⭐ caminho que começa com // não troca o host: %s é recusado e NADA é buscado", async (anunciada) => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchWahaMedia(anunciada)).rejects.toThrow("waha_media_untrusted_host");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("com WAHA do canal, a base é a do canal e a chave enviada é a dele — sem seguir redirecionamento", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(new ArrayBuffer(2), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchWahaMedia("http://qualquer:3000/api/files/a.jpg", null, { baseUrl: "http://waha-acme:3000", apiKey: "chave-acme" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://waha-acme:3000/api/files/a.jpg",
+      expect.objectContaining({ headers: { "X-Api-Key": "chave-acme" }, redirect: "error" }),
+    );
+  });
+
   it("mapeia mediaUrl malformada p/ waha_media_untrusted_host", async () => {
     await expect(fetchWahaMedia("not-a-url")).rejects.toThrow("waha_media_untrusted_host");
   });

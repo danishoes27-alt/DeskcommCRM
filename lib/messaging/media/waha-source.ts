@@ -6,9 +6,12 @@
  * INTERNO (ex.: localhost:3000 dentro do container, mapeado p/ 3030 no
  * host). Por isso o fetch é SEMPRE reconstruído sobre o endereço do WAHA
  * DO CANAL (ou o global, no modo compartilhado), aproveitando apenas
- * path+query da URL anunciada — SSRF impossível por construção (o host nunca
- * vem do payload). A futura MetaMediaSource
- * implementa a mesma assinatura baixando via media_id + Graph API.
+ * path+query da URL anunciada. O host nunca vem do payload — e isso é
+ * CONFERIDO, não suposto: um caminho que começa com `//` seria lido como
+ * "host + caminho" ao ser resolvido sobre a base (`//evil/x` vira
+ * `http://evil/x`), então o resultado só vale se continuar na MESMA origem da
+ * base. Sem redirecionamento: o `X-Api-Key` não segue para outro lugar. A futura
+ * MetaMediaSource implementa a mesma assinatura baixando via media_id + Graph API.
  */
 import { enderecoDoAmbiente } from "@/lib/channels/waha-endpoint";
 import {
@@ -37,6 +40,7 @@ export async function fetchWahaMedia(
     const advertised = new URL(mediaUrl);
     // Host/porta descartados: só path+query sobrevivem, resolvidos na base.
     url = new URL(advertised.pathname + advertised.search, base ?? "");
+    if (url.origin !== new URL(base ?? "").origin) throw new Error("origem_trocada");
   } catch {
     throw new Error("waha_media_untrusted_host");
   }
@@ -44,6 +48,7 @@ export async function fetchWahaMedia(
   const apiKey = alvo?.apiKey;
   const res = await fetch(url.toString(), {
     headers: apiKey ? { "X-Api-Key": apiKey } : {},
+    redirect: "error",
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`waha_media_${res.status}`);

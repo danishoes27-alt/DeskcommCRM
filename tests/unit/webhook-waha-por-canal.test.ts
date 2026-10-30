@@ -23,6 +23,9 @@ const estado = vi.hoisted(() => ({
   arquivados: [] as Record<string, unknown>[],
   autenticacoes: [] as Array<Record<string, unknown>>,
   despachados: [] as unknown[],
+  /** Simula o banco que ainda não recebeu a migration 9001: a 1ª leitura (com `waha_base_url`) falha. */
+  semAColuna: false,
+  leituras: 0,
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -39,7 +42,15 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 vi.mock("@/lib/channels/archived", () => ({
   ARCHIVED_AT: "archived_at",
-  queryTolerantToMissingArchived: async () => ({ data: SESSAO, error: null }),
+  queryTolerantToMissingArchived: async () => {
+    estado.leituras += 1;
+    if (estado.semAColuna && estado.leituras === 1) {
+      return { data: null, error: { code: "42703", message: "column channel_sessions.waha_base_url does not exist" } };
+    }
+    // sem a coluna, a leitura de repetição traz a linha SEM `waha_base_url`
+    const { waha_base_url: _ausente, ...semEndereco } = SESSAO;
+    return { data: estado.semAColuna ? semEndereco : SESSAO, error: null };
+  },
 }));
 vi.mock("@/lib/audit", () => ({ audit: async () => undefined }));
 vi.mock("@/lib/waha/webhook-auth", () => ({
@@ -83,6 +94,8 @@ beforeEach(() => {
   estado.arquivados.length = 0;
   estado.autenticacoes.length = 0;
   estado.despachados.length = 0;
+  estado.semAColuna = false;
+  estado.leituras = 0;
   SESSAO.waha_base_url = null;
 });
 
@@ -100,6 +113,25 @@ describe("rota por token — canal com WAHA próprio", () => {
     const { postPorToken } = await rotas();
     await postPorToken();
     expect(estado.autenticacoes[0]).toMatchObject({ canalComWahaProprio: false });
+  });
+});
+
+describe("banco que ainda não recebeu a migration 9001 (a imagem nova subiu antes)", () => {
+  it("⭐ rota por token: repete a leitura SEM a coluna e a mensagem entra (não vira 500)", async () => {
+    estado.semAColuna = true;
+    const { postPorToken } = await rotas();
+    const res = await postPorToken();
+    expect(res.status, "o webhook caiu por causa da ordem do deploy").not.toBe(500);
+    expect(estado.leituras).toBe(2);
+    expect(estado.autenticacoes[0]).toMatchObject({ canalComWahaProprio: false });
+  });
+
+  it("⭐ rota global: o mesmo — a entrada de mensagens do modo compartilhado não cai", async () => {
+    estado.semAColuna = true;
+    const { postGlobal } = await rotas();
+    const res = await postGlobal();
+    expect(res.status).not.toBe(500);
+    expect(estado.leituras).toBe(2);
   });
 });
 

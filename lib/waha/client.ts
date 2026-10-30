@@ -465,16 +465,18 @@ export class WahaClient {
     const atual = await this.fetchComTeto(url, { headers: { "X-Api-Key": this.apiKey } });
     if (!atual.ok) throw new Error(`waha_webhook_${atual.status}`);
     const parsed = sessionSnapshotSchema.safeParse(await atual.json().catch(() => null));
-    if (!parsed.success || parsed.data.name !== name || !parsed.data.config) throw new Error("waha_webhook_sessao_invalida");
+    if (!parsed.success || parsed.data.name !== name) throw new Error("waha_webhook_sessao_invalida");
+    // Sessão sem `config` (null) é uma sessão com a configuração vazia: o webhook entra nela do mesmo jeito.
+    const configAtual = parsed.data.config ?? {};
 
     const desejado = webhookNoFormatoDoWaha(webhook);
-    const existentes = Array.isArray(parsed.data.config.webhooks) ? (parsed.data.config.webhooks as unknown[]) : [];
+    const existentes = Array.isArray(configAtual.webhooks) ? (configAtual.webhooks as unknown[]) : [];
     if (existentes.length === 1 && webhookJaConfere(existentes[0], desejado)) return "ja_estava";
 
     const res = await this.fetchComTeto(url, {
       method: "PUT",
       headers: { "X-Api-Key": this.apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ name, config: { ...parsed.data.config, webhooks: [desejado] } }),
+      body: JSON.stringify({ name, config: { ...configAtual, webhooks: [desejado] } }),
     });
     if (!res.ok) throw new Error(`waha_webhook_${res.status}`);
     return "aplicado";

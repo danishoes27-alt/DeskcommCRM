@@ -69,8 +69,11 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
   const admin = createAdminClient();
   if (!(await empresaExiste(admin, id))) return fail("not_found", "Tenant not found", 404, { requestId });
-  const estado = await lerEstadoDoTransporteDaEmpresa(admin, id);
-  return ok(estado, { requestId });
+  try {
+    return ok(await lerEstadoDoTransporteDaEmpresa(admin, id), { requestId });
+  } catch {
+    return fail("internal_error", "Não foi possível ler o WhatsApp desta empresa.", 500, { requestId });
+  }
 }
 
 export async function POST(req: NextRequest, { params }: Ctx) {
@@ -84,6 +87,11 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     adminCtx = await requirePlatformAdmin();
   } catch {
     return fail("forbidden", "Platform admin required", 403, { requestId });
+  }
+  // Escopo de suporte somente-leitura (`platform_admins.scope`) não altera o WhatsApp de empresa nenhuma — nem testa
+  // com a chave guardada, nem cadastra. Só o escopo "full" escreve aqui (mesma regra de criar organização).
+  if (adminCtx.platformAdmin.scope !== "full") {
+    return fail("forbidden", "Seu acesso de suporte não permite alterar o WhatsApp da empresa", 403, { requestId });
   }
   if (!idSchema.safeParse(id).success) return fail("validation_failed", "Invalid tenant id", 400, { requestId });
 

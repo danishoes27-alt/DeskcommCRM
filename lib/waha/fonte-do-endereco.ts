@@ -11,6 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  colunaDoWahaAusente,
   registroDoWahaNasConfiguracoes,
   type FonteDoWahaDaOrganizacao,
   type FonteDoWahaDoCanal,
@@ -27,6 +28,9 @@ export function fonteViaSupabase(admin: SupabaseClient): FonteDoWahaDoCanal {
         .select("waha_base_url, waha_api_key_encrypted")
         .eq("waha_session_name", sessionRef)
         .maybeSingle();
+      // Banco que ainda não recebeu a migration 9001 (a imagem nova subiu antes): o canal não pode ter cadastro próprio,
+      // então vale o WAHA global — exatamente o que a imagem anterior faria. Qualquer outro erro continua sendo erro.
+      if (colunaDoWahaAusente(error)) return null;
       if (error) throw new Error("consulta_falhou");
       return (data as LinhaDoWahaDoCanal | null) ?? null;
     },
@@ -51,6 +55,7 @@ export function fonteDaOrganizacaoViaSupabase(admin: SupabaseClient): FonteDoWah
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (colunaDoWahaAusente(error)) return null; // banco sem a migration 9001: nenhum canal tem endereço próprio
       if (error) throw new Error("consulta_falhou");
       return (data as LinhaDoWahaDoCanal | null) ?? null;
     },

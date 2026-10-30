@@ -1,4 +1,5 @@
 import { loadOnboardingChannel } from "@/lib/channels/onboarding-session";
+import { buscarQrDoWaha, cabecalhosDoQr } from "@/lib/channels/waha-qr";
 import { wahaDoCanalParaRota } from "@/lib/channels/waha-endpoint-app";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
@@ -23,24 +24,12 @@ export async function GET() {
   const wahaDoCanal = await wahaDoCanalParaRota(sessionName);
   if (!wahaDoCanal.ok) return new NextResponse(null, { status: 503 });
   const { baseUrl, apiKey } = wahaDoCanal.valor.endereco;
-  const upstream = await fetch(
-    `${baseUrl}/api/${encodeURIComponent(sessionName)}/auth/qr?format=image`,
-    { headers: { "X-Api-Key": apiKey }, cache: "no-store" },
-  );
-  if (!upstream.ok) {
+  const qr = await buscarQrDoWaha({ baseUrl, apiKey, sessionName });
+  if (!qr.ok) {
     return new NextResponse(null, {
-      status: upstream.status,
-      headers: { "x-waha-status": String(upstream.status) },
+      status: qr.status,
+      headers: { "x-waha-status": String(qr.status) },
     });
   }
-
-  const ct = upstream.headers.get("content-type") ?? "image/png";
-  const buf = await upstream.arrayBuffer();
-  return new NextResponse(buf, {
-    status: 200,
-    headers: {
-      "content-type": ct,
-      "cache-control": "no-store, max-age=0",
-    },
-  });
+  return new NextResponse(qr.imagem, { status: 200, headers: cabecalhosDoQr(qr.tipo) });
 }

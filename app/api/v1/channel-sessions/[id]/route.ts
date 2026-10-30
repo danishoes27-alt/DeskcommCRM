@@ -382,7 +382,7 @@ export async function DELETE(
     if (!waha) {
       return fail(
         "waha_not_configured",
-        t("O WhatsApp (WAHA) não está configurado neste ambiente (faltam WAHA_API_BASE_URL e/ou WAHA_API_KEY) — sem ele o número não pode ser desconectado do aparelho."),
+        t("O WhatsApp desta empresa não está pronto agora, e sem ele o número não pode ser desconectado do aparelho. Tente de novo em instantes; se continuar, fale com o suporte."),
         503,
         { requestId },
       );

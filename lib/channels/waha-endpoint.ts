@@ -61,8 +61,34 @@ export class WahaDoCanalError extends Error {
 /** O valor que o `.env.example` traz e que NÃO conta como chave configurada. */
 export const CHAVE_DE_ENFEITE_DO_WAHA = "dev_plaintext_change_me";
 
-/** Hosts de metadado de nuvem: nunca um destino legítimo de WAHA. */
-const HOSTS_PROIBIDOS = new Set(["169.254.169.254", "metadata.google.internal", "metadata.goog", "100.100.100.200"]);
+/** Nomes de metadado de nuvem: nunca um destino legítimo de WAHA. */
+const NOMES_PROIBIDOS = new Set(["metadata.google.internal", "metadata.goog", "instance-data", "instance-data.ec2.internal"]);
+/** Endereços de metadado de nuvem fora da faixa 169.254/16 (Alibaba, Azure, ECS). */
+const IPV4_PROIBIDOS = new Set(["100.100.100.200", "168.63.129.16", "0.0.0.0"]);
+
+/** `[::ffff:a9fe:a9fe]` ou `::ffff:169.254.169.254` -> `169.254.169.254`; `null` se não for IPv4 mapeado. */
+function ipv4DoMapeado(host: string): string | null {
+  const m = /^::ffff:(?:(\d{1,3}(?:\.\d{1,3}){3})|([0-9a-f]{1,4}):([0-9a-f]{1,4}))$/.exec(host);
+  if (!m) return null;
+  if (m[1]) return m[1];
+  const alto = parseInt(m[2] ?? "0", 16);
+  const baixo = parseInt(m[3] ?? "0", 16);
+  return [alto >> 8, alto & 255, baixo >> 8, baixo & 255].join(".");
+}
+
+/**
+ * O host é destino de metadado de nuvem? Normaliza antes de comparar: caixa, colchetes do IPv6, ponto final
+ * (`metadata.google.internal.`) e IPv4 embutido em IPv6 (`::ffff:a9fe:a9fe`). Rede interna comum (nome de
+ * contêiner, 10.x, 172.16/12, localhost) continua permitida: é o destino normal de um WAHA por empresa.
+ */
+export function hostEhDeMetadadoDeNuvem(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase().replace(/^\[|\]$/g, "").replace(/\.+$/, "");
+  if (NOMES_PROIBIDOS.has(host)) return true;
+  const v4 = ipv4DoMapeado(host) ?? (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) ? host : null);
+  if (v4) return v4.startsWith("169.254.") || IPV4_PROIBIDOS.has(v4);
+  // IPv6: link-local (fe80::/10) e o metadado da AWS em IPv6 (fd00:ec2::254).
+  return /^fe[89ab][0-9a-f]:/.test(host) || host === "fd00:ec2::254";
+}
 
 /**
  * Valida e normaliza o endereço de um WAHA: só `http`/`https`, sem usuário nem senha na
@@ -85,7 +111,7 @@ export function normalizarEnderecoDoWaha(bruto: string): string {
   if (url.username || url.password) {
     throw new WahaDoCanalError("endereco_invalido", "o endereço não pode levar usuário nem senha.");
   }
-  if (HOSTS_PROIBIDOS.has(url.hostname.toLowerCase())) {
+  if (hostEhDeMetadadoDeNuvem(url.hostname)) {
     throw new WahaDoCanalError("endereco_invalido", "este endereço não pode ser usado.");
   }
   if (url.search || url.hash) {
@@ -102,6 +128,19 @@ export function validarEnderecoDoWaha(bruto: unknown): { ok: true; url: string }
   } catch (e) {
     return { ok: false, motivo: e instanceof WahaDoCanalError ? e.message.replace(/^waha_do_canal_[a-z_]+: /, "") : "endereço inválido." };
   }
+}
+
+/**
+ * O erro do banco é "as colunas da migration 9001 ainda não existem"? Acontece quando a imagem nova sobe antes de a
+ * migration ser aplicada (o `archived.ts` documenta que a ordem errada já aconteceu neste projeto). Nesse banco nenhum
+ * canal pode ter WAHA próprio, então quem pergunta trata como "sem cadastro próprio" e segue no global — o que a imagem
+ * anterior faria — em vez de derrubar o WhatsApp inteiro, inclusive o modo compartilhado.
+ */
+export function colunaDoWahaAusente(erro: { code?: string | null; message?: string | null } | null | undefined): boolean {
+  if (!erro) return false;
+  const mensagem = erro.message ?? "";
+  const colunaInexistente = erro.code === "42703" || erro.code === "PGRST204" || /does not exist|schema cache/i.test(mensagem);
+  return colunaInexistente && /waha_base_url|waha_api_key_encrypted/.test(mensagem);
 }
 
 /** O WAHA global do ambiente (modo compartilhado). `null` quando não está configurado. */

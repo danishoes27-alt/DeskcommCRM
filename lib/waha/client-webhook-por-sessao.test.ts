@@ -65,6 +65,14 @@ describe("aplicarWebhookNaSessao", () => {
     expect(put?.corpo).toEqual({ name: "org_a", config: { ignore: { status: true }, webhooks: [NO_FORMATO_DO_WAHA] } });
   });
 
+  it("sessão com `config: null` (o WAHA devolve assim uma sessão sem configuração): recebe o webhook do mesmo jeito", async () => {
+    const chamadas = wahaDeMentira({ name: "org_a", status: "STOPPED", config: null });
+    const r = await new WahaClient("http://waha-a:3000", "chave").aplicarWebhookNaSessao("org_a", WEBHOOK);
+
+    expect(r).toBe("aplicado");
+    expect(chamadas.find((c) => c.metodo === "PUT")?.corpo).toEqual({ name: "org_a", config: { webhooks: [NO_FORMATO_DO_WAHA] } });
+  });
+
   it("⭐ sessão que já tem exatamente este webhook: NÃO faz PUT (o PUT reinicia a sessão)", async () => {
     const chamadas = wahaDeMentira({ ...ATUAL, config: { ...ATUAL.config, webhooks: [{ ...NO_FORMATO_DO_WAHA, events: ["session.status", "message.any"] }] } });
     const r = await new WahaClient("http://waha-a:3000", "chave").aplicarWebhookNaSessao("org_a", WEBHOOK);

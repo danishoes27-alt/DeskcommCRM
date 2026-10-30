@@ -37,6 +37,8 @@ function criarAdmin(estado: {
   organizacao?: { settings: Record<string, unknown> } | null;
   canais?: Array<Record<string, unknown>>;
   cifraIndisponivel?: boolean;
+  /** Toda leitura devolve erro do banco. */
+  erroDeLeitura?: boolean;
   /** O que `fn_decrypt_oauth` devolve por cifra. */
   chaves?: Record<string, string | null>;
 }) {
@@ -55,17 +57,17 @@ function criarAdmin(estado: {
         const alvo = tabela === "organizations" ? [organizacao] : canais;
         return { data: patch ? alvo.map((l) => ({ id: (l as Record<string, unknown>).id ?? "org" })) : null, error: null };
       }
-      return { data: linhas(), error: null };
+      return estado.erroDeLeitura ? { data: null, error: { message: "boom" } } : { data: linhas(), error: null };
     };
     const q: Record<string, unknown> = {
       select: () => q,
       eq: (c: string, v: unknown) => ((filtros[c] = v), q),
       is: () => q,
-      not: () => q,
+      not: (c: string, op: string, v: unknown) => ((filtros[`nao:${c}`] = `${op}:${String(v)}`), q),
       order: () => q,
       limit: () => q,
       update: (p: Record<string, unknown>) => ((patch = p), q),
-      maybeSingle: async () => ({ data: linhas()[0] ?? null, error: null }),
+      maybeSingle: async () => (estado.erroDeLeitura ? { data: null, error: { message: "boom" } } : { data: linhas()[0] ?? null, error: null }),
       then: (ok: (v: unknown) => void) => ok(resolver()),
     };
     return q;
@@ -137,6 +139,32 @@ describe("testarConexaoDaEmpresa", () => {
     expect((f.mock.calls[0]![1]!.headers as Record<string, string>)["X-Api-Key"]).toBe(CHAVE_EM_CLARO);
     expect(JSON.stringify(r)).not.toContain(CHAVE_EM_CLARO);
   });
+
+  it("⭐ a chave cadastrada NUNCA é mandada a um endereço diferente do cadastrado (sem a chave digitada, nem chama)", async () => {
+    const f = vi.spyOn(globalThis, "fetch");
+    const { admin } = criarAdmin({
+      organizacao: { settings: { waha: { base_url: "http://waha-a:3000", api_key_encrypted: "\\xaaaa" } } },
+      chaves: { "\\xaaaa": CHAVE_EM_CLARO },
+    });
+
+    const r = await testarConexaoDaEmpresa(admin, { organizationId: ORG, baseUrl: "https://atacante.exemplo" });
+
+    expect(r).toMatchObject({ ok: false, codigo: "chave_obrigatoria" });
+    expect(f, "a chave cadastrada foi usada contra outro endereço").not.toHaveBeenCalled();
+  });
+
+  it("com a chave DIGITADA, qualquer endereço válido pode ser testado (é a chave de quem está digitando)", async () => {
+    const f = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ version: "x", engine: "NOWEB" }), { status: 200 }));
+    const { admin } = criarAdmin({
+      organizacao: { settings: { waha: { base_url: "http://waha-a:3000", api_key_encrypted: "\\xaaaa" } } },
+      chaves: { "\\xaaaa": CHAVE_EM_CLARO },
+    });
+
+    const r = await testarConexaoDaEmpresa(admin, { organizationId: ORG, baseUrl: "http://waha-novo:3000", apiKey: "chave-digitada" });
+
+    expect(r).toMatchObject({ ok: true });
+    expect((f.mock.calls[0]![1]!.headers as Record<string, string>)["X-Api-Key"]).toBe("chave-digitada");
+  });
 });
 
 describe("cadastrarTransporteDaEmpresa", () => {
@@ -194,9 +222,29 @@ describe("cadastrarTransporteDaEmpresa", () => {
     expect(doCanal.filtros).toMatchObject({ organization_id: ORG, provider: "waha" });
     expect(JSON.stringify(atualizacoes)).not.toContain(CHAVE_EM_CLARO);
   });
+
+  it("⭐ o repasse só alcança canais que JÁ têm servidor próprio — nunca os do modo compartilhado", async () => {
+    const { admin, atualizacoes } = criarAdmin({ canais: [{ id: "c1", organization_id: ORG }] });
+    await cadastrarTransporteDaEmpresa(admin, { organizationId: ORG, baseUrl: "http://waha-acme:3000", apiKey: CHAVE_EM_CLARO, atualizarCanais: true });
+
+    const doCanal = atualizacoes.find((a) => a.tabela === "channel_sessions")!;
+    // `.not("waha_base_url", "is", null)`: canal com endereço NULL (compartilhado) fica de fora
+    expect(doCanal.filtros["nao:waha_base_url"]).toBe("is:null");
+  });
+
+  it("sem atualizarCanais, nenhum canal é tocado", async () => {
+    const { admin, atualizacoes } = criarAdmin({ canais: [{ id: "c1", organization_id: ORG }] });
+    await cadastrarTransporteDaEmpresa(admin, { organizationId: ORG, baseUrl: "http://waha-acme:3000", apiKey: CHAVE_EM_CLARO, atualizarCanais: false });
+    expect(atualizacoes.some((a) => a.tabela === "channel_sessions")).toBe(false);
+  });
 });
 
 describe("lerEstadoDoTransporteDaEmpresa", () => {
+  it("⭐ erro de leitura do banco NÃO vira 'falta cadastrar / nenhum canal' — lança, para a tela não mentir", async () => {
+    const { admin } = criarAdmin({ erroDeLeitura: true });
+    await expect(lerEstadoDoTransporteDaEmpresa(admin, ORG)).rejects.toThrow("consulta_falhou");
+  });
+
   it("⭐ nunca devolve a chave nem a cifra: só 'tem_chave' e o endereço", async () => {
     const { admin } = criarAdmin({
       organizacao: { settings: { waha: { base_url: "http://waha-acme:3000", api_key_encrypted: "\\xsegredo-cifrado" } } },

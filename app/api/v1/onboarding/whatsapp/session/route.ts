@@ -42,7 +42,15 @@ export async function POST(req: Request): Promise<Response> {
   if (!auth.ok) return auth.response;
   if (await mfaEmDivida()) return fail("mfa_required", "Confirme a verificação em duas etapas.", 403, { requestId });
   const wahaDaEmpresa = await wahaDaOrganizacaoParaRota(auth.org.orgId);
-  if (!wahaDaEmpresa.ok) return fail(wahaDaEmpresa.motivo === "nao_configurado" ? "waha_not_configured" : "waha_cadastro_quebrado", "O serviço de conexão está indisponível. Tente novamente.", 503, { requestId });
+  if (!wahaDaEmpresa.ok) {
+    const preparando = wahaDaEmpresa.motivo === "nao_configurado";
+    return fail(preparando ? "waha_not_configured" : "waha_cadastro_quebrado", preparando ? "Estamos preparando o seu WhatsApp. Assim que estiver pronto, o código para conectar aparece aqui." : "O WhatsApp desta empresa está com um problema. Fale com o suporte.", 503, { requestId });
+  }
+  // WAHA próprio exige a URL pública do webhook: sem ela a conexão falharia depois de reservar o canal (uma linha
+  // `FAILED` a cada tentativa). Recusa antes de criar qualquer coisa.
+  if (wahaDaEmpresa.valor.colunas && !env.WAHA_WEBHOOK_BASE_URL?.trim()) {
+    return fail("webhook_base_url_missing", "O WhatsApp desta empresa ainda não pode ser conectado: falta uma configuração do servidor. Fale com o suporte.", 503, { requestId });
+  }
   try {
     const result = await connectWahaChannel(await createClient(), createAdminClient(), wahaDaEmpresa.valor.client, {
       organizationId: auth.org.orgId, idempotencyKey: req.headers.get("Idempotency-Key") ?? "",

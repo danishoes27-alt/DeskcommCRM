@@ -642,6 +642,8 @@ describe("GET /api/v1/channel-sessions/[id]/qr — o QR é o ato de religar", ()
   const ctx = () => ({ params: Promise.resolve({ id: CANAL }) });
   const req = () => new Request(`http://localhost/api/v1/channel-sessions/${CANAL}/qr`);
   const fetchSpy = () => vi.spyOn(globalThis, "fetch");
+  /** A assinatura de um PNG: a rota só repassa ao navegador o que reconhece como imagem. */
+  const PNG_MINIMO = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
 
   beforeEach(() => {
     process.env.WAHA_API_BASE_URL = "http://waha.local";
@@ -667,7 +669,7 @@ describe("GET /api/v1/channel-sessions/[id]/qr — o QR é o ato de religar", ()
     authOk();
     makeDb({ sessions: [canalQr({ status: "SCAN_QR_CODE" })] });
     const chamou = fetchSpy().mockResolvedValue(
-      new Response(new Uint8Array([1, 2, 3]), {
+      new Response(PNG_MINIMO, {
         status: 200,
         headers: { "content-type": "image/png" },
       }),
@@ -676,6 +678,9 @@ describe("GET /api/v1/channel-sessions/[id]/qr — o QR é o ato de religar", ()
     const res = await GET(req(), ctx());
 
     expect(res.status).toBe(200);
+    // o tipo da resposta é o da IMAGEM reconhecida, nunca o que o servidor disser
+    expect(res.headers.get("content-type")).toBe("image/png");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(chamou).toHaveBeenCalledWith(
       expect.stringContaining(`/api/${NOME_SESSAO}/auth/qr`),
       expect.anything(),
@@ -703,7 +708,7 @@ describe("GET /api/v1/channel-sessions/[id]/qr — o QR é o ato de religar", ()
     authOk();
     makeDb({ sessions: [canalQr()], semColunaArquivada: true });
     const chamou = fetchSpy().mockResolvedValue(
-      new Response(new Uint8Array([1]), {
+      new Response(PNG_MINIMO, {
         status: 200,
         headers: { "content-type": "image/png" },
       }),
