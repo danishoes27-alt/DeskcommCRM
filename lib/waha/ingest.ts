@@ -25,7 +25,7 @@ import {
 } from "@/lib/escalacao/atendimento-manual";
 import { agenteAceitaComandoDeCelular, lerComandoDeControle } from "@/lib/escalacao/comando-de-canal";
 import { devolverAtendimentoAoAgente } from "@/lib/escalacao/retomada";
-import { getWahaClient } from "@/lib/waha/client";
+import { clienteDoWahaDaSessao } from "@/lib/channels/waha-endpoint-app";
 import { acelerarPipelineDeEventos } from "@/lib/dev/kick-local-pipeline";
 import { canonicalPhoneBR } from "@/lib/channels/phone-variants";
 import { estamparAtribuicaoDoContato } from "@/lib/leads/atribuicao-de-anuncio";
@@ -966,9 +966,9 @@ async function revogarComando(
   if (!messageId) return;
   const sessionName = session.waha_session_name;
   if (!sessionName) return;
-  const client = getWahaClient();
-  if (!client) return;
   try {
+    const client = await clienteDoWahaDaSessao(sessionName);
+    if (!client) return;
     await client.deleteMessage(sessionName, chatId, messageId);
   } catch (err) {
     logger.warn("[waha.ingest] não consegui revogar o comando do celular", {

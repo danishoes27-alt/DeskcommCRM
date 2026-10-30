@@ -22,6 +22,7 @@ const conversationRow = { is_group: false };
 let conversationReadError: { message: string } | null = null;
 const loggerWarnMock = vi.fn();
 
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 vi.mock("@/lib/logger", () => ({
   logger: { warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn(), info: vi.fn() },
 }));

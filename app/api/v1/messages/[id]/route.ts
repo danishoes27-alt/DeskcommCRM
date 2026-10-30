@@ -80,7 +80,7 @@ async function alterar(req: NextRequest, ctx: Ctx, acao: "edit" | "revoke"): Pro
   if (!adapter?.editMessage || !adapter.revokeMessage || !sessionRef) {
     return fail("unsupported_channel", t("Este canal não permite alterar mensagens."), 409, { requestId });
   }
-  if (!adapter.isConfigured()) {
+  if (!(adapter.isConfiguredForSession ? await adapter.isConfiguredForSession(sessionRef) : adapter.isConfigured())) {
     return fail("channel_unavailable", t("WhatsApp indisponível no momento."), 503, { requestId });
   }
 

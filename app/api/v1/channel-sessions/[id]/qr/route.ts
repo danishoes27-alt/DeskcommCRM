@@ -22,6 +22,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * a mostrar), e o `null` seguia para a URL como se fosse nome de sessão.
  */
 import { NextResponse } from "next/server";
+import { wahaDoCanalParaRota } from "@/lib/channels/waha-endpoint-app";
 
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
@@ -81,11 +82,11 @@ export async function GET(
     });
   }
 
-  const baseUrl = process.env.WAHA_API_BASE_URL;
-  const apiKey = process.env.WAHA_API_KEY;
-  if (!baseUrl || !apiKey || apiKey === "dev_plaintext_change_me") {
-    return new NextResponse(null, { status: 503 });
-  }
+  // O QR vem do WAHA DESTE canal (o da empresa, ou o global no modo compartilhado). Cadastro do canal
+  // quebrado = 503, nunca o QR de outro WAHA.
+  const wahaDoCanal = await wahaDoCanalParaRota(session.waha_session_name);
+  if (!wahaDoCanal.ok) return new NextResponse(null, { status: 503 });
+  const { baseUrl, apiKey } = wahaDoCanal.valor.endereco;
 
   const upstream = await fetch(
     `${baseUrl}/api/${encodeURIComponent(session.waha_session_name)}/auth/qr?format=image`,

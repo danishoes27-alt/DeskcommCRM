@@ -828,7 +828,11 @@ export async function sendMessageHandler(
       .select(MSG_COLS)
       .maybeSingle();
     if (updated) message = updated as unknown as Message;
-  } else if (!adapter.isConfigured()) {
+  } else if (
+    !(adapter.isConfiguredForSession && c.channel_sessions
+      ? await adapter.isConfiguredForSession(resolveSessionRef(c.channel_sessions))
+      : adapter.isConfigured())
+  ) {
     const { data: updated } = await supabase
       .from("messages")
       .update({

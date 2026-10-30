@@ -29,6 +29,7 @@ import pg from "pg";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
 import { meetPgSupabase } from "../support/meet-pg-supabase";
+import { limparCacheDoWaha } from "@/lib/channels/waha-endpoint";
 import { createAdminClient } from "@/lib/supabase/admin";
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 import { criarOrigemDeFollowup } from "./followup-service-origin";
@@ -137,6 +138,9 @@ async function entregar(f: Awaited<ReturnType<typeof cenario>>): Promise<string[
   const chaveAnterior = process.env.WAHA_API_KEY;
   process.env.WAHA_API_BASE_URL = `http://127.0.0.1:${addr.port}`;
   process.env.WAHA_API_KEY = "receiver-only";
+  // O resolvedor do WhatsApp do canal guarda o endereço por 30 s. Cada entrega sobe um receptor em OUTRA porta; sem
+  // esquecer o endereço da entrega anterior, a segunda mandaria para uma porta já fechada e a correção "não sairia".
+  limparCacheDoWaha();
   try {
     const db = meetPgSupabase(pool);
     vi.mocked(createAdminClient).mockReturnValue(db.client as never);

@@ -33,7 +33,8 @@ import { numeroObservadoDaSessao } from "@/lib/channels/numero-observado";
 import { isChannelStatus } from "@/lib/schemas/channels";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getWahaClient, wahaFriendlyError } from "@/lib/waha/client";
+import { wahaDoCanalParaRota } from "@/lib/channels/waha-endpoint-app";
+import { wahaFriendlyError } from "@/lib/waha/client";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { logger } from "@/lib/logger";
 import { decryptWebhookSecret } from "@/lib/webhooks/secrets";
@@ -179,11 +180,13 @@ export async function GET(
     impact ? { ...corpo, deletion_impact: impact } : corpo;
 
   if (user.support?.access_mode === "support_readonly") return ok(comImpacto({ ...session, waha_configured: false }), { requestId });
-  const waha = getWahaClient();
   // Canal oficial não tem sessão no transporte para consultar — `waha_session_name`
   // é NULL nele por CHECK, e perguntar assim mesmo pediria `/api/sessions/null`.
   const nomeSessao =
     session.provider === CHANNEL_PROVIDER_WAHA ? session.waha_session_name : null;
+  // O WAHA DESTE canal. Cadastro quebrado vale como "não confirmado agora" (devolve o que está no DB).
+  const wahaDoCanal = nomeSessao ? await wahaDoCanalParaRota(nomeSessao) : null;
+  const waha = wahaDoCanal?.ok ? wahaDoCanal.valor.client : null;
   if (!waha || !nomeSessao) {
     // Nada a checar ao vivo (transporte fora do ar, ou canal que não vive nele):
     // devolve o que está no DB, sinalizando que o estado não foi confirmado agora.
@@ -350,7 +353,8 @@ export async function DELETE(
   let webhookOverride: "desfeito" | "sem_credencial" | "falhou" = "sem_credencial";
 
   if (session.provider === CHANNEL_PROVIDER_WAHA) {
-    const waha = getWahaClient();
+    const wahaDoCanal = await wahaDoCanalParaRota(session.waha_session_name as string);
+    const waha = wahaDoCanal.ok ? wahaDoCanal.valor.client : null;
     if (!waha) {
       return fail(
         "waha_not_configured",

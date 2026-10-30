@@ -14,6 +14,7 @@ const setPresence = vi.fn(async () => undefined);
 /** null = transporte não configurado (env ausente), como numa VPS sem WAHA. */
 let clienteDoTransporte: { setPresence: typeof setPresence } | null = { setPresence };
 
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 vi.mock("@/lib/waha/client", async (original) => ({
   ...(await original<typeof import("@/lib/waha/client")>()),
   getWahaClient: () => clienteDoTransporte,

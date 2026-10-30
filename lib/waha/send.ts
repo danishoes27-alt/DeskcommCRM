@@ -6,7 +6,7 @@
  * convenience for direct callers (tests, smoke checks). Returns null when
  * WAHA env is not configured — callers must treat that as a noop, not error.
  */
-import { getWahaClient } from "./client";
+import { clienteDoWahaDaSessao } from "@/lib/channels/waha-endpoint-app";
 
 export interface SendWahaInput {
   sessionName: string;
@@ -62,7 +62,7 @@ export function resolveWahaChatId(input: ResolveWahaChatIdInput): string | null 
 }
 
 export async function sendWAHA(input: SendWahaInput): Promise<unknown | null> {
-  const client = getWahaClient();
+  const client = await clienteDoWahaDaSessao(input.sessionName);
   if (!client) return null;
   return client.sendMessage(input.sessionName, input.chatId, input.text);
 }

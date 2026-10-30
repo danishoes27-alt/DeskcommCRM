@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { pairingPhoneSchema, requestChannelPairingCode } from "./pairing-code";
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 const h = vi.hoisted(() => ({
   getSession: vi.fn(),
   limit: vi.fn(),

@@ -5,6 +5,7 @@ import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { ConexoesShell } from "@/components/connections/ConexoesShell";
 import { canalGraphParceiroLigado, GRAPH_PARTNER_LABEL } from "@/lib/channels/graph-parceiro/credentials";
+import { wahaDaOrganizacaoParaRota } from "@/lib/channels/waha-endpoint-app";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +20,11 @@ export default async function ConnectionsPage() {
   }
   const idioma = user.idioma;
 
-  const key = process.env.WAHA_API_KEY;
-  const wahaConfigured = Boolean(
-    process.env.WAHA_API_BASE_URL && key && key !== "dev_plaintext_change_me",
-  );
+  // "O WhatsApp desta empresa está de pé?": ela tem WAHA próprio cadastrado pelo operador ou, no modo
+  // compartilhado, o da instalação. Não depende mais de variável de ambiente global.
+  const wahaConfigured = await wahaDaOrganizacaoParaRota(activeOrg.orgId)
+    .then((r) => r.ok)
+    .catch(() => false);
   const wacallsConfigured = Boolean(process.env.WACALLS_API_BASE_URL);
 
   return (

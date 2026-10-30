@@ -20,7 +20,7 @@ import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/arch
 import { PROVIDERS_DE_MENSAGEM } from "@/lib/channels/capabilities";
 import { createChannelSchema } from "@/lib/schemas/channels";
 import { createClient } from "@/lib/supabase/server";
-import { getWahaClient } from "@/lib/waha/client";
+import { wahaDaOrganizacaoParaRota } from "@/lib/channels/waha-endpoint-app";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -81,15 +81,18 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { user, org: activeOrg } = authz;
   if (await mfaEmDivida()) return fail("mfa_required", t("Confirme a verificação em duas etapas."), 403, { requestId });
 
-  const waha = getWahaClient();
-  if (!waha) {
+  // O WAHA DA EMPRESA (cadastrado pelo operador) ou, no modo compartilhado, o global. Cadastro
+  // quebrado fecha a ação: nunca se conecta um número novo no WAHA de outra empresa.
+  const wahaDaEmpresa = await wahaDaOrganizacaoParaRota(activeOrg.orgId);
+  if (!wahaDaEmpresa.ok) {
     return fail(
-      "waha_not_configured",
+      wahaDaEmpresa.motivo === "nao_configurado" ? "waha_not_configured" : "waha_cadastro_quebrado",
       t("O WhatsApp (WAHA) não está configurado neste ambiente: faltam WAHA_API_BASE_URL e/ou WAHA_API_KEY. Configure-as e tente de novo."),
       503,
       { requestId },
     );
   }
+  const waha = wahaDaEmpresa.valor.client;
 
   let raw: unknown = {};
   try {
@@ -109,6 +112,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     const result = await connectWahaChannel(await createClient(), createAdminClient(), waha, {
       organizationId: activeOrg.orgId, idempotencyKey: req.headers.get("Idempotency-Key") ?? "",
       userId: user.id, requestId, displayName: parsed.data.display_name,
+      wahaDoCanal: wahaDaEmpresa.valor.colunas as { waha_base_url: string; waha_api_key_encrypted: string } | null,
     });
     return ok(result.channel, { requestId, status: result.replay ? 200 : 201 });
   } catch (error) {

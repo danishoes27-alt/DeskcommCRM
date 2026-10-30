@@ -23,6 +23,7 @@ const envMock: Record<string, string> = {
   OPENROUTER_BASE_URL: "",
   OPENAI_API_KEY: "",
 };
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 vi.mock("@/lib/env", () => ({
   get env() {
     return envMock;

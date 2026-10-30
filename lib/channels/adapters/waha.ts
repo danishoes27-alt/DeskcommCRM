@@ -7,7 +7,8 @@
  */
 import { wahaContactPayload } from "@/lib/waha/contact-card";
 import { fetchWahaMedia } from "@/lib/messaging/media/waha-source";
-import { getWahaClient } from "@/lib/waha/client";
+import { logger } from "@/lib/logger";
+import type { WahaClient } from "@/lib/waha/client";
 import { wahaSendPlanFor } from "@/lib/waha/media-send";
 import {
   resolveCanonicalCusChatId,
@@ -23,6 +24,8 @@ import {
 import { resolveWahaChatId } from "@/lib/waha/send";
 import type { FetchedMedia } from "@/lib/messaging/media/types";
 import { DETALHE_CREDENCIAL_RECUSADA } from "../health";
+import { clienteDoWahaDaSessao, enderecoDoWahaDaSessao } from "../waha-endpoint-app";
+import { WahaDoCanalError } from "../waha-endpoint";
 import type { ChannelAdapter, ChannelHealth, OutboundEnvelope, RecipientInput } from "../types";
 
 /**
@@ -45,13 +48,46 @@ export function statusHttpDoErroWaha(msg: string): number | null {
 }
 
 /**
+ * O WAHA DESTE canal, para o que é decorativo ou best-effort ("digitando", foto de perfil, tradução
+ * de @lid): sem WAHA configurado ou com o cadastro do canal quebrado, devolve `null` e o chamador
+ * segue sem o enfeite. O aviso leva só o CÓDIGO da falha, nunca endereço nem chave.
+ */
+async function clienteOuNull(sessionRef: string): Promise<WahaClient | null> {
+  try {
+    return await clienteDoWahaDaSessao(sessionRef);
+  } catch (err) {
+    if (err instanceof WahaDoCanalError) {
+      logger.warn("[waha.adapter] cadastro do WAHA do canal quebrado", { code: err.code });
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * O WAHA DESTE canal, para o que não pode seguir sem ele. Lança com o prefixo `waha_not_configured`
+ * (o mesmo `codes.notConfigured`), que o handler de mensagens já traduz em "fila com motivo" — a
+ * mesma saída do adaptador do canal oficial. Falha de cadastro do canal entra pelo mesmo caminho,
+ * com o código da falha, e NUNCA cai no WAHA global.
+ */
+async function clienteOuErro(sessionRef: string): Promise<WahaClient> {
+  try {
+    const client = await clienteDoWahaDaSessao(sessionRef);
+    if (client) return client;
+  } catch (err) {
+    if (err instanceof WahaDoCanalError) throw new Error(`waha_not_configured: ${err.message}`);
+    throw err;
+  }
+  throw new Error("waha_not_configured");
+}
+
+/**
  * O envio NOWEB grava só a cauda do id; o webhook grava o id completo. Quando o
  * completo existe, ele também preserva o @lid original do chat — por isso ele
  * vence o endereço resolvido a partir do contato.
  */
-function enderecoDaMensagem(input: { recipient: string | null; externalId: string }) {
-  const client = getWahaClient();
-  if (!client) throw new Error("waha_not_configured");
+async function enderecoDaMensagem(input: { sessionRef: string; recipient: string | null; externalId: string }) {
+  const client = await clienteOuErro(input.sessionRef);
   const chatId = chatIdFromWaMessageId(input.externalId) ?? input.recipient;
   if (!chatId) throw new Error("recipient_unavailable");
   return { client, chatId, messageId: idCompletoDaMensagem(input.externalId, chatId) };
@@ -84,11 +120,18 @@ export const wahaAdapter: ChannelAdapter = {
     return wahaEchoExternalIds(input.externalId, input.recipient);
   },
 
-  // Mesmo pre-check que o handler já fazia com `getWahaClient() !== null`,
-  // movido para trás do seam. `getWahaClient` lê o env a cada chamada (não
-  // memoiza), então o estado aqui é sempre o corrente.
+  // SEMPRE `true`, como o adaptador do canal oficial: a pergunta "há WAHA para este canal?" depende
+  // do cadastro do canal no banco (cada empresa tem o seu WAHA) e `isConfigured` é síncrono. Quem
+  // desiste é `send()`, que LANÇA `waha_not_configured`; o handler traduz o prefixo em fila com motivo
+  // — o que o usuário vê é o mesmo de quando o env estava vazio.
   isConfigured(): boolean {
-    return getWahaClient() !== null;
+    return true;
+  },
+
+  // A resposta PRECISA: este canal tem WAHA (o do canal ou o global)? Cadastro do canal quebrado = false.
+  // É o que o handler de mensagens usa para decidir "fila com motivo" antes de gravar o envio.
+  async isConfiguredForSession(sessionRef: string): Promise<boolean> {
+    return (await clienteOuNull(sessionRef)) !== null;
   },
 
   // `unknownError` é gravado em `messages.error_message` quando o throw não é
@@ -106,7 +149,7 @@ export const wahaAdapter: ChannelAdapter = {
     sessionRef: string;
     recipient: string;
   }): Promise<string | null> {
-    const client = getWahaClient();
+    const client = await clienteOuNull(input.sessionRef);
     if (!client) return null;
     return client.getProfilePictureUrl(input.sessionRef, input.recipient);
   },
@@ -122,7 +165,7 @@ export const wahaAdapter: ChannelAdapter = {
     identity: string;
   }): Promise<string | null> {
     if (!input.identity.startsWith("lid:")) return null;
-    const client = getWahaClient();
+    const client = await clienteOuNull(input.sessionRef);
     if (!client) return null;
     return client.resolvePhoneForLid(input.sessionRef, input.identity.slice("lid:".length));
   },
@@ -132,7 +175,7 @@ export const wahaAdapter: ChannelAdapter = {
    * (ver `phoneJidDigitsFromCheckResult`). Transporte não configurado é `null`.
    */
   async resolveRegisteredPhone(input: { sessionRef: string; phone: string }): Promise<string | null> {
-    const client = getWahaClient();
+    const client = await clienteOuNull(input.sessionRef);
     if (!client) return null;
     return resolvePhoneJidDigitsForCall(client, input.sessionRef, input.phone);
   },
@@ -145,7 +188,7 @@ export const wahaAdapter: ChannelAdapter = {
    * parar por causa de um indicador decorativo.
    */
   async signalTyping(input: { sessionRef: string; recipient: string }): Promise<void> {
-    const client = getWahaClient();
+    const client = await clienteOuNull(input.sessionRef);
     if (!client) return;
     await client.setPresence(input.sessionRef, input.recipient, "typing");
   },
@@ -156,7 +199,7 @@ export const wahaAdapter: ChannelAdapter = {
     externalId: string;
     text: string;
   }): Promise<void> {
-    const { client, chatId, messageId } = enderecoDaMensagem(input);
+    const { client, chatId, messageId } = await enderecoDaMensagem(input);
     await client.editMessage(input.sessionRef, chatId, messageId, input.text);
   },
 
@@ -165,7 +208,7 @@ export const wahaAdapter: ChannelAdapter = {
     recipient: string | null;
     externalId: string;
   }): Promise<void> {
-    const { client, chatId, messageId } = enderecoDaMensagem(input);
+    const { client, chatId, messageId } = await enderecoDaMensagem(input);
     await client.deleteMessage(input.sessionRef, chatId, messageId);
   },
 
@@ -184,7 +227,17 @@ export const wahaAdapter: ChannelAdapter = {
    *     aprenderia a ignorar o aviso.
    */
   async checkHealth(input: { sessionRef: string }): Promise<ChannelHealth> {
-    const client = getWahaClient();
+    let client: WahaClient | null;
+    try {
+      client = await clienteDoWahaDaSessao(input.sessionRef);
+    } catch (err) {
+      // Cadastro do WAHA deste canal quebrado: não se sabe o estado da sessão (reachable: false) e o
+      // `detail` diz que o problema é o cadastro, não a rede. Nunca pergunta ao WAHA global.
+      if (err instanceof WahaDoCanalError) {
+        return { reachable: false, status: null, detail: `waha_do_canal_${err.code}` };
+      }
+      throw err;
+    }
     if (!client) return { reachable: false, status: null, detail: "transporte_nao_configurado" };
     try {
       const r = await client.getSessionQr(input.sessionRef);
@@ -217,13 +270,12 @@ export const wahaAdapter: ChannelAdapter = {
   },
 
   async listGroups(input: { sessionRef: string }) {
-    const client = getWahaClient();
-    if (!client) throw new Error("waha_not_configured");
+    const client = await clienteOuErro(input.sessionRef);
     return client.listarGrupos(input.sessionRef);
   },
 
   async setGroupIntake(input: { sessionRef: string; receive: boolean }) {
-    const client = getWahaClient();
+    const client = await clienteOuNull(input.sessionRef);
     if (!client) return false;
     return client.definirRecebimentoDeGrupos(input.sessionRef, input.receive);
   },
@@ -244,15 +296,23 @@ export const wahaAdapter: ChannelAdapter = {
     // Devolve o objeto INTEIRO, sem remontar campo a campo: `FetchedMedia` é o
     // mesmo tipo dos dois lados, e reconstruí-lo faria a próxima adição de
     // campo sumir em silêncio aqui no meio.
-    return fetchWahaMedia(input.url, input.hintMime ?? null);
+    // A mídia mora no WAHA DESTE canal; a base do download vem do cadastro do canal (ou do global).
+    let endereco: Awaited<ReturnType<typeof enderecoDoWahaDaSessao>>;
+    try {
+      endereco = await enderecoDoWahaDaSessao(input.sessionRef);
+    } catch (err) {
+      if (err instanceof WahaDoCanalError) throw new Error(`waha_not_configured: ${err.message}`);
+      throw err;
+    }
+    if (!endereco) throw new Error("waha_not_configured");
+    return fetchWahaMedia(input.url, input.hintMime ?? null, endereco);
   },
 
   async send(envelope: OutboundEnvelope): Promise<{ externalId: string | null }> {
-    const client = getWahaClient();
-    // Sem env de WAHA o comportamento atual é NOOP, não erro: a UI mostra o
-    // banner de "container não está no ar". Transformar em exceção mudaria o
-    // comportamento visível — proibido nas Fases 0–2.
-    if (!client) return { externalId: null };
+    // LANÇA `waha_not_configured` (e não devolve `{externalId: null}`) quando não há WAHA para este
+    // canal: com `isConfigured` sempre true, quem desiste é este ponto, e `null` faria o handler gravar
+    // "enviado" sem id para algo que nunca saiu. O handler traduz o prefixo em fila com o motivo.
+    const client = await clienteOuErro(envelope.sessionRef);
 
     const to = await resolveCanonicalCusChatId(client, envelope.sessionRef, envelope.to);
 

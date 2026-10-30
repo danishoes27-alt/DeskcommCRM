@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listarGrupos = vi.fn();
 const definirRecebimentoDeGrupos = vi.fn();
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 vi.mock("@/lib/waha/client", async () => {
   const actual = await vi.importActual<typeof WahaClientModule>("@/lib/waha/client");
   return {

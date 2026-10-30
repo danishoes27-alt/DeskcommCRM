@@ -25,6 +25,7 @@ import "@/lib/automation/actions/send-whatsapp";
 import "@/lib/automation/actions/send-ai-message";
 import type { ActionCtx } from "@/lib/automation/types";
 import { avisarLeadDoCrm } from "@/lib/ai/handoff/aviso-ao-lead";
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 const generation = vi.hoisted(() => ({ run: async () => ({ ok: true as const, texto: "Resposta gerada" }), authorize: vi.fn(async () => {}) }));
 vi.mock("@/lib/agent-engine/agent/abordagem-de-formulario", () => ({ gerarAbordagemDeFormulario: () => generation.run() }));
 vi.mock("@/lib/agent-engine/db/request-pool", () => ({ getRequestPool: () => ({}) }));

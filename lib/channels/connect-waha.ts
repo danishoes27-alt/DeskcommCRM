@@ -8,6 +8,7 @@ import {
 import type { WahaClient } from "@/lib/waha/client";
 import { WahaSessionError } from "@/lib/waha/client";
 import { sincronizarRecebimentoDeGrupos } from "@/lib/grupos/sincronizar-filtro";
+import { limparCacheDoWaha } from "@/lib/channels/waha-endpoint";
 
 const channelSchema = z.object({
   id: z.string().uuid(), organization_id: z.string().uuid(), waha_session_name: z.string(),
@@ -26,6 +27,13 @@ type Transport = Pick<WahaClient, "createSession" | "startExistingSession" | "st
 export interface ConnectChannelInput {
   organizationId: string; idempotencyKey: string; userId: string; requestId: string;
   displayName?: string; onboarding?: boolean; restart?: boolean;
+  /**
+   * O WAHA PRÓPRIO da empresa (as duas colunas da migration 9001, já validadas e com a chave cifrada),
+   * quando o canal não usa o WAHA global. É gravado no canal reservado ANTES de qualquer chamada ao
+   * WAHA: o canal nasce já sabendo com quem fala, e quem o resolver depois (envio, QR, vigia) acha o
+   * mesmo WAHA que `waha` aqui. `null`/ausente = modo compartilhado (nada a gravar).
+   */
+  wahaDoCanal?: { waha_base_url: string; waha_api_key_encrypted: string } | null;
 }
 
 /** Única reserva WAHA: auth client reserva, service client confirma por lease+org.
@@ -84,6 +92,19 @@ export async function connectWahaChannel(authDb: SupabaseClient, serviceDb: Supa
       await finish("FAILED", "session_name_too_long");
       throw cause;
     }
+  }
+  if (input.wahaDoCanal) {
+    const { error: gravou } = await serviceDb.from("channel_sessions")
+      .update({
+        waha_base_url: input.wahaDoCanal.waha_base_url,
+        waha_api_key_encrypted: input.wahaDoCanal.waha_api_key_encrypted,
+      })
+      .eq("organization_id", input.organizationId).eq("id", channel.id);
+    if (gravou) {
+      await finish("FAILED", "waha_endpoint_not_saved");
+      throw new ChannelConnectionError("connection_checkpoint_failed", 503);
+    }
+    limparCacheDoWaha(channel.waha_session_name);
   }
   try {
     if (input.restart) await waha.stopSession(channel.waha_session_name);

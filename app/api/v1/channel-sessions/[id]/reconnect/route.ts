@@ -45,7 +45,8 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
 import { createClient } from "@/lib/supabase/server";
-import { getWahaClient, wahaFriendlyError } from "@/lib/waha/client";
+import { wahaDoCanalParaRota } from "@/lib/channels/waha-endpoint-app";
+import { wahaFriendlyError } from "@/lib/waha/client";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -127,7 +128,8 @@ export async function POST(
     );
   }
 
-  const waha = getWahaClient();
+  const wahaDoCanal = await wahaDoCanalParaRota(nomeSessao);
+  const waha = wahaDoCanal.ok ? wahaDoCanal.valor.client : null;
   if (!waha) {
     return fail(
       "waha_not_configured",

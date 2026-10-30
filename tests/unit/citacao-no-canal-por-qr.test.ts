@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
+
 /**
  * A CITAÇÃO EXISTIA EM TODA PARTE, MENOS ONDE ELA SAI.
  *
@@ -89,14 +91,15 @@ describe("o adapter repassa o que o envelope traz", () => {
    */
   it("`replyToExternalId` chega ao corpo do envio", async () => {
     const chamadas: unknown[][] = [];
-    vi.doMock("@/lib/waha/client", async (orig) => ({
-      ...(await orig<Record<string, unknown>>()),
-      getWahaClient: () => ({
+    // O adapter pergunta ao resolvedor por canal com quem falar: aqui o "WAHA do canal" é este cliente de mentira.
+    vi.doMock("@/lib/channels/waha-endpoint-app", () => ({
+      clienteDoWahaDaSessao: async () => ({
         sendMessage: (...a: unknown[]) => {
           chamadas.push(a);
           return Promise.resolve({ id: "3EB0ABC" });
         },
       }),
+      enderecoDoWahaDaSessao: async () => null,
     }));
     vi.resetModules();
     const { wahaAdapter } = await import("@/lib/channels/adapters/waha");
@@ -112,7 +115,7 @@ describe("o adapter repassa o que o envelope traz", () => {
     });
     // O 4º argumento de `sendMessage` é a citação — o elo que faltava.
     expect(chamadas[0]?.[3], "o adapter voltou a ignorar a citação").toBe(CITADA);
-    vi.doUnmock("@/lib/waha/client");
+    vi.doUnmock("@/lib/channels/waha-endpoint-app");
     vi.resetModules();
   });
 
@@ -127,14 +130,15 @@ describe("o adapter repassa o que o envelope traz", () => {
     ["bare vira o id completo do nosso lado", "3EB0NOSSO", "true_595@c.us_3EB0NOSSO"],
   ])("%s", async (_nome, gravado, esperado) => {
     const chamadas: unknown[][] = [];
-    vi.doMock("@/lib/waha/client", async (orig) => ({
-      ...(await orig<Record<string, unknown>>()),
-      getWahaClient: () => ({
+    // O adapter pergunta ao resolvedor por canal com quem falar: aqui o "WAHA do canal" é este cliente de mentira.
+    vi.doMock("@/lib/channels/waha-endpoint-app", () => ({
+      clienteDoWahaDaSessao: async () => ({
         sendMessage: (...a: unknown[]) => {
           chamadas.push(a);
           return Promise.resolve({ id: "3EB0ABC" });
         },
       }),
+      enderecoDoWahaDaSessao: async () => null,
     }));
     vi.resetModules();
     const { wahaAdapter } = await import("@/lib/channels/adapters/waha");
@@ -147,7 +151,7 @@ describe("o adapter repassa o que o envelope traz", () => {
       replyToExternalId: gravado,
     });
     expect(chamadas[0]?.[3]).toBe(esperado);
-    vi.doUnmock("@/lib/waha/client");
+    vi.doUnmock("@/lib/channels/waha-endpoint-app");
     vi.resetModules();
   });
 });

@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getWahaClient } from "@/lib/waha/client";
+import { wahaDaOrganizacaoParaRota, wahaDoCanalParaRota } from "@/lib/channels/waha-endpoint-app";
 import { connectWahaChannel, ChannelConnectionError } from "@/lib/channels/connect-waha";
 import { loadOnboardingChannel } from "@/lib/channels/onboarding-session";
 
@@ -14,11 +14,18 @@ export async function GET(): Promise<Response> {
   const user = await loadAuthUser(); if (!user) return fail("unauthenticated", "Sessão expirada", 401, { requestId });
   const org = await resolveActiveOrg(user); if (!org) return fail("tenant_not_found", "Sem organização ativa", 404, { requestId });
   if (await mfaEmDivida()) return fail("mfa_required", "Confirme a verificação em duas etapas.", 403, { requestId });
-  const waha = getWahaClient(); if (!waha) return ok({ status: "WAHA_NOT_CONFIGURED", session: null }, { requestId });
   try {
     const db = await createClient(); const channel = await loadOnboardingChannel(db, org.orgId);
-    if (!channel || channel.archived_at) return ok({ status: "NOT_STARTED", session: null }, { requestId });
-    const remote = await waha.getVerifiedSession(channel.waha_session_name);
+    if (!channel || channel.archived_at) {
+      // Ainda não há canal: "WAHA_NOT_CONFIGURED" só quando a EMPRESA não tem WhatsApp cadastrado
+      // (nem o dela, nem o global). Com cadastro, o passo é "ainda não iniciado".
+      const daEmpresa = await wahaDaOrganizacaoParaRota(org.orgId);
+      if (!daEmpresa.ok) return ok({ status: "WAHA_NOT_CONFIGURED", session: null }, { requestId });
+      return ok({ status: "NOT_STARTED", session: null }, { requestId });
+    }
+    const wahaDoCanal = await wahaDoCanalParaRota(channel.waha_session_name);
+    if (!wahaDoCanal.ok) return ok({ status: "WAHA_NOT_CONFIGURED", session: null }, { requestId });
+    const remote = await wahaDoCanal.valor.client.getVerifiedSession(channel.waha_session_name);
     const status = remote?.status ?? "STOPPED";
     const { error, data } = await db.from("channel_sessions").update({ status, last_health_check_at: new Date().toISOString() })
       .eq("organization_id", org.orgId).eq("id", channel.id).is("archived_at", null).select("id").maybeSingle();
@@ -33,11 +40,13 @@ export async function POST(req: Request): Promise<Response> {
   const auth = await requireRole("admin", { requestId, resource: "channel_sessions", allowPlatformAdmin: true });
   if (!auth.ok) return auth.response;
   if (await mfaEmDivida()) return fail("mfa_required", "Confirme a verificação em duas etapas.", 403, { requestId });
-  const waha = getWahaClient(); if (!waha) return fail("waha_not_configured", "O serviço de conexão está indisponível. Tente novamente.", 503, { requestId });
+  const wahaDaEmpresa = await wahaDaOrganizacaoParaRota(auth.org.orgId);
+  if (!wahaDaEmpresa.ok) return fail(wahaDaEmpresa.motivo === "nao_configurado" ? "waha_not_configured" : "waha_cadastro_quebrado", "O serviço de conexão está indisponível. Tente novamente.", 503, { requestId });
   try {
-    const result = await connectWahaChannel(await createClient(), createAdminClient(), waha, {
+    const result = await connectWahaChannel(await createClient(), createAdminClient(), wahaDaEmpresa.valor.client, {
       organizationId: auth.org.orgId, idempotencyKey: req.headers.get("Idempotency-Key") ?? "",
       userId: auth.user.id, requestId, onboarding: true, restart: new URL(req.url).searchParams.get("restart") === "1",
+      wahaDoCanal: wahaDaEmpresa.valor.colunas as { waha_base_url: string; waha_api_key_encrypted: string } | null,
     });
     return ok({ status: result.channel.status, session: result.channel.waha_session_name, channel_session_id: result.channel.id }, { requestId });
   } catch (error) {

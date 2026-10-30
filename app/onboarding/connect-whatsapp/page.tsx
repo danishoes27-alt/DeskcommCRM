@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { fontesDoAppDaMeta } from "@/lib/channels/meta/app";
 import { metaPodeReceber } from "@/lib/channels/meta/webhook";
 import { nomeCurtoDaSessao } from "@/lib/channels/nome-da-sessao";
-import { getWahaClient } from "@/lib/waha/client";
+import { wahaDaOrganizacaoParaRota } from "@/lib/channels/waha-endpoint-app";
 import { ConnectWhatsappClient } from "./_client";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -15,7 +15,10 @@ export default async function ConnectWhatsappPage() {
   if (!activeOrg) redirect("/login");
   const idioma = user.idioma;
 
-  const wahaConfigured = getWahaClient() !== null;
+  // A empresa tem WAHA (o dela, cadastrado pelo operador, ou o da instalação)? Sem isso o QR não existe.
+  const wahaConfigured = await wahaDaOrganizacaoParaRota(activeOrg.orgId)
+    .then((r) => r.ok)
+    .catch(() => false);
 
   // Receber pelo canal oficial exige DOIS segredos, não um — a regra e o porquê
   // moram em `lib/channels/meta/webhook.ts`, ao lado de quem os consome. Agora os

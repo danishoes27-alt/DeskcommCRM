@@ -1,6 +1,9 @@
+import { vi } from "vitest";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 
 /**
  * A MÍDIA QUE O CLIENTE MANDA, EM QUALQUER CANAL.
@@ -136,9 +139,10 @@ describe("o que cada canal faz com a URL", () => {
 
   it("o canal por QR delega no que já existia — comportamento idêntico", () => {
     // O risco desta mudança é mexer no canal que funciona bem. Ele chama a
-    // MESMA função, com os mesmos argumentos; só mudou quem a escolhe.
+    // MESMA função, com os mesmos argumentos; só mudou quem a escolhe. Desde o WAHA por empresa, ele
+    // acrescenta um terceiro argumento: o endereço do WAHA DESTE canal, de onde a mídia é baixada.
     const w = readFileSync("lib/channels/adapters/waha.ts", "utf8");
-    expect(w).toMatch(/return fetchWahaMedia\(input\.url, input\.hintMime \?\? null\)/);
+    expect(w).toMatch(/return fetchWahaMedia\(input\.url, input\.hintMime \?\? null, endereco\)/);
   });
 
   it("os dois devolvem o MESMO tipo, reusado e não redefinido", () => {

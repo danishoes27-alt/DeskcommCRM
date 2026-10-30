@@ -8,6 +8,8 @@ import { getAdapter } from '@/lib/channels';
 import { DETALHE_CREDENCIAL_RECUSADA } from '@/lib/channels/health';
 import { statusHttpDoErroWaha } from '@/lib/channels/adapters/waha';
 
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
+
 /** A organização atravessa o seam desde a issue #236. */
 const ORG = "00000000-0000-4000-8000-000000000236";
 
@@ -78,10 +80,21 @@ describe('adapter WAHA', () => {
   // dois desfechos que o handler trata diferente: "não tentei" (fica `queued`)
   // e "tentei e a resposta não tinha id" (vira `sent`). Sem este pre-check, a
   // primeira viraria `sent` sem ter saído — perda de mensagem, não refactor.
-  it('isConfigured é false sem env do canal', () => {
+  //
+  // Com o WAHA POR CANAL (migration 9001), "há WAHA?" depende do cadastro de cada canal no banco, e
+  // `isConfigured` é síncrono: ele responde sempre `true` (como o adaptador do canal oficial) e a
+  // pergunta precisa é `isConfiguredForSession`, que o handler de mensagens prefere.
+  it('isConfigured é sempre true; a pergunta precisa é por sessão e é false sem WAHA nenhum', async () => {
     vi.stubEnv('WAHA_API_BASE_URL', '');
     vi.stubEnv('WAHA_API_KEY', '');
-    expect(getAdapter('waha').isConfigured()).toBe(false);
+    expect(getAdapter('waha').isConfigured()).toBe(true);
+    await expect(getAdapter('waha').isConfiguredForSession!('s')).resolves.toBe(false);
+  });
+
+  it('isConfiguredForSession é true quando há WAHA para a sessão', async () => {
+    vi.stubEnv('WAHA_API_BASE_URL', WAHA_BASE);
+    vi.stubEnv('WAHA_API_KEY', 'hash123');
+    await expect(getAdapter('waha').isConfiguredForSession!('s')).resolves.toBe(true);
   });
 
   it('isConfigured é true com env do canal', () => {
@@ -103,7 +116,10 @@ describe('adapter WAHA', () => {
     });
   });
 
-  it('canal não configurado é NOOP, não erro — e nada sai pela rede', async () => {
+  // Antes devolvia `{externalId: null}` (noop). Com `isConfigured` sempre true, quem desiste é o `send`, e
+  // `null` faria o handler gravar "enviado" sem id para algo que nunca saiu: agora LANÇA o código que o
+  // handler já traduz em fila com motivo (`codes.notConfigured`).
+  it('canal sem WAHA LANÇA waha_not_configured (o handler vira fila) — e nada sai pela rede', async () => {
     vi.stubEnv('WAHA_API_BASE_URL', '');
     vi.stubEnv('WAHA_API_KEY', '');
     const fetchMock = vi.fn();
@@ -117,7 +133,7 @@ describe('adapter WAHA', () => {
         kind: 'text',
         body: 'oi',
       }),
-    ).resolves.toEqual({ externalId: null });
+    ).rejects.toThrow(/^waha_not_configured/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

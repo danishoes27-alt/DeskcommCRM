@@ -208,6 +208,13 @@ export interface ChannelAdapter {
    * trouxe id" — desfechos que o chamador grava de forma diferente.
    */
   isConfigured(): boolean;
+  /**
+   * Versão POR SESSÃO de `isConfigured`, para o canal cuja configuração mora no banco, por canal
+   * (o WAHA de cada empresa) e por isso não cabe numa resposta síncrona. Quando o adaptador a
+   * oferece, quem decide "posso enviar por esta sessão?" prefere esta; `isConfigured` segue valendo
+   * como resposta genérica do provedor. Nunca lança: cadastro quebrado = `false`.
+   */
+  isConfiguredForSession?(sessionRef: string): Promise<boolean>;
   /** externalId null = canal não configurado (noop) ou resposta sem id reconhecível. */
   send(envelope: OutboundEnvelope): Promise<{ externalId: string | null }>;
   /**

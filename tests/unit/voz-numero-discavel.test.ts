@@ -9,6 +9,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 const transporte = vi.hoisted(() => ({ cliente: null as unknown }));
 vi.mock("@/lib/waha/client", async (importOriginal) => ({
   ...(await importOriginal<object>()),

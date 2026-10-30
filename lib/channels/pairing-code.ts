@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getWahaClient } from "@/lib/waha/client";
+import { wahaDoCanalParaRota } from "./waha-endpoint-app";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "./archived";
 import { checkRateLimit } from "@/lib/ai/dispatcher/rate-limit";
 
@@ -60,13 +60,16 @@ export async function requestChannelPairingCode(
       "Este canal não conecta por código de pareamento.",
       422,
     );
-  const client = getWahaClient();
-  if (!client)
+  // O WAHA DESTE canal (o da empresa, ou o global no modo compartilhado). Cadastro do canal quebrado
+  // vale como "serviço indisponível": nunca se tenta o código num WAHA de outra empresa.
+  const wahaDoCanal = await wahaDoCanalParaRota(session.waha_session_name);
+  if (!wahaDoCanal.ok)
     throw new PairingCodeError(
       "pairing_unavailable",
       "O serviço de conexão não está configurado.",
       503,
     );
+  const { client, endereco } = wahaDoCanal.valor;
 
   // Per-channel bucket prevents two operators from continuously invalidating codes.
   const limit = await checkRateLimit(`pairing-code:${organizationId}:${channelId}`, 1, 30);
@@ -91,12 +94,12 @@ export async function requestChannelPairingCode(
         409,
       );
     const response = await fetch(
-      `${process.env.WAHA_API_BASE_URL}/api/${encodeURIComponent(session.waha_session_name)}/auth/request-code`,
+      `${endereco.baseUrl}/api/${encodeURIComponent(session.waha_session_name)}/auth/request-code`,
       {
         method: "POST",
         cache: "no-store",
         signal: AbortSignal.timeout(15_000),
-        headers: { "Content-Type": "application/json", "X-Api-Key": process.env.WAHA_API_KEY! },
+        headers: { "Content-Type": "application/json", "X-Api-Key": endereco.apiKey },
         body: JSON.stringify({ phoneNumber }),
       },
     );

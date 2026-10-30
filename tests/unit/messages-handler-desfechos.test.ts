@@ -36,6 +36,7 @@ const URL_ASSINADA_DO_PROPRIO_STORAGE = `${env.NEXT_PUBLIC_SUPABASE_URL}/storage
 const signedUrl = vi.fn<() => Promise<{ data: { signedUrl: string } | null; error: { message: string } | null }>>(
   async () => ({ data: { signedUrl: 'https://signed.example/a.jpg' }, error: null }),
 );
+vi.mock("@/lib/channels/waha-endpoint-app", () => import("@/tests/helpers/waha-global-como-antes"));
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({ storage: { from: () => ({ createSignedUrl: signedUrl }) } }),
 }));
