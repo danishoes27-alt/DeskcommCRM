@@ -490,9 +490,8 @@ const schema = z.object({
     .transform((v) => v === "true"),
 
   // Triagem rápida com o Jev (TypeSafe, via AI Gateway) — DESLIGADA por padrão.
-  // ⛔ Só ligar com dado de TESTE enquanto a conta Vercel for Hobby: o Zero Data
-  // Retention por chamada só vale no plano Pro (docs/03-engenharia.md). Ver
-  // lib/ai/triagem/aplicar.ts.
+  // ⛔ Só ligar com dado de TESTE enquanto o plano do AI Gateway não garantir o Zero
+  // Data Retention por chamada. Ver lib/ai/triagem/aplicar.ts.
   JEV_TRIAGEM_ENABLED: z
     .enum(["true", "false"])
     .optional()
@@ -501,7 +500,7 @@ const schema = z.object({
   // SEGUNDA CONFIRMAÇÃO da triagem do Jev: ligar `JEV_TRIAGEM_ENABLED` não basta.
   // O dono da instalação declara em qual plano da Vercel a conta está:
   //   pro              — conta Pro/Enterprise: o ZDR por chamada VALE;
-  //   so_dado_de_teste — conta Hobby: o ZDR NÃO vale, e quem liga declara que só passa
+  //   so_dado_de_teste — plano sem ZDR garantido: quem liga declara que só passa
   //                      dado de TESTE por aqui;
   //   (vazio/outro)    — o Jev se recusa a rodar (código `plano_do_jev_nao_confirmado`).
   //
@@ -513,7 +512,7 @@ const schema = z.object({
   // `planoConfirmadoDoJev`, em lib/ai/triagem/aplicar.ts.
   JEV_PLANO_CONFIRMADO: z.string().optional(),
 
-  // ⛔ TRAVA CENTRAL do AI Gateway INTEIRO (decisão do Berg, 30/09/2026). Preencher
+  // ⛔ TRAVA CENTRAL do AI Gateway INTEIRO (decisão do dono do produto). Preencher
   // `AI_GATEWAY_API_KEY` sozinha não basta mais: sem esta confirmação, TODO o sistema
   // trata o Gateway como DESLIGADO — `gatewayConfig()`, `resolveLanguageModel()`,
   // `isEmbeddingProviderConfigured()` e a busca por embeddings (lib/ai/gateway.ts,
@@ -523,7 +522,7 @@ const schema = z.object({
   // tinha, mas que faltava para o resto do sistema. O motor da IA principal
   // (agent-engine) NÃO passa por aqui: ele fala direto com os provedores (BYOK).
   //   pro              — conta Pro/Enterprise: o ZDR por chamada VALE;
-  //   so_dado_de_teste — conta Hobby: o ZDR NÃO vale, só dado de TESTE por aqui;
+  //   so_dado_de_teste — plano sem ZDR garantido, só dado de TESTE por aqui;
   //   (vazio/outro)    — o Gateway inteiro fica DESLIGADO, mesmo com a chave preenchida.
   // `z.string()` e não `z.enum`, pelo mesmo motivo de `JEV_PLANO_CONFIRMADO` acima.
   // Normaliza `planoConfirmadoDoGateway()`, em lib/ai/gateway.ts.
@@ -687,7 +686,7 @@ if (env.AI_GATEWAY_API_KEY) {
       "[env] AI_GATEWAY_API_KEY está preenchida, mas AI_GATEWAY_PLANO_CONFIRMADO não foi " +
         "confirmada ('pro' ou 'so_dado_de_teste') — o AI Gateway inteiro fica DESLIGADO " +
         "(worker de sentimento, worker de resposta legado e busca por embeddings caem no " +
-        "provider direto ou pulam). Ver lib/ai/gateway.ts e docs/03-engenharia.md.",
+        "provider direto ou pulam). Ver lib/ai/gateway.ts.",
     );
   }
 }

@@ -107,7 +107,7 @@ export function gatewayHeaders(opts: { organizationId: string }): Record<string,
 export type PlanoConfirmadoDoGateway = "pro" | "so_dado_de_teste";
 
 /**
- * ⛔ TRAVA CENTRAL (Berg, 30/09/2026): normaliza `AI_GATEWAY_PLANO_CONFIRMADO`. Só
+ * ⛔ TRAVA CENTRAL (decisão do dono do produto): normaliza `AI_GATEWAY_PLANO_CONFIRMADO`. Só
  * `pro` e `so_dado_de_teste` (sem se importar com espaço/caixa) contam como
  * confirmado; ausente, vazio ou qualquer outra coisa é `null` — o lado seguro,
  * que `gatewayConfig()` trata como "Gateway desligado". Nunca lança.

@@ -133,7 +133,7 @@ describe('triarEGravarMensagemRecebida — chave desligada', () => {
   });
 });
 
-describe('triarEGravarMensagemRecebida — segunda confirmação do plano (trava Hobby)', () => {
+describe('triarEGravarMensagemRecebida — segunda confirmação do plano (trava do plano)', () => {
   it.each([
     ['ausente', undefined],
     ['vazia', ''],
@@ -183,7 +183,7 @@ describe('triarEGravarMensagemRecebida — segunda confirmação do plano (trava
     expect(planoConfirmadoDoJev('pro')).toBe('pro');
     expect(planoConfirmadoDoJev('so_dado_de_teste')).toBe('so_dado_de_teste');
     expect(planoConfirmadoDoJev(' Pro ')).toBe('pro');
-    for (const ruim of [undefined, null, '', ' ', 'hobby', 'enterprise', 'sim', 'true', '1']) {
+    for (const ruim of [undefined, null, '', ' ', 'gratuito', 'enterprise', 'sim', 'true', '1']) {
       expect(planoConfirmadoDoJev(ruim as string | undefined)).toBeNull();
     }
   });

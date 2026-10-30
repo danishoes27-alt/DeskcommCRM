@@ -352,7 +352,7 @@ describe("controle positivo — o produto sem marca não pode se mexer", () => {
     // Escuro: 6,30 e 5,22 na rampa DERIVADA da semente; os literais do
     // `globals.css` (`#82a077`) dão 6,31 e 5,23 — a rampa reproduz a Sage com
     // Δ ≤ 2/255 por canal, e a diferença de 0,01 é esse arredondamento.
-    // Paleta escura do Celuzap (2026-09-20, docs/02-design-e-marca.md): os fundos
+    // Paleta escura do Celuzap (2026-09-20): os fundos
     // do escuro passaram a `#0d1117 · #161b22 · #21262d` (antes `#161510 · #1d1c17 ·
     // #272620`) e os números abaixo foram REMEDIDOS pelo mesmo código. Antes:
     // 6,30 · 5,22 · 4,58 · 4,03. O deslocamento segue 0 e tudo segue acima do piso.

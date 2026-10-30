@@ -15,7 +15,7 @@
  *    pode atrasar ou travar o recebimento;
  *  - é um ponto comum a TODOS os canais, então nenhum nome de provedor de canal
  *    aparece (doutrina `restricao-de-canal`, `pnpm lint:channels`);
- *  - roda ANTES de a IA principal montar a resposta, que é o que o doc 04 pede.
+ *  - roda ANTES de a IA principal montar a resposta.
  * Não duplica o Intent Router (`resolve-turn-agent.ts`): aquele escolhe QUAL agente
  * atende, por intenções que a organização configura, com um LLM caro. Este só
  * classifica em quatro categorias fixas + urgência, sem gerar texto.
@@ -43,8 +43,8 @@
  *   Ligada mas sem ela (ausente ou inválida): não consulta o banco, não chama o Jev,
  *   avisa com o código `plano_do_jev_nao_confirmado` e sai. As DUAS confirmações
  *   (central + esta) são exigidas — falta uma, o Jev não roda.
- * - ⛔ Conta Vercel Hobby: ZDR por chamada só vale no Pro. Proibido ligar com
- *   WhatsApp real de cliente até o upgrade (docs/03-engenharia.md).
+ * - ⛔ Plano do AI Gateway sem ZDR confirmado: proibido ligar com WhatsApp real de
+ *   cliente até o plano garantir o ZDR por chamada.
  * - FALHA ABERTA: nada aqui lança. Erro vira log com CÓDIGO (nunca o texto).
  * - Multi-tenant: `organization_id` vem do job (fonte confiável) e filtra as
  *   consultas; `direction = 'inbound'` impede gravar em mensagem nossa.
@@ -195,7 +195,7 @@ export async function triarEGravarMensagemRecebida(
     // Desligada: sai ANTES de qualquer consulta ou chamada.
     if (!habilitado()) return null;
 
-    // ⛔ TRAVA CENTRAL do AI Gateway inteiro (decisão do Berg, 30/09/2026): além da
+    // ⛔ TRAVA CENTRAL do AI Gateway inteiro (decisão do dono do produto): além da
     // confirmação própria do Jev logo abaixo, existe uma segunda chave que vale para o
     // SISTEMA INTEIRO (`AI_GATEWAY_PLANO_CONFIRMADO`, lib/ai/gateway.ts). Checada aqui —
     // e não só em `gatewayConfig()` — porque o Jev NÃO passa por ele: a chamada que

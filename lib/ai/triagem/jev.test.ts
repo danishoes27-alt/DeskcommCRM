@@ -119,7 +119,7 @@ describe('triarMensagem — decisão', () => {
     });
   });
 
-  it('REGRA DO BERG: o Jev nunca manda direto para o humano — só decide ou passa para a IA principal', async () => {
+  it('REGRA DO DONO DO PRODUTO: o Jev nunca manda direto para o humano — só decide ou passa para a IA principal', async () => {
     const cenarios = [
       jevQue({ confianca: 0.1 }),
       jevQue({ confianca: 0.59 }),

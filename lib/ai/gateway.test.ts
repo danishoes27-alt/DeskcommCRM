@@ -1,5 +1,5 @@
 /**
- * ⛔ TRAVA CENTRAL do AI Gateway inteiro (decisão do Berg, 30/09/2026).
+ * ⛔ TRAVA CENTRAL do AI Gateway inteiro (decisão do dono do produto).
  *
  * Preencher `AI_GATEWAY_API_KEY` sozinha NÃO pode ligar nada: sem
  * `AI_GATEWAY_PLANO_CONFIRMADO` (`pro` | `so_dado_de_teste`), `gatewayConfig()` devolve
@@ -9,7 +9,7 @@
  *
  * Achado que motivou esta trava: preencher só a chave já ligava, sem nenhuma
  * confirmação, o worker de sentimento, o worker de resposta legado (ai-response-worker,
- * caminho de fallback) e a busca por embeddings — na conta Hobby, sem ZDR garantido.
+ * caminho de fallback) e a busca por embeddings — com um plano sem ZDR garantido.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,7 +39,7 @@ describe("planoConfirmadoDoGateway", () => {
   });
 
   it("qualquer outra coisa — ausente, vazio, lixo — é 'não confirmado' (null), nunca lança", () => {
-    for (const ruim of [undefined, null, "", " ", "hobby", "enterprise", "true", "1"]) {
+    for (const ruim of [undefined, null, "", " ", "gratuito", "enterprise", "true", "1"]) {
       expect(planoConfirmadoDoGateway(ruim as string | undefined)).toBeNull();
     }
   });

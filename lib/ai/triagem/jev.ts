@@ -5,7 +5,7 @@
  * mensagem (qual a categoria? tem urgência?) e este módulo transforma a resposta
  * numa decisão. Nada aqui fala com o cliente, com o banco ou com o canal.
  *
- * ─── Regras que não se negociam (docs/03-engenharia.md, docs/06-juridico...) ───
+ * ─── Regras que não se negociam (engenharia e jurídico) ───
  *
  * 1. LGPD — TODA chamada leva `zeroDataRetention: true`. Existe UM ÚNICO ponto que
  *    chama o modelo (`chamarJev`) e ele monta as opções a partir da constante
@@ -27,8 +27,8 @@
  *    da mensagem (nem a mensagem de erro do provedor, que pode ecoá-lo).
  * 5. Timeout curto — para não atrasar o atendimento.
  *
- * ⛔ TRAVA (Berg, 24/09/2026): a conta Vercel é Hobby e ZDR por chamada só vale no
- * Pro. Enquanto for Hobby, o Jev só pode ver dado de TESTE. Quem liga isto é a chave
+ * ⛔ TRAVA (decisão do dono do produto): o ZDR por chamada depende do plano do AI
+ * Gateway. Enquanto o plano não o garantir, o Jev só pode ver dado de TESTE. Quem liga isto é a chave
  * `JEV_TRIAGEM_ENABLED` (desligada por padrão) e, além dela, DUAS confirmações de plano
  * em `aplicar.ts`: a central do Gateway inteiro (`AI_GATEWAY_PLANO_CONFIRMADO`,
  * `lib/ai/gateway.ts`) e a própria do Jev (`JEV_PLANO_CONFIRMADO`) — falta qualquer uma
@@ -48,7 +48,7 @@ export const CATEGORIAS_DE_ATENDIMENTO: readonly CategoriaAtendimento[] = [
 /**
  * O Jev só tem DOIS desfechos: decidiu (`rotear`) ou se absteve (`llm_principal_decide`).
  *
- * Regra do Berg (24/09/2026, docs/04-agente-ia.md): dúvida do Jev vai para a IA
+ * Regra do dono do produto: dúvida do Jev vai para a IA
  * PRINCIPAL decidir com mais contexto — nunca direto para o humano. Só abre caso para
  * humano se a IA principal TAMBÉM não conseguir, e quem decide isso é o fluxo que já
  * existe (sistema de casos), não este módulo. Por isso não existe `revisao_humana` aqui.
@@ -80,7 +80,7 @@ export const JEV_TIMEOUT_MS = 3000;
 export const JEV_MAX_CHARS_DO_TEXTO = 2000;
 
 /**
- * LGPD (docs/06): a ÚNICA fonte das opções do provedor. Congelada para ninguém
+ * LGPD: a ÚNICA fonte das opções do provedor. Congelada para ninguém
  * "consertar" um caso sem perceber que está tirando a garantia.
  */
 export const OPCOES_DO_PROVEDOR_JEV = Object.freeze({
@@ -150,7 +150,7 @@ export function motivoDoErro(err: unknown): MotivoDaTriagem {
     return 'timeout';
   }
   // O Gateway responde 400 `no_providers_available` quando nenhum provedor atende
-  // a exigência de ZDR — o caso da conta Hobby. Não pode virar erro genérico.
+  // a exigência de ZDR — o caso de um plano sem ZDR. Não pode virar erro genérico.
   const textos = cadeia.flatMap((e) => [e.message, e.responseBody]).filter((t) => typeof t === 'string');
   if (textos.some((t) => (t as string).includes('no_providers_available'))) return 'sem_provedor_zdr';
   // A SDK valida a resposta do modelo e lança este erro quando o formato não fecha.
