@@ -31,7 +31,18 @@
  *
  * Só `WORKING` é observação: é o estado em que o transporte fala do aparelho
  * que ele está de fato atendendo agora.
+ *
+ * ─── O nono dígito (achado do teste de pareamento real) ──────────────────────
+ *
+ * O WhatsApp devolve o número de um celular brasileiro SEM o 9 extra (12 dígitos:
+ * `553198966398`), enquanto o resto do CRM guarda e compara a forma COM o 9
+ * (`5531998966398`). Gravado cru, o mesmo aparelho aparece em duas grafias: a
+ * comparação por `!==` achava que o número "mudou" a cada leitura, e a trava de
+ * número único do banco — que compara TEXTO — deixava dois canais da mesma pessoa
+ * conviverem. Por isso o que se grava é a forma canônica (`canonicalPhoneBR`), no
+ * mesmo formato de sempre desta coluna: só dígitos, sem `+`.
  */
+import { canonicalPhoneBR, phoneLookupVariants } from "./phone-variants";
 
 /** O estado em que o `me` do transporte descreve o aparelho de verdade. */
 const STATUS_EM_QUE_O_NUMERO_VALE = "WORKING";
@@ -51,5 +62,17 @@ export function numeroObservadoDaSessao(input: {
   const numero = input.jid.replace(/@.*/, "").trim();
   // JID sem parte local (`@c.us`) não descreve aparelho nenhum: manter o que
   // está gravado é melhor que apagar o único dado que a tela tinha.
-  return numero || input.gravado;
+  if (!numero) return input.gravado;
+  return canonicalPhoneBR(numero).replace(/^\+/, "");
+}
+
+/**
+ * Todas as grafias sob as quais o MESMO número pode estar gravado em `channel_sessions.phone_number`:
+ * com e sem o nono dígito, com e sem `+`. Serve para perguntar ao banco "outra conexão ativa desta empresa
+ * já tem este número?" — a trava `channel_sessions_phone_per_org_unique` compara TEXTO exato, então só
+ * pergunta por todas as grafias fecha o caso de um canal antigo gravado na outra forma.
+ */
+export function grafiasDoNumeroDoCanal(numero: string): string[] {
+  const grafias = phoneLookupVariants(numero).flatMap((v) => [v, v.replace(/^\+/, "")]);
+  return [...new Set(grafias)];
 }

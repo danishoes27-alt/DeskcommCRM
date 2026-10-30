@@ -31,6 +31,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { PROVIDERS_DE_MENSAGEM } from "./capabilities";
+import { phoneForDisplay } from "./phone-variants";
 import { ehNomeDeSessaoE2E } from "./sessoes-e2e";
 
 /** Único estado em que mensagem entra e sai. Contrato do CRM (uppercase). */
@@ -200,7 +201,7 @@ export async function listarConexoesCaidas(
     .filter((s) => !ehNomeDeSessaoE2E(s.waha_session_name as string | null))
     .map((s) => ({
     id: s.id as string,
-    apelido: (s.display_name as string | null) ?? (s.phone_number as string | null) ?? "sem nome",
+    apelido: (s.display_name as string | null) ?? (phoneForDisplay(s.phone_number as string | null) || "sem nome"),
     status: (s.status as string | null) ?? "",
   }));
 }

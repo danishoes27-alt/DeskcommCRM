@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { numeroObservadoDaSessao } from "@/lib/channels/numero-observado";
+import { grafiasDoNumeroDoCanal, numeroObservadoDaSessao } from "@/lib/channels/numero-observado";
 
 /**
  * ─── O defeito, medido numa instalação real ────────────────────────────────
@@ -78,5 +78,51 @@ describe("o call site — guardar a função não basta se a rota não a usa", (
     expect(fonte).toContain("numeroObservadoDaSessao({");
     // A forma antiga, que é o defeito: preencher só quando está vazio.
     expect(fonte).not.toMatch(/if\s*\(jid\s*&&\s*!phoneNumber\)/);
+  });
+});
+
+
+describe("o nono dígito: o que se grava é a forma canônica, só com dígitos", () => {
+  const observar = (jid: string) => numeroObservadoDaSessao({ jid, statusAoVivo: "WORKING", gravado: null });
+
+  it("celular brasileiro que o WhatsApp devolve sem o 9 (12 dígitos) é gravado COM o 9 (13)", () => {
+    expect(observar("553198966398@c.us")).toBe("5531998966398");
+  });
+
+  it("celular que já vem com o 9 fica como está", () => {
+    expect(observar("5531998966398@c.us")).toBe("5531998966398");
+  });
+
+  it("fixo e número estrangeiro ficam como chegaram — nunca se inventa um 9", () => {
+    expect(observar("551148633324@c.us")).toBe("551148633324");
+    expect(observar("14155550123@c.us")).toBe("14155550123");
+  });
+
+  it("não grava `+`: o formato desta coluna sempre foi só dígitos", () => {
+    expect(observar("553198966398@c.us")).not.toContain("+");
+  });
+
+  it("fora de WORKING continua devolvendo o gravado, na grafia em que estava", () => {
+    expect(numeroObservadoDaSessao({ jid: "553198966398@c.us", statusAoVivo: "FAILED", gravado: "553198966398" })).toBe("553198966398");
+  });
+});
+
+describe("grafiasDoNumeroDoCanal — todas as formas sob as quais o mesmo número pode estar gravado", () => {
+  it("celular BR: com e sem o 9, com e sem +", () => {
+    expect(grafiasDoNumeroDoCanal("5531998966398").sort()).toEqual(
+      ["+553198966398", "+5531998966398", "553198966398", "5531998966398"].sort(),
+    );
+    expect(grafiasDoNumeroDoCanal("553198966398").sort()).toEqual(
+      ["+553198966398", "+5531998966398", "553198966398", "5531998966398"].sort(),
+    );
+  });
+
+  it("fixo e estrangeiro: só a própria grafia (com e sem +)", () => {
+    expect(grafiasDoNumeroDoCanal("551148633324").sort()).toEqual(["+551148633324", "551148633324"]);
+    expect(grafiasDoNumeroDoCanal("+14155550123").sort()).toEqual(["+14155550123", "14155550123"]);
+  });
+
+  it("sem dígito nenhum: nada a perguntar", () => {
+    expect(grafiasDoNumeroDoCanal("")).toEqual([]);
   });
 });

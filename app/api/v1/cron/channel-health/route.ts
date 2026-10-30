@@ -53,6 +53,7 @@ import {
   type ChannelSessionRef,
 } from "@/lib/channels";
 import { sincronizarSaudeDaConexao } from "@/lib/channels/health";
+import { phoneForDisplay } from "@/lib/channels/phone-variants";
 import { ehNomeDeSessaoE2E } from "@/lib/channels/sessoes-e2e";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -184,7 +185,7 @@ async function handle(req: NextRequest): Promise<Response> {
           .eq("organization_id", s.organization_id);
       }
 
-      const apelido = s.display_name ?? s.phone_number ?? "sem nome";
+      const apelido = s.display_name ?? (phoneForDisplay(s.phone_number) || "sem nome");
       const desfecho = await sincronizarSaudeDaConexao(
         admin,
         { id: s.id, organization_id: s.organization_id, status: statusFinal },

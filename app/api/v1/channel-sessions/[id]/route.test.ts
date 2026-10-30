@@ -108,6 +108,7 @@ function makeDb(opts: DbOpts = {}): Registro {
 
   class Q implements PromiseLike<unknown> {
     private filtros: Array<[string, unknown]> = [];
+    private exclusoes: Array<[string, unknown]> = [];
     private inclusoes: Array<[string, unknown[]]> = [];
     private limite: number | undefined;
     private ordenacao: { col: string; ascending: boolean } | undefined;
@@ -134,6 +135,10 @@ function makeDb(opts: DbOpts = {}): Registro {
       this.filtros.push([col, val]);
       return this;
     }
+    neq(col: string, val: unknown): this {
+      this.exclusoes.push([col, val]);
+      return this;
+    }
     in(col: string, values: unknown[]): this {
       this.inclusoes.push([col, values]);
       return this;
@@ -154,6 +159,7 @@ function makeDb(opts: DbOpts = {}): Registro {
     private casam(): Linha[] {
       const linhas = tabelas[this.table] ?? [];
       return linhas.filter((l) => this.filtros.every(([c, v]) => (l[c] ?? null) === v)
+        && this.exclusoes.every(([c, v]) => (l[c] ?? null) !== v)
         && this.inclusoes.every(([c, values]) => values.includes(l[c])));
     }
 
@@ -993,5 +999,91 @@ describe("#1334 — a conexão oficial devolve o webhook do número à Meta", ()
         metadata: expect.objectContaining({ webhook_override: "sem_credencial" }),
       }),
     );
+  });
+});
+
+
+/**
+ * O NONO DÍGITO NO NÚMERO DA PRÓPRIA CONEXÃO (achado do teste de pareamento real).
+ *
+ * O WhatsApp devolve o celular brasileiro SEM o 9 extra (12 dígitos); o CRM guarda e compara COM ele
+ * (13). Antes: `!==` reescrevia o número a cada leitura, gravava a grafia crua, e a trava única do banco —
+ * que compara texto — deixava dois canais do mesmo aparelho conviverem.
+ */
+describe("GET /api/v1/channel-sessions/[id] — o nono dígito do número da conexão", () => {
+  const OBSERVADO_SEM_O_9 = "553198966398@c.us"; // celular BR sem o 9
+  const COM_O_9 = "5531998966398";
+  const SEM_O_9 = "553198966398";
+
+  async function lerComJid(db: Registro, jid: string) {
+    const waha = wahaOk(db);
+    waha.getVerifiedSession.mockResolvedValue({ name: "org_2222_abc", status: "WORKING", me: { id: jid } });
+    const { GET } = await import("./route");
+    const res = await GET(reqGet(), ctx());
+    return { res, body: await res.json() };
+  }
+
+  it("número vazio + leitura sem o 9: grava a forma canônica (COM o 9)", async () => {
+    authOk();
+    const db = makeDb({ sessions: [canal({ phone_number: null })] });
+    const { body } = await lerComJid(db, OBSERVADO_SEM_O_9);
+
+    expect(body.data.phone_number).toBe(COM_O_9);
+    expect(db.escritas[0]?.patch).toMatchObject({ phone_number: COM_O_9 });
+  });
+
+  it("⭐ o mesmo número em outra grafia NÃO sobrescreve o valor gravado", async () => {
+    authOk();
+    const db = makeDb({ sessions: [canal({ phone_number: SEM_O_9 })] });
+    const { body } = await lerComJid(db, OBSERVADO_SEM_O_9);
+
+    expect(body.data.phone_number).toBe(SEM_O_9);
+    expect(body.data.phone_number_conflict).toBe(false);
+    expect(db.escritas).toHaveLength(1);
+    expect(db.escritas[0]?.patch).not.toHaveProperty("phone_number");
+  });
+
+  it("⭐ outra conexão ativa da empresa já tem o número em OUTRA grafia: conflito, e o número não é gravado", async () => {
+    authOk();
+    const OUTRO = "20000000-0000-4000-8000-0000000000aa";
+    const db = makeDb({
+      sessions: [
+        canal({ phone_number: null }),
+        canal({ id: OUTRO, waha_session_name: "org_2222_outra", phone_number: SEM_O_9 }),
+      ],
+    });
+    const { body } = await lerComJid(db, `${COM_O_9}@c.us`);
+
+    expect(body.data.phone_number_conflict).toBe(true);
+    expect(body.data.phone_number).toBeNull();
+    expect(db.escritas.every((e) => !(e.patch && "phone_number" in e.patch))).toBe(true);
+  });
+
+  it("conexão ARQUIVADA com o mesmo número não conta como dona dele", async () => {
+    authOk();
+    const OUTRO = "20000000-0000-4000-8000-0000000000bb";
+    const db = makeDb({
+      sessions: [
+        canal({ phone_number: null }),
+        canal({ id: OUTRO, waha_session_name: "org_2222_velha", phone_number: SEM_O_9, archived_at: "2026-10-01T00:00:00Z" }),
+      ],
+    });
+    const { body } = await lerComJid(db, OBSERVADO_SEM_O_9);
+
+    expect(body.data.phone_number_conflict).toBe(false);
+    expect(body.data.phone_number).toBe(COM_O_9);
+  });
+
+  it("conexão de OUTRA empresa com o mesmo número não conta (a trava é por empresa)", async () => {
+    authOk();
+    const db = makeDb({
+      sessions: [
+        canal({ phone_number: null }),
+        canal({ id: "20000000-0000-4000-8000-0000000000cc", organization_id: "99999999-0000-4000-8000-000000000009", waha_session_name: "org_9999_x", phone_number: SEM_O_9 }),
+      ],
+    });
+    const { body } = await lerComJid(db, OBSERVADO_SEM_O_9);
+
+    expect(body.data.phone_number_conflict).toBe(false);
   });
 });

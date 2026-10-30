@@ -29,7 +29,8 @@ import { requireRole } from "@/lib/auth/require-role";
 import { CHANNEL_PROVIDER_WAHA } from "@/lib/channels/capabilities";
 import { resolverSaudeDaConexaoRemovida } from "@/lib/channels/health";
 import { desfazerWebhookDoNumero } from "@/lib/channels/meta/webhook-override";
-import { numeroObservadoDaSessao } from "@/lib/channels/numero-observado";
+import { grafiasDoNumeroDoCanal, numeroObservadoDaSessao } from "@/lib/channels/numero-observado";
+import { samePhone } from "@/lib/channels/phone-variants";
 import { isChannelStatus } from "@/lib/schemas/channels";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -218,7 +219,31 @@ export async function GET(
     patch.status = liveStatus;
     patch.last_status_change_at = checkedAt;
   }
-  if (phoneNumber && phoneNumber !== session.phone_number) patch.phone_number = phoneNumber;
+  // O número só é gravado quando é OUTRO número de verdade. `!==` tratava as duas grafias do mesmo celular
+  // brasileiro (com e sem o nono dígito) como números diferentes: reescrevia o valor gravado a cada leitura.
+  // `samePhone` entende que 12 e 13 dígitos são a mesma pessoa e deixa o que está gravado em paz.
+  let phoneConflict = false;
+  if (phoneNumber && session.phone_number && samePhone(phoneNumber, session.phone_number as string)) {
+    phoneNumber = session.phone_number as string;
+  } else if (phoneNumber) {
+    // A trava única do banco compara texto exato: um canal ativo desta empresa gravado na OUTRA grafia do
+    // mesmo número passaria por ela. Pergunta por todas as grafias antes de gravar; se alguém já tem, é o
+    // mesmo conflito de sempre (o número não é gravado e a tela o nomeia).
+    const { data: dono } = await supabase
+      .from("channel_sessions")
+      .select("id")
+      .eq("organization_id", activeOrg.orgId)
+      .is("archived_at", null)
+      .neq("id", id)
+      .in("phone_number", grafiasDoNumeroDoCanal(phoneNumber))
+      .limit(1);
+    if (dono && dono.length > 0) {
+      phoneConflict = true;
+      phoneNumber = session.phone_number as string | null;
+    } else {
+      patch.phone_number = phoneNumber;
+    }
+  }
 
   const gravar = (corpo: Record<string, unknown>) =>
     supabase
@@ -227,7 +252,6 @@ export async function GET(
       .eq("organization_id", activeOrg.orgId)
       .eq("id", id);
 
-  let phoneConflict = false;
   const { error: syncErr } = await gravar(patch);
   if (syncErr) {
     // 23505 aqui só pode ser a trava de número único (0106): ESTE número já está
