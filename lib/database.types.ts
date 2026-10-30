@@ -4221,6 +4221,8 @@ export type Database = {
           wacalls_jid: string | null
           wacalls_paired_at: string | null
           wacalls_session_id: string | null
+          waha_api_key_encrypted: string | null
+          waha_base_url: string | null
           waha_session_name: string | null
           warmup_completed_at: string | null
           warmup_started_at: string | null
@@ -4257,6 +4259,8 @@ export type Database = {
           wacalls_jid?: string | null
           wacalls_paired_at?: string | null
           wacalls_session_id?: string | null
+          waha_api_key_encrypted?: string | null
+          waha_base_url?: string | null
           waha_session_name?: string | null
           warmup_completed_at?: string | null
           warmup_started_at?: string | null
@@ -4293,6 +4297,8 @@ export type Database = {
           wacalls_jid?: string | null
           wacalls_paired_at?: string | null
           wacalls_session_id?: string | null
+          waha_api_key_encrypted?: string | null
+          waha_base_url?: string | null
           waha_session_name?: string | null
           warmup_completed_at?: string | null
           warmup_started_at?: string | null

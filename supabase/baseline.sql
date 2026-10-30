@@ -45418,3 +45418,18 @@ comment on column public.ai_agent_versions.inbound_debounce_ms is
 alter table public.ai_agent_versions
   add constraint ai_agent_versions_inbound_debounce_ms_check
   check (inbound_debounce_ms is null or (inbound_debounce_ms >= 0 and inbound_debounce_ms <= 60000));
+
+-- ---- WAHA por empresa: endereço e chave por canal (migration 9001) ----
+-- 9001 (numeração escolhida pelo Celuzap; ver o arquivo da migration): o canal passa a poder carregar o endereço e a chave do
+-- PRÓPRIO WAHA, em vez de depender só do WAHA global da instalação. Duas colunas opcionais, sem
+-- default, sem constraint, sem índice e sem função (nada a revogar de anon); NULL nas duas =
+-- usa o WAHA global, como antes. A chave é cifrada por `fn_encrypt_oauth` e só service_role a
+-- decifra. Reaplicável: `add column if not exists` e `comment on` não falham na segunda passada.
+alter table public.channel_sessions
+  add column if not exists waha_base_url text,
+  add column if not exists waha_api_key_encrypted bytea;
+
+comment on column public.channel_sessions.waha_base_url is
+  'Endereço interno do WAHA DESTE canal (http/https). NULL = usa o WAHA global da instalação (modo compartilhado). Só o operador da plataforma escreve; nunca vai ao navegador do lojista.';
+comment on column public.channel_sessions.waha_api_key_encrypted is
+  'Chave de API do WAHA deste canal, cifrada por public.fn_encrypt_oauth (pgp_sym AES-256). NUNCA em claro: só service_role decifra (fn_decrypt_oauth). NULL = sem chave própria. Nunca vai ao navegador.';
