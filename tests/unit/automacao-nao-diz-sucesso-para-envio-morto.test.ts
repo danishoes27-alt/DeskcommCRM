@@ -59,7 +59,7 @@ describe("desfechoDoEnvio — o run conta o que aconteceu com a mensagem", () =>
       error_message: "fetch failed",
     });
     // Quem lê a aba Atividade é quem montou a automação, não quem escreveu o adapter.
-    expect(d.error).toContain("serviço de WhatsApp");
+    expect(d.error).toContain("WhatsApp desta empresa");
     expect(d.error).not.toBe("fetch failed");
   });
 

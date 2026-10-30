@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { actionConfigSchema } from "@/lib/followup/graph-schema";
 import { MODOS_DA_ACAO, opcoes, type ModoDaAcao } from "@/lib/followup/vocabulario";
 import { useMessageTemplates } from "@/hooks/inbox/useMessageTemplates";
-import { useModelosAprovadosDoFluxo } from "@/hooks/followup/useModelosAprovadosDoFluxo";
+import { useAlgumCanalExigeModelo, useModelosAprovadosDoFluxo } from "@/hooks/followup/useModelosAprovadosDoFluxo";
 import { useT } from "@/hooks/i18n/useT";
 
 import type { ConfigOf } from "./shared";
@@ -125,6 +125,9 @@ export function ActionForm({
   onChange: (c: ConfigOf<"action">) => void;
 }) {
   const t = useT();
+  // "Janela de 24 horas" e "modelo aprovado" só existem para quem tem um canal que os exige; número só por QR
+  // manda texto livre a qualquer hora. Um plano B já gravado continua visível, para não sumir sem aviso.
+  const exigeModelo = useAlgumCanalExigeModelo();
   const [mode, setMode] = useState(config.mode);
   const [body, setBody] = useState(config.mode === "text" ? config.body : "");
   const [promptHint, setPromptHint] = useState(config.mode === "ai_message" ? config.prompt_hint : "");
@@ -217,21 +220,23 @@ export function ActionForm({
               }}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="action-fallback">
-              {t("Se a janela de 24 horas já tiver fechado, mandar este modelo aprovado no lugar da IA")}
-            </Label>
-            <SeletorDeModelo
-              id="action-fallback"
-              valor={fallbackTemplateId}
-              permiteVazio
-              soAprovados
-              onChange={(v) => {
-                setFallbackTemplateId(v);
-                commit({ mode, ...fields, fallbackTemplateId: v });
-              }}
-            />
-          </div>
+          {(exigeModelo || fallbackTemplateId !== "") && (
+            <div className="space-y-2">
+              <Label htmlFor="action-fallback">
+                {t("Se a janela de 24 horas já tiver fechado, mandar este modelo aprovado no lugar da IA")}
+              </Label>
+              <SeletorDeModelo
+                id="action-fallback"
+                valor={fallbackTemplateId}
+                permiteVazio
+                soAprovados
+                onChange={(v) => {
+                  setFallbackTemplateId(v);
+                  commit({ mode, ...fields, fallbackTemplateId: v });
+                }}
+              />
+            </div>
+          )}
         </>
       ) : (
         <div className="space-y-2">
@@ -246,9 +251,11 @@ export function ActionForm({
               commit({ mode, ...fields, templateId: v });
             }}
           />
-          <p className="text-xs text-text-muted">
-            {t("Depois de 24 horas sem resposta do cliente, só um modelo aprovado no WhatsApp chega até ele.")}
-          </p>
+          {exigeModelo && (
+            <p className="text-xs text-text-muted">
+              {t("Depois de 24 horas sem resposta do cliente, só um modelo aprovado no WhatsApp chega até ele.")}
+            </p>
+          )}
         </div>
       )}
       {error && <p className="text-xs text-error-fg">{error}</p>}

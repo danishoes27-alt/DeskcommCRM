@@ -193,11 +193,10 @@ test.describe("J1 — onboarding do dono numa instalação fresca", () => {
     await login(page);
     await page.waitForURL(/\/onboarding\/connect-whatsapp/);
 
-    // O passo agora ABRE PERGUNTANDO como a pessoa já usa o número — o código
-    // deixou de ser suposição. Escolher "leio um código com o celular" é o que
-    // sobe a sessão; antes ela subia sozinha na montagem da tela, e quem tinha
-    // conta oficial entrava pelo caminho errado sem ter sido perguntado.
-    await page.getByTestId("forma-qr").locator("input").click();
+    // Empresa nova vai direto ao QR. Só quem já tem um canal oficial ou de parceiro vê a pergunta de abertura
+    // ("como você já usa esse número?"); nesse caso escolher "leio um código com o celular" é o que sobe a sessão.
+    const pergunta = page.getByTestId("forma-qr");
+    if ((await pergunta.count()) > 0) await pergunta.locator("input").click();
 
     // sem banner de "WAHA não está configurado"
     // O nome do transporte saiu da tela: o aviso agora fala do "WhatsApp desta

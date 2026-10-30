@@ -41,10 +41,22 @@ import { rotaDeTemplates } from "@/lib/channels/templates-fonte";
 export function ConexoesShell({
   wahaConfigured,
   wacallsConfigured,
+  wahaComProblema = false,
   graphParceiro = null,
+  mostrarOficial = true,
+  mostrarParceiro = true,
 }: {
   wahaConfigured: boolean;
   wacallsConfigured: boolean;
+  /** O WhatsApp da empresa tem cadastro, mas ele está quebrado (a tela diz "problema", não "preparando"). */
+  wahaComProblema?: boolean;
+  /**
+   * As abas do canal oficial (com os modelos da Meta) e do provedor parceiro só aparecem para a empresa que
+   * TEM um canal desse tipo. Para quem só conecta número por QR elas levam a formulários sem sentido, e
+   * tela que não serve parece tela quebrada. O padrão é mostrar, para quem monta a tela sem saber.
+   */
+  mostrarOficial?: boolean;
+  mostrarParceiro?: boolean;
   /**
    * O canal parceiro que espelha a Cloud API (recorte do #1130) é OPCIONAL DA
    * INSTALAÇÃO e nasce desligado (decisão do dono, doc 54). `null` = a
@@ -60,9 +72,9 @@ export function ConexoesShell({
   const aba =
     abaParam === "sociais"
       ? "sociais"
-      : abaParam === "oficial"
+      : abaParam === "oficial" && mostrarOficial
       ? "oficial"
-      : abaParam === "parceiro"
+      : abaParam === "parceiro" && mostrarParceiro
         ? "parceiro"
         : abaParam === "telefonia"
           ? "telefonia"
@@ -97,12 +109,12 @@ export function ConexoesShell({
             estrito: o dia em que alguém escrever o nome do provider aqui DE VERDADE,
             ele reprova igual. */}
         <TabsTrigger value="numeros">{t("Números por QR")}</TabsTrigger>
-        <TabsTrigger value="oficial">{t("API Oficial (Meta)")}</TabsTrigger>
+        {mostrarOficial && <TabsTrigger value="oficial">{t("API Oficial (Meta)")}</TabsTrigger>}
         {/* "Provedor parceiro" e não a marca: o rótulo da marca vem do servidor
             (`lib/channels/connect`), porque a tela não pode nomear provider — e
             porque no dia em que houver um segundo parceiro esta aba não muda.
             Aqui fica o CONCEITO; lá dentro o cartão diz de quem se trata. */}
-        <TabsTrigger value="parceiro">{t("Provedor parceiro")}</TabsTrigger>
+        {mostrarParceiro && <TabsTrigger value="parceiro">{t("Provedor parceiro")}</TabsTrigger>}
         <TabsTrigger value="telefonia">{t("Telefone")}</TabsTrigger>
         <TabsTrigger value="sociais">{t("Redes sociais")}</TabsTrigger>
         <TabsTrigger value="voz">{t("Chamada de voz")}</TabsTrigger>
@@ -110,7 +122,7 @@ export function ConexoesShell({
       </TabsList>
 
       <TabsContent value="numeros" className="mt-0">
-        <ConnectionsClient wahaConfigured={wahaConfigured} />
+        <ConnectionsClient wahaConfigured={wahaConfigured} wahaComProblema={wahaComProblema} />
       </TabsContent>
 
       <TabsContent value="telefonia" className="mt-0">

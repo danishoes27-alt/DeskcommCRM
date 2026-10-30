@@ -99,6 +99,11 @@ export function MessageBubble({
   const isOutbound = message.direction === "outbound";
   const time = format(new Date(message.sent_at), "HH:mm", { locale: localeDaData });
   const isFailed = message.status === "failed";
+  const naoEnviadaPorQueda =
+    isOutbound &&
+    message.status === "queued" &&
+    ["user", "crm"].includes(message.sent_via) &&
+    Boolean(message.metadata?.queued_reason);
   const hasMedia = Boolean(message.media_url || message.media_storage_path);
   const isContact = message.type === "contact";
   // Pino com coordenadas: o cartão substitui o corpo, que é só o mesmo link em texto.
@@ -414,6 +419,17 @@ export function MessageBubble({
             <CitationButton citations={citations} messageId={message.id} />
           )}
           {isOutbound && !isFailed && <AckIndicator status={message.status} t={t} />}
+          {naoEnviadaPorQueda && (
+            // Mensagem digitada por uma pessoa enquanto o WhatsApp estava fora do ar fica na fila SEM sair por
+            // conta própria (o reenvio automático é só de IA, automação e sistema). Sem este aviso ela parecia
+            // enviada: um relógio parado, sem uma palavra.
+            <span
+              className="inline-flex items-center gap-0.5 font-semibold text-destructive"
+              title={t("Esta mensagem não foi enviada porque o WhatsApp estava desconectado. Reconecte e envie de novo.")}
+            >
+              <WarningOctagon size={10} weight="fill" aria-hidden /> {t("Não enviada: WhatsApp desconectado")}
+            </span>
+          )}
           {isFailed && (
             // Provider local: o painel do inbox não tem TooltipProvider ancestral e
             // este Tooltip só monta em mensagem failed — sem o provider, abrir uma

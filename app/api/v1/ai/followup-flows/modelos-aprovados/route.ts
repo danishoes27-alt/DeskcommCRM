@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 
 import { ok, fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
+import { canaisComModeloDaEmpresa } from "@/lib/channels/canais-com-modelo-da-empresa";
 import { modelosQueOFluxoEnvia, type LinhaDeModeloDoCanal } from "@/lib/followup/modelos-aprovados";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,5 +30,11 @@ export async function GET(): Promise<Response> {
     .order("name");
   if (error) return fail("internal_error", error.message, 500, { requestId });
 
-  return ok(modelosQueOFluxoEnvia((data ?? []) as LinhaDeModeloDoCanal[]), { requestId });
+  // `exige_modelo` vai em `meta`: a tela só fala de "janela de 24 horas" e "modelo aprovado" para quem tem um
+  // canal que exige isso (número só por QR manda texto livre a qualquer hora).
+  const { exigeModelo } = await canaisComModeloDaEmpresa(supabase, authz.org.orgId);
+  return ok(modelosQueOFluxoEnvia((data ?? []) as LinhaDeModeloDoCanal[]), {
+    requestId,
+    meta: { exige_modelo: exigeModelo },
+  });
 }

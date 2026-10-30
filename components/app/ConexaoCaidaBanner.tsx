@@ -49,6 +49,11 @@ export function ConexaoCaidaBanner({ caidas }: { caidas: ConexaoCaida[] }) {
     || (activeOrg !== null && ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin);
   const uma = caidas.length === 1 ? caidas[0] : null;
   const precisaEscanear = caidas.some((c) => c.status === "SCAN_QR_CODE");
+  // O botão abre a tela do QR do número que precisa voltar, direto — não a lista de conexões para a pessoa procurar.
+  // Número esperando o QR vem primeiro; um que caiu (FAILED) também se religa por ali, gerando outro QR.
+  const alvo = caidas.find((c) => c.status === "SCAN_QR_CODE") ?? caidas.find((c) => c.status === "FAILED");
+  const destino = alvo ? `/app/connections?conectar=${encodeURIComponent(alvo.id)}` : "/app/connections";
+  const rotuloDoBotao = precisaEscanear ? t("Escanear o QR") : alvo ? t("Reconectar") : t("Ver conexões");
 
   return (
     <div
@@ -76,10 +81,10 @@ export function ConexaoCaidaBanner({ caidas }: { caidas: ConexaoCaida[] }) {
         </span>
       </div>
       {podeAbrirConexoes ? <Link
-        href="/app/connections"
+        href={destino}
         className="rounded-md border border-red-400 bg-white/70 px-3 py-1 font-medium text-red-950 hover:bg-white dark:border-red-700 dark:bg-red-900/40 dark:text-red-50 dark:hover:bg-red-900/70"
       >
-        {precisaEscanear ? t("Escanear o QR") : t("Ver conexões")}
+        {rotuloDoBotao}
       </Link> : <span>{t("Peça a quem administra para revisar a conexão do WhatsApp.")}</span>}
     </div>
   );

@@ -35,6 +35,7 @@ import {
   type ChannelSessionRef,
 } from "@/lib/channels";
 import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/archived";
+import { usaModeloAprovado } from "@/lib/channels/capabilities";
 import { conferirDefinicao } from "@/lib/channels/conferir-definicao";
 import { estadoDaJanela } from "@/lib/channels/janela";
 import { isMediaPathOwnedBy } from "@/lib/messaging/media/upload-validation";
@@ -518,6 +519,25 @@ export async function sendMessageHandler(
         ),
       );
     }
+  }
+
+  // ─── Modelo aprovado num número que não usa modelo ────────────────────────
+  //
+  // Número conectado por QR não tem definição aprovada para conferir nem plataforma que a exija. Antes
+  // disto o envio de modelo para uma conversa assim caía no caminho do canal oficial, que lê a
+  // credencial do AMBIENTE: a mensagem saía (ou falhava) por outro número, o da Meta. A recusa vem
+  // antes de qualquer linha nascer e diz a saída — texto livre, que esse canal aceita a qualquer hora.
+  if (input.type === "template" && !usaModeloAprovado(c.channel_sessions?.provider)) {
+    throw new ApiError(
+      422,
+      "modelo_indisponivel",
+      { codigo: "modelo_indisponivel", use: "text" },
+      ctx.requestId,
+      traduzir(
+        "Este número é conectado por QR e não usa modelos aprovados. Envie a mensagem como texto.",
+        ctx.idioma ?? "pt-BR",
+      ),
+    );
   }
 
   if (

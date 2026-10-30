@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+
 import { useT } from "@/hooks/i18n/useT";
 import type { MessageTemplate } from "@/hooks/inbox/useMessageTemplates";
 
@@ -32,7 +34,12 @@ export function TemplateMenu({ open, query, templates, onPick, onClose: _onClose
       aria-label={t("Templates de script")}
     >
       {filtered.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-muted-foreground">{t("Nenhuma resposta rápida ainda. Crie na tela Respostas rápidas.")}</div>
+        <div className="px-3 py-2 text-xs text-muted-foreground">
+          <p>{t("Nenhuma resposta rápida ainda. Crie na tela Respostas rápidas.")}</p>
+          <Link href="/app/templates" className="mt-1 inline-block font-medium text-primary hover:underline">
+            {t("Abrir Respostas rápidas")}
+          </Link>
+        </div>
       ) : (
         filtered.map((tpl) => (
           <button

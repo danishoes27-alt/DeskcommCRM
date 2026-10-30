@@ -27,8 +27,8 @@ function view(role: Role, locale: "pt-BR" | "es", who = baseUser, caidas: Conexa
   </AuthProvider>;
 }
 const copy = {
-  "pt-BR": { qr: "Escanear o QR", connections: "Ver conexões", help: "Peça a quem administra para revisar a conexão do WhatsApp.", outage: "nenhuma mensagem entra nem sai." },
-  es: { qr: "Escanear el QR", connections: "Ver conexiones", help: "Pide a quien administra que revise la conexión de WhatsApp.", outage: "ningún mensaje entra ni sale." },
+  "pt-BR": { qr: "Escanear o QR", reconnect: "Reconectar", connections: "Ver conexões", help: "Peça a quem administra para revisar a conexão do WhatsApp.", outage: "nenhuma mensagem entra nem sai." },
+  es: { qr: "Escanear el QR", reconnect: "Reconectar", connections: "Ver conexiones", help: "Pide a quien administra que revise la conexión de WhatsApp.", outage: "ningún mensaje entra ni sale." },
 };
 
 describe.each(["pt-BR", "es"] as const)("alerta de conexão em %s", locale => {
@@ -40,10 +40,10 @@ describe.each(["pt-BR", "es"] as const)("alerta de conexão em %s", locale => {
     const mounted = render(view(role, locale, who));
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Vendas");
-    expect(within(alert).getByRole("link", { name: copy[locale].qr })).toHaveAttribute("href", "/app/connections");
+    expect(within(alert).getByRole("link", { name: copy[locale].qr })).toHaveAttribute("href", "/app/connections?conectar=channel");
     expect(within(alert).queryByText(copy[locale].help)).toBeNull();
     mounted.rerender(view(role, locale, who, [{ id: "channel", apelido: "Vendas", status: "FAILED" }]));
-    expect(within(screen.getByRole("alert")).getByRole("link", { name: copy[locale].connections })).toHaveAttribute("href", "/app/connections");
+    expect(within(screen.getByRole("alert")).getByRole("link", { name: copy[locale].reconnect })).toHaveAttribute("href", "/app/connections?conectar=channel");
   });
 
   it.each([

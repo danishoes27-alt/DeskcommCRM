@@ -22,7 +22,8 @@ const FRASES: Record<string, string> = {
   channel_session_not_working:
     "O número escolhido não está conectado no momento. Reconecte em Conexões — a mensagem sai sozinha quando ele voltar.",
   // Credencial do transporte ausente no ambiente da instalação.
-  waha_not_configured: "A conexão de WhatsApp ainda não foi configurada nesta instalação.",
+  waha_not_configured:
+    "O WhatsApp desta empresa ainda não está pronto. Fale com o suporte — a mensagem sai sozinha quando ele estiver no ar.",
   meta_not_configured: "A conexão de WhatsApp ainda não foi configurada nesta instalação.",
   zernio_not_configured: "A conexão de WhatsApp ainda não foi configurada nesta instalação.",
   // Canal excluído da Central de Conexões (migration 0106).
@@ -30,7 +31,8 @@ const FRASES: Record<string, string> = {
     "Esse número foi excluído da Central de Conexões. Escolha outro número nesta automação.",
   missing_phone_number: "O contato não tem telefone para receber a mensagem.",
   // O transporte não respondeu, ou respondeu erro.
-  waha_error: "Não conseguimos falar com o serviço de WhatsApp. Confira se ele está no ar.",
+  waha_error:
+    "Não conseguimos falar com o WhatsApp desta empresa agora. Tente de novo em instantes; se continuar, fale com o suporte.",
   meta_error: "O WhatsApp Oficial recusou o envio. Confira a conexão em Conexões.",
   zernio_error: "O canal recusou o envio. Confira a conexão em Conexões.",
   // Falha do NOSSO Storage ao preparar a mídia — não é do canal.

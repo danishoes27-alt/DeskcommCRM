@@ -130,7 +130,14 @@ function enumerar(partes: (string | null)[], t: (texto: string) => string): stri
   return uteis.length > 0 ? `${uteis.join(", ")} ${t("e")} ${ultimo}` : ultimo;
 }
 
-export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean }) {
+export function ConnectionsClient({
+  wahaConfigured,
+  wahaComProblema = false,
+}: {
+  wahaConfigured: boolean;
+  /** O cadastro do WhatsApp desta empresa existe mas não está utilizável (quebrado): não é "preparando". */
+  wahaComProblema?: boolean;
+}) {
   const tagDoIdioma = useTagDeIdioma();
   const t = useT();
   const qc = useQueryClient();
@@ -151,6 +158,21 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   const [gruposId, setGruposId] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<ChannelSession | null>(null);
   const pacingItems = usePacingKnobs().data?.items ?? [];
+
+  // O aviso de "conexão caída" manda para cá com `?conectar=<id>`: abre o QR daquele número direto, uma vez só.
+  const abriuQrDaUrl = useRef(false);
+  useEffect(() => {
+    if (abriuQrDaUrl.current || !sessions) return;
+    const alvo = new URLSearchParams(window.location.search).get("conectar");
+    if (!alvo) return;
+    abriuQrDaUrl.current = true;
+    const sessao = sessions.find((s) => s.id === alvo);
+    if (!sessao) return;
+    setQr({ sessionId: sessao.id, title: t("Reconectar WhatsApp") });
+    const url = new URL(window.location.href);
+    url.searchParams.delete("conectar");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, [sessions, t]);
 
   // Mexer nos canais (criar, excluir, reconectar, health check) muda a LISTA de
   // conexões — e a ficha de Proteção de envio (`pacing-knobs`) é indexada por
@@ -323,21 +345,14 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
       }}>{t("Copiar detalhes")}</Button></details>}
       <Link href="/app/settings/atendimento" className="text-sm underline">{t("Configurar responsáveis por número")}</Link>
       {!wahaConfigured && (
-        <div className="rounded-md border border-warning bg-warning-bg p-4 text-sm text-warning-fg">
-          <p className="font-medium">{t("O serviço do WhatsApp não está configurado.")}</p>
-          <p className="mt-1">
-            {t("Faltam o endereço e a chave do serviço (")}
-            <code>WAHA_API_BASE_URL</code> {t("e")} <code>WAHA_API_KEY</code>
-            {t(
-              ") nas variáveis de ambiente desta instalação. Enquanto isso, não dá para conectar, reconectar nem excluir os números pareados por QR — excluir um número também o desconecta do aparelho, e sem o serviço isso não acontece.",
-            )}
+        <div className="rounded-md border border-warning bg-warning-bg p-4 text-sm text-warning-fg" role="status">
+          <p className="font-medium">
+            {wahaComProblema ? t("Seu WhatsApp está com um problema.") : t("Estamos preparando o seu WhatsApp")}
           </p>
           <p className="mt-1">
-            {t("Se você roda tudo na mesma máquina, o container sobe com")}{" "}
-            <code>docker compose up -d waha</code>
-            {t(
-              ". Já apareceu aqui o caso oposto: o container no ar e o endereço configurado apontando para um lugar que não existe — subir o container de novo não conserta isso.",
-            )}
+            {wahaComProblema
+              ? t("Fale com o suporte para ajustar. Enquanto isso, não dá para conectar, reconectar nem excluir números.")
+              : t("Assim que estiver pronto, o botão para conectar o seu número libera aqui. Se demorar, fale com o suporte.")}
           </p>
         </div>
       )}
@@ -457,7 +472,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
                     aria-label={
                       podeExcluir
                         ? `${t("Excluir")} ${channelLabel(c, t)}`
-                        : `${t("Excluir")} ${channelLabel(c, t)} — ${t("indisponível enquanto o serviço do WhatsApp não estiver ativo")}`
+                        : `${t("Excluir")} ${channelLabel(c, t)} — ${t("indisponível enquanto o seu WhatsApp não estiver pronto")}`
                     }
                     onClick={() => setToDelete(c)}
                   >
@@ -777,9 +792,7 @@ function QrDialog({
             // única ação que de fato resolve.
             <div className="flex flex-col items-center gap-3 text-center">
               <p className="text-sm text-error-fg">
-                {t(
-                  "Este número foi desvinculado do WhatsApp. Para usá-lo de novo é preciso parear outra vez.",
-                )}
+                {t("A conexão deste número caiu. Gere um novo QR e escaneie de novo para voltar a usá-lo.")}
               </p>
               <Button
                 size="sm"

@@ -13757,6 +13757,58 @@ export const DICIONARIO: Traducoes = {
   "A chave de acesso foi recusada pelo WhatsApp (WAHA) desta empresa.": { es: "La clave de acceso fue rechazada por el WhatsApp (WAHA) de esta empresa." },
   "O endereço respondeu, mas não parece ser um WAHA.": { es: "La dirección respondió, pero no parece ser un WAHA." },
   "Informe a chave de acesso para testar.": { es: "Indica la clave de acceso para probar." },
+  "Este número é conectado por QR e não usa modelos aprovados. Envie a mensagem como texto.": {
+    es: "Este número está conectado por QR y no usa plantillas aprobadas. Envía el mensaje como texto.",
+  },
+  "Por onde seu negócio fala com o cliente. Conecte seus números e acompanhe a saúde de cada um.": {
+    es: "Por dónde tu negocio habla con el cliente. Conecta tus números y sigue la salud de cada uno.",
+  },
+  "Abrir Respostas rápidas": { es: "Abrir Respuestas rápidas" },
+  "Estamos preparando o seu WhatsApp": {
+    es: "Estamos preparando tu WhatsApp",
+  },
+  "Seu WhatsApp está com um problema.": {
+    es: "Tu WhatsApp tiene un problema.",
+  },
+  "Fale com o suporte para ajustar. Enquanto isso, não dá para conectar, reconectar nem excluir números.": {
+    es: "Habla con soporte para ajustarlo. Mientras tanto, no se pueden conectar, reconectar ni eliminar números.",
+  },
+  "Assim que estiver pronto, o botão para conectar o seu número libera aqui. Se demorar, fale com o suporte.": {
+    es: "En cuanto esté listo, el botón para conectar tu número se habilita aquí. Si tarda, habla con soporte.",
+  },
+  "indisponível enquanto o seu WhatsApp não estiver pronto": {
+    es: "no disponible mientras tu WhatsApp no esté listo",
+  },
+  "Reconectar WhatsApp": {
+    es: "Reconectar WhatsApp",
+  },
+  "A conexão deste número caiu. Gere um novo QR e escaneie de novo para voltar a usá-lo.": {
+    es: "La conexión de este número se cayó. Genera un nuevo QR y escanéalo de nuevo para volver a usarlo.",
+  },
+  "Verificar de novo": {
+    es: "Verificar de nuevo",
+  },
+  "Assim que estiver pronto, o código para conectar o seu número aparece aqui. Dá para seguir sem ele agora e conectar o número depois, em": {
+    es: "En cuanto esté listo, el código para conectar tu número aparece aquí. Puedes seguir sin él ahora y conectar el número después, en",
+  },
+  "Pode ser só uma instabilidade passageira.": {
+    es: "Puede ser solo una inestabilidad pasajera.",
+  },
+  "O WhatsApp não respondeu agora. Tente de novo; se continuar, fale com o suporte.": {
+    es: "WhatsApp no respondió ahora. Inténtalo de nuevo; si continúa, habla con soporte.",
+  },
+  "Esta mensagem não foi enviada porque o WhatsApp estava desconectado. Reconecte e envie de novo.": {
+    es: "Este mensaje no se envió porque WhatsApp estaba desconectado. Reconecta y envíalo de nuevo.",
+  },
+  "Não enviada: WhatsApp desconectado": {
+    es: "No enviado: WhatsApp desconectado",
+  },
+  "O WhatsApp desta empresa ainda não está pronto. Fale com o suporte — a mensagem sai sozinha quando ele estiver no ar.": {
+    es: "El WhatsApp de esta empresa aún no está listo. Habla con soporte: el mensaje sale solo cuando esté en línea.",
+  },
+  "Não conseguimos falar com o WhatsApp desta empresa agora. Tente de novo em instantes; se continuar, fale com o suporte.": {
+    es: "No pudimos comunicarnos con el WhatsApp de esta empresa ahora. Inténtalo de nuevo en unos instantes; si continúa, habla con soporte.",
+  },
 };
 
 /**

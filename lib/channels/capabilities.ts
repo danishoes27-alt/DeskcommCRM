@@ -217,3 +217,12 @@ export function capabilitiesOf(provider: ChannelProvider): ChannelCapabilities {
   if (!caps) throw new Error(`unknown_channel_provider: ${provider}`);
   return caps;
 }
+
+/**
+ * Este canal tem MODELO aprovado (template) — ou seja, existe definição a conferir e plataforma que a
+ * exija fora da janela? Número conectado por QR não tem: quem pergunta "posso mandar modelo por aqui?"
+ * recebe `false` sem precisar saber de qual canal se trata.
+ */
+export function usaModeloAprovado(provider: string | null | undefined): boolean {
+  return capabilitiesOf((provider ?? DEFAULT_CHANNEL_PROVIDER) as ChannelProvider).requiresTemplates;
+}

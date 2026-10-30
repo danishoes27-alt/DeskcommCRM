@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { ConexoesShell } from "@/components/connections/ConexoesShell";
+import { canaisComModeloDaEmpresa } from "@/lib/channels/canais-com-modelo-da-empresa";
 import { canalGraphParceiroLigado, GRAPH_PARTNER_LABEL } from "@/lib/channels/graph-parceiro/credentials";
 import { wahaDaOrganizacaoParaRota } from "@/lib/channels/waha-endpoint-app";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Conexões" };
@@ -22,10 +24,13 @@ export default async function ConnectionsPage() {
 
   // "O WhatsApp desta empresa está de pé?": ela tem WAHA próprio cadastrado pelo operador ou, no modo
   // compartilhado, o da instalação. Não depende mais de variável de ambiente global.
-  const wahaConfigured = await wahaDaOrganizacaoParaRota(activeOrg.orgId)
-    .then((r) => r.ok)
-    .catch(() => false);
+  const waha = await wahaDaOrganizacaoParaRota(activeOrg.orgId).catch(() => null);
+  const wahaConfigured = waha?.ok === true;
+  // Cadastro que existe mas não presta (chave ilegível, endereço inválido) não é "estamos preparando": a tela diz que há um problema.
+  const wahaComProblema = waha !== null && !waha.ok && waha.motivo === "cadastro_quebrado";
   const wacallsConfigured = Boolean(process.env.WACALLS_API_BASE_URL);
+  // Empresa que só conecta número por QR não vê as abas do canal oficial nem do provedor parceiro.
+  const comModelo = await canaisComModeloDaEmpresa(await createClient(), activeOrg.orgId);
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
@@ -33,14 +38,17 @@ export default async function ConnectionsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Conexões", idioma)}</h1>
         <p className="text-sm text-muted-foreground">
           {traduzir(
-            "Por onde seu negócio fala com o cliente. Conecte números por QR ou o número oficial da Meta, e acompanhe a saúde de cada um.",
+            "Por onde seu negócio fala com o cliente. Conecte seus números e acompanhe a saúde de cada um.",
             idioma,
           )}
         </p>
       </header>
       <ConexoesShell
         wahaConfigured={wahaConfigured}
+        wahaComProblema={wahaComProblema}
         wacallsConfigured={wacallsConfigured}
+        mostrarOficial={comModelo.oficial}
+        mostrarParceiro={comModelo.parceiro}
         graphParceiro={canalGraphParceiroLigado() ? { label: GRAPH_PARTNER_LABEL } : null}
       />
     </div>

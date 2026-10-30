@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { fontesDoAppDaMeta } from "@/lib/channels/meta/app";
 import { metaPodeReceber } from "@/lib/channels/meta/webhook";
 import { nomeCurtoDaSessao } from "@/lib/channels/nome-da-sessao";
+import { canaisComModeloDaEmpresa } from "@/lib/channels/canais-com-modelo-da-empresa";
 import { wahaDaOrganizacaoParaRota } from "@/lib/channels/waha-endpoint-app";
+import { createClient } from "@/lib/supabase/server";
 import { ConnectWhatsappClient } from "./_client";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -27,6 +29,9 @@ export default async function ConnectWhatsappPage() {
   // — App Secret de um lado com verify token do outro é um app que não existe, e
   // esta tela diria que está tudo pronto.
   const oficialPodeReceber = metaPodeReceber(await fontesDoAppDaMeta());
+  // "Conta oficial" e "provedor parceiro" só são oferecidos a quem já tem um canal desse tipo; quem conecta o número
+  // no celular vai direto ao QR.
+  const comModelo = await canaisComModeloDaEmpresa(await createClient(), activeOrg.orgId);
   // We don't try to start the session at SSR — client kicks off the call
   // (and shows graceful banner if WAHA is not reachable).
 
@@ -48,6 +53,7 @@ export default async function ConnectWhatsappPage() {
         wahaConfigured={wahaConfigured}
         sessionName={nomeCurtoDaSessao(activeOrg.orgId)}
         oficialPodeReceber={oficialPodeReceber}
+        outrasFormas={comModelo.oficial || comModelo.parceiro}
       />
     </div>
   );
