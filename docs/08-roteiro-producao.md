@@ -4,6 +4,7 @@
 **Escrito em:** 30/10/2026, a partir do plano (`08-plano-waha-por-empresa.md`, tarefas 20 a 22) e **ajustado ao que foi realmente construído** na branch `celuzap-1.69.0-r2`.
 **Revisado em:** 31/10/2026. **Correção:** a conferência da migração 9001 deixou de depender da tabela `supabase_migrations.schema_migrations`, que **não existe** neste banco. Agora ela é feita pelas duas colunas e pelo gatilho que a migração cria (Roteiro 21, "Antes", item 3). Os roteiros 20 e 22 foram revisados no mesmo ponto e em outros que a leitura do código mostrou errados.
 **Versão passo a passo, uma etapa por vez, com os textos prontos para colar:** `13-roteiro-bloco-d.md`. Este arquivo é o resumo por roteiro; se os dois divergirem, vale o `13-roteiro-bloco-d.md`.
+**Ordem de execução:** Roteiro 21, depois 20, depois 22.
 
 Regras que valem para os três roteiros:
 - A VPS é compartilhada com o site que já roda nela (outro projeto do EasyPanel, o que existia antes do `celuzap`). **Ele nunca pode ser afetado.** Qualquer sinal estranho nele: parar tudo e voltar ao estado anterior.
@@ -15,7 +16,7 @@ Regras que valem para os três roteiros:
 
 ## Roteiro 20 — O WAHA da Grau Cell no EasyPanel
 
-**O que faz:** cria o serviço que fala com o WhatsApp da Grau Cell, no projeto `celuzap` (**nunca** no outro projeto que já existia no EasyPanel). **Só depois do Roteiro 21:** a tela do operador e o botão de gerar chave são da r2. Versão passo a passo: Etapa 8 do roteiro do Bloco D.
+**O que faz:** cria o serviço que fala com o WhatsApp da Grau Cell, no projeto `celuzap` (**nunca** no outro projeto que já existia no EasyPanel). **Só depois do Roteiro 21:** a tela do operador e o botão de gerar chave são da r2. **Pré-requisito:** empresa e funis criados (Etapa 7 do roteiro do Bloco D). Versão passo a passo: Etapa 8 do roteiro do Bloco D.
 
 **1. Gerar a chave (na tela do operador, no navegador; não precisa de terminal).** Em `/admin/tenants`, abra a empresa Grau Cell → aba **WhatsApp** → seção **Criar o servidor desta empresa** → **Gerar chave nova**. A tela mostra **uma única vez**: a **chave** (você guarda no gerenciador de senhas; é o que será colado no cadastro), o **valor da variável de acesso** (um texto que começa com `sha512:`; é o que vai para o EasyPanel) e o kit de criação. Eu não vejo os valores.
 
@@ -145,19 +146,20 @@ Voltar as 3 linhas para os valores de hoje (acima) ou para a imagem r1 (`ghcr.io
 
 **O que faz:** liga o número real, **só para você**, antes de liberar ao público. **Só começa com o seu "sim" explícito** e depois do seu "go" sobre a Grau Cell. Pré-requisito: Roteiros 20 e 21 concluídos. Versão passo a passo: Etapas 9 a 14 do roteiro do Bloco D.
 
-1. **Antes:** a empresa precisa ter uma **credencial de IA** cadastrada (menu **Agente de IA** → **Credenciais**) **e um agente publicado e ligado ao canal** (menu **Agente de IA** → **Agentes**). Hoje a VPS deve estar sem chave de IA. Sem credencial e sem agente, só respostas humanas. Criar o agente da Grau Cell não faz parte destes roteiros.
+1. **Antes:** hoje a VPS deve estar sem chave de IA, e sem credencial e sem agente só há respostas humanas. As credenciais e o agente entram mais abaixo, depois do modo teste (item 6B).
 2. **Cadastrar o WhatsApp da empresa (tela do operador):** `/admin/tenants` → a empresa → aba **WhatsApp**. Preencha o **endereço** (o interno do serviço `waha-grau-cell`) e cole a **chave** direto no campo → **Testar conexão** → **Salvar cadastro**. A chave depois só aparece como "cadastrada". **Antes**, confira que `WAHA_WEBHOOK_BASE_URL` está no Environment do `app`: é a **base do app que o WAHA alcança** (no plano de deploy, o endereço interno `http://app:3000`; um endereço público `https://...` também serve). Sem ela a tela avisa e conectar o número fica bloqueado. Com o endereço interno, faça o teste do caminho de volta do Roteiro 20 (item 6b).
 3. **Conectar o número:** entre na empresa, vá em **Conexões** → **Conectar novo WhatsApp**. O QR aparece (o canal nasce herdando o WhatsApp cadastrado no passo 2, e **nasce fechado**: a IA não responde ninguém).
 4. **No celular:** WhatsApp → Configurações → **Dispositivos conectados** → **Conectar um dispositivo** **[confirmar na tela: o nome varia entre celulares]** → escanear. O status vira **Conectado**. **Confira o número mostrado: deve ter 13 dígitos (com o nono dígito)**. **[LIDO]** a r2 grava a forma canônica (commit 5); se aparecer com 12, pare.
-5. **Proteção de envio (obrigatória antes de qualquer resposta real):** em **Conexões**, no cartão do canal, **Proteção de envio** → **Este número é usado desde** (a data real) → **Salvar proteção**. Sem isso o número é tratado como recém-criado e o teto é de **20 envios por dia**.
+5. **Proteção de envio (obrigatória antes de qualquer resposta real):** em **Conexões**, no cartão do canal, **Proteção de envio** → **Este número é usado desde** (a data real) → **Janela de resposta (horário local)**: primeira caixa **7**, segunda **23** (a IA responde até 22h59; mensagem recebida às 23h30 espera até 7h). Não mexa na **Janela de disparo (horário local)** → **Salvar proteção**. Sem salvar essa tela, o número é tratado como recém-criado e o teto é de **20 envios por dia**.
 6. **Modo teste:** o canal novo nasce em modo teste. No cartão do canal, **Configurar acesso da IA** → **IA em modo de teste** → em **Números autorizados para teste** escreva **só o seu número** (um por linha, com `+` e código do país, por exemplo `+5511999998888`) → **Ativar modo de teste**. O cartão passa a mostrar "1 número de teste autorizado" (antes: "Nenhum número autorizado").
+6B. **Chaves, agente e aviso de caso:** cadastrar as credenciais Anthropic e OpenAI (não TypeSafe), criar e publicar o agente com o interruptor de casos ligado e configurar o aviso de caso (Etapas 12A a 12C do roteiro do Bloco D). Aviso de caso: painel nos 3 computadores e WhatsApp para o seu número (um por organização; não pode ser uma conexão da própria empresa). O número que recebe o aviso passa a ser só da equipe e a IA não responde a ele: use outro celular no modo teste, ou faça os testes com WhatsApp antes de salvar o aviso.
 7. **Mandar e receber:** do seu número, mande uma mensagem; ela aparece na inbox; responda pela inbox. Com a IA configurada, confira que ela só responde ao número autorizado (de outro número, a mensagem chega à inbox e a IA fica em silêncio).
 8. **O celular continua normal:** receber e enviar pelo celular; a mensagem enviada pelo celular aparece no Celuzap como "enviada pelo celular" e **pausa a IA por 60 minutos**.
-9. **Reiniciar o serviço do WAHA:** a sessão volta **sem pedir QR** (local: ~11 s).
+9. **Teste com 2 servidores** (Etapa 13 do roteiro do Bloco D, que já inclui reiniciar o WAHA da Grau Cell sem pedir QR; local: ~11 s).
 10. **Teste de queda:** desligar a internet do celular ou remover o aparelho vinculado. Devem aparecer o **banner** (o botão "Escanear o QR"/"Reconectar" abre o QR do número direto) e o item da Central. Reconectar pelo QR. Digite uma mensagem durante a queda: ela mostra **"Não enviada: WhatsApp desconectado"** (mensagens digitadas por pessoa **não** são reenviadas sozinhas; as de IA e automação são).
 11. **Liberar ao público** só depois de tudo acima e do seu "sim" explícito: **Configurar acesso da IA** → **Liberar atendimento ao público** → **Confirmar liberação**.
 
-**Pronto quando:** os passos 1 a 10 passam e ficam anotados no registro, com capturas de tela e logs **sem expor número nem conteúdo de mensagem de terceiros**.
+**Pronto quando:** os passos 1 a 10 passam (no item 9, os 4 critérios da Etapa 13: os dois servidores pedem QR e o QR aparece em cada empresa; o evento de um servidor só atualiza o canal da própria empresa; derrubar o servidor temporário marca só o canal dele como parado; reiniciar o WAHA da Grau Cell não pede QR de novo) e ficam anotados no registro, com capturas de tela e logs **sem expor número nem conteúdo de mensagem de terceiros**.
 **Como desfazer, do mais leve ao mais pesado:** (1) **Pausar respostas da IA** no cartão do canal; (2) no celular, desconectar o aparelho vinculado; (3) parar o serviço do WAHA da empresa (reversível; não apagar o volume); (4) como último recurso, **Excluir** o canal em Conexões (isso também desconecta o aparelho). *(Não existe botão "Desconectar" separado nesta versão.)*
 
 **Limitações conhecidas desta versão (para você decidir antes de liberar ao público):**
@@ -167,4 +169,4 @@ Voltar as 3 linhas para os valores de hoje (acima) ou para a imagem r1 (`ghcr.io
 - sem alerta por e-mail/push enquanto o e-mail (Resend/SMTP) e o push (VAPID) não estiverem configurados na VPS;
 - sem "Desconectar" nem "Trocar número" (só "Excluir");
 - sem reenvio automático de mensagem digitada por pessoa depois de uma queda;
-- o funil padrão "Pedidos" (de loja online) não foi trocado pela r2: os funis Conserto e Venda da Grau Cell são criados pela interface (Etapa 7 do roteiro do Bloco D).
+- o funil padrão "Pedidos" (de loja online) não foi trocado pela r2: os funis Conserto (7 colunas) e Venda (7 colunas, com Análise da financeira) são criados pela interface, e você marca o Venda como padrão (Etapa 7 do roteiro do Bloco D). Impressão e Outro não têm funil e caem no Venda.

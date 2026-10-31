@@ -39,14 +39,14 @@
 | 2 | Prova de que o app antigo aguenta a migração 9001 | só leitura | nenhum |
 | 3 | Aplicar a migração 9001 no Supabase | você, no navegador | **médio** |
 | 4 | Trocar as 3 imagens no EasyPanel | você, no navegador | **alto** |
-| 5 | Conferir a troca (e 5B, opcional: assinatura do WAHA compartilhado) | você + Claude Code | baixo |
+| 5 | Conferir a troca (e 5D, opcional: assinatura do WAHA compartilhado) | você + Claude Code | baixo |
 | 6 | Como voltar atrás (ler antes da etapa 4) | você, só leitura | — |
 | 7 | Criar a empresa Grau Cell e os funis | você, no navegador | baixo |
 | 8 | Criar o WAHA da Grau Cell e cadastrá-lo | você, no navegador | médio |
 | 9 | Parear o número por QR | você + a pessoa com o celular | médio |
 | 10 | Proteção de envio (anti-banimento) | você, no navegador | **obrigatória** |
 | 11 | Modo teste: só o seu número recebe resposta da IA | você, no navegador | baixo |
-| 12 | Chave de IA em produção | você, no navegador | baixo |
+| 12 | Chaves de IA, agente (com interruptor de casos) e aviso de caso | você, no navegador | baixo |
 | 13 | Teste com 2 servidores de WhatsApp | você, no navegador | médio |
 | 14 | Critério para ligar o número real e plano de volta | decisão sua | — |
 
@@ -408,7 +408,7 @@ commit;
 | `WAHA_WEBHOOK_BASE_URL` | **Manter.** É a base do app que o WAHA chama. Sem ela, conectar um número em servidor próprio é recusado (`webhook_base_url_missing`). Entra em uso nas Etapas 8 e 9. |
 | `WAHA_HMAC_SECRET` | **Manter** (já existe no `app` e no `worker`; 16 caracteres ou mais). |
 | `WAHA_WEBHOOK_GLOBAL_ENABLED` | **Não criar agora.** Opcional. Ausente = a rota global do WAHA compartilhado continua ligada, como hoje. Só o valor `false` a desliga (ela passaria a responder 404). Só use `false` quando nenhum canal usar o WAHA compartilhado. |
-| `WHATSAPP_HOOK_HMAC_KEY` | **Não é variável do app.** É variável do **contêiner WAHA** no YAML da aba Source. Para o WAHA compartilhado, entra na Etapa 5B (opcional). **Não entra no WAHA da Grau Cell** (a Etapa 8 explica). |
+| `WHATSAPP_HOOK_HMAC_KEY` | **Não é variável do app.** É variável do **contêiner WAHA** no YAML da aba Source. Para o WAHA compartilhado, entra na Etapa 5D (opcional). **Não entra no WAHA da Grau Cell** (a Etapa 8 explica). |
 | `AI_GATEWAY_PLANO_CONFIRMADO`, `JEV_TRIAGEM_ENABLED`, `JEV_PLANO_CONFIRMADO` | Novas e opcionais. **Deixe vazias.** Vazia significa "desligado". |
 
 ### 4A — Anotar a hora
@@ -551,7 +551,7 @@ SCHEDULER_IMAGE=ghcr.io/melgarafael/deskcomm-scheduler:stable
 
 1. Troque para a empresa Grau Cell: no seletor do topo (**Organização** / **Selecionar org** **[confirmar na tela]**).
 2. Menu **Funis** (`/app/kanban`). Clique em **Novo funil**. Em **Nome do novo funil** escreva `Conserto` e clique em **Criar funil**. **[LIDO]** O funil nasce com 4 etapas: Novo, Em andamento, Ganho, Perdido.
-3. Abra **Etapas do funil** (menu **Organização**, ou `/app/settings/tenant/pipelines`) e ajuste o funil `Conserto` até ficar exatamente assim, nesta ordem:
+3. Abra **Etapas do funil** (menu **CRM** → **Ver tudo em CRM**, ou `/app/settings/tenant/pipelines`) e ajuste o funil `Conserto` até ficar exatamente assim, nesta ordem:
    1. Pediu orçamento
    2. Aguardando aprovação
    3. Em conserto
@@ -560,20 +560,25 @@ SCHEDULER_IMAGE=ghcr.io/melgarafael/deskcomm-scheduler:stable
    6. Entregue (a etapa de ganho)
    7. Não aprovou (a etapa de perda)
 4. A tela deixa **renomear** (clique no nome), **criar** (campo **Nome da nova etapa**), **reordenar** e **arquivar**. Os controles de reordenar e de mover a marca de ganho/perda **[confirmar na tela]**. **[LIDO]** Ao marcar outra etapa como ganha ou perdida, a marca **muda de lugar** (a tela avisa "Marcar esta desmarca «…»").
-5. Repita para o funil `Venda`, com estas 6 etapas, nesta ordem:
+5. Repita para o funil `Venda`, com estas 7 etapas, nesta ordem:
    1. Novo contato
    2. Interessado
    3. Orçamento enviado
-   4. Aguardando pagamento
-   5. Vendido (a etapa de ganho)
-   6. Perdido (a etapa de perda)
-6. **O funil "Pedidos"** (de loja online) continua existindo e é o padrão. Se a Grau Cell não vende online, deixe-o **arquivado** e marque um dos dois novos como padrão **[confirmar na tela: onde se muda o funil padrão e se arquivar um funil é permitido]**. Enquanto o padrão for "Pedidos", todo contato novo sem funil escolhido cai nele.
+   4. Análise da financeira
+   5. Aguardando pagamento
+   6. Vendido (a etapa de ganho)
+   7. Perdido (a etapa de perda)
+6. **Impressão e Outro não têm funil:** não crie funil para eles. Contatos dessas categorias caem no funil padrão da empresa, que é o `Venda`.
+7. **Deixe o `Venda` como funil padrão.** Hoje o padrão é o "Pedidos" (o funil de loja online que toda empresa nova recebe). Faça nesta ordem, porque a tela recusa arquivar o funil padrão:
+   1. Menu **Funis** (`/app/kanban`). Na linha do `Venda`, clique em **Tornar padrão**. A linha do `Venda` passa a mostrar o selo **Padrão** e o botão **Tornar padrão** some dela.
+   2. Na linha do "Pedidos", clique em **Arquivar**. A tela pergunta "Arquivar «Pedidos»?" e explica que ele sai da lista e para de receber negócio novo, sem apagar nada. Clique em **Arquivar** (não use **Excluir de vez**).
+   3. Se a tela recusar o arquivamento, ela escreve o motivo (por exemplo, um formulário ou uma automação que aponta para o funil). Cole o texto aqui; não force.
 
-**Deu certo se:** em **Funis**, os dois quadros mostram as colunas na ordem pedida, cada um com uma coluna de ganho e uma de perda.
+**Deu certo se:** em **Funis**, os dois quadros mostram as colunas na ordem pedida (Conserto com 7 e Venda com 7), cada um com uma coluna de ganho e uma de perda, e o `Venda` aparece com o selo **Padrão**.
 **Se não apareceu / a tela não deixa reordenar ou mover a marca:** cole este prompt no Claude Code para ele **escrever** (sem executar) um SQL para você revisar:
 
 ```text
-NÃO EXECUTE NADA. Gere, só como texto para eu revisar, um SQL para o banco do Celuzap que crie, para a organização cujo display_name é "Grau Cell", dois funis: Conserto (etapas: Pediu orçamento, Aguardando aprovação, Em conserto, Aguardando peça, Pronto para retirar, Entregue [ganho], Não aprovou [perda]) e Venda (etapas: Novo contato, Interessado, Orçamento enviado, Aguardando pagamento, Vendido [ganho], Perdido [perda]). Leia o schema real das tabelas crm_pipelines e crm_stages em supabase/baseline.sql e respeite as regras (uma etapa de ganho e uma de perda por funil, índices únicos de slug, posições). Use a organização pelo display_name, nunca por id digitado. Faça tudo numa transação. Se precisar consultar o banco para achar o id, use apenas SELECT. Não imprima segredos.
+NÃO EXECUTE NADA. Gere, só como texto para eu revisar, um SQL para o banco do Celuzap que crie, para a organização cujo display_name é "Grau Cell", dois funis: Conserto (etapas: Pediu orçamento, Aguardando aprovação, Em conserto, Aguardando peça, Pronto para retirar, Entregue [ganho], Não aprovou [perda]) e Venda (etapas: Novo contato, Interessado, Orçamento enviado, Análise da financeira, Aguardando pagamento, Vendido [ganho], Perdido [perda]). Deixe o Venda como funil padrão da organização (troque a marca de padrão na mesma transação, porque só pode haver um funil padrão). Leia o schema real das tabelas crm_pipelines e crm_stages em supabase/baseline.sql e respeite as regras (uma etapa de ganho e uma de perda por funil, índices únicos de slug, posições). Use a organização pelo display_name, nunca por id digitado. Faça tudo numa transação. Se precisar consultar o banco para achar o id, use apenas SELECT. Não imprima segredos.
 ```
 
 **Responda:** `feito` ou cole o erro.
@@ -794,10 +799,11 @@ O WhatsApp devolve o número de celular brasileiro **sem** o 9 extra (12 dígito
 
 ---
 
-## Etapa 12 — Chave de IA em produção
+## Etapa 12 — Chaves de IA, agente (com interruptor de casos) e aviso de caso
 
-**Objetivo:** a IA poder responder.
+**Objetivo:** a IA poder responder, abrir caso para a equipe e avisar você quando abrir.
 **Quem executa:** você, no navegador.
+**Ordem:** 12A chaves de IA, 12B criar e publicar o agente (com o interruptor de casos ligado), 12C aviso de caso, 12D confirmar que o assistente responde. As chaves (12A) vêm sempre primeiro: não dependem de o agente já existir.
 
 **A VPS deve estar sem chave de IA** (**[LIDO]** no plano de deploy: `AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY` e `OPENAI_API_KEY` ficaram vazias de propósito; o estado real do seu painel **[NÃO PROVADO]**). Sem chave, só há resposta humana.
 
@@ -805,21 +811,70 @@ O WhatsApp devolve o número de celular brasileiro **sem** o 9 extra (12 dígito
 
 **Nomes das variáveis de ambiente relacionadas (só os nomes; deixe-as vazias):** `AI_GATEWAY_API_KEY` e `AI_GATEWAY_PLANO_CONFIRMADO` (juntas ligam o AI Gateway da Vercel), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`. **Por que ficam vazias:** preencher `ANTHROPIC_API_KEY` liga o worker de sentimento (legado) direto na Anthropic e ele passaria a processar a fila acumulada de eventos de teste; e `AI_GATEWAY_API_KEY` sozinha não liga nada sem `AI_GATEWAY_PLANO_CONFIRMADO` (trava central).
 
-**Pergunta (responda antes de continuar):** a Grau Cell já tem um **agente publicado e ligado ao canal** (menu **Agente de IA** → **Agentes**)? Responda `sim` ou `não`.
+### 12A — Chaves de IA
 
-- **Se `não`: pare aqui.** Sem agente publicado e vinculado ao canal, a IA não responde nem no teste ([LIDO] no painel de acesso: "O agente precisa estar publicado e vinculado a este canal"). Criar o agente (instruções, base de conhecimento, funil) é um trabalho próprio e **não faz parte deste roteiro**; precisa de um roteiro separado.
-- **Se `sim`:**
+**Cadastre duas credenciais:** **Anthropic** (a IA que conversa) e **OpenAI** (áudio e preparo dos materiais). **Não cadastre TypeSafe:** o Jev fica desligado na Grau Cell e entra depois, na r3. As variáveis `JEV_*` continuam vazias, como na Etapa 4.
 
 1. Na empresa Grau Cell, menu **Agente de IA** → **Credenciais** (`/app/ai/credentials`).
-2. Clique em **Adicionar credencial**. Escolha o **Provedor**, dê um **Nome** (opcional, por exemplo "Chave da Grau Cell"), e **cole a chave** no campo **Chave** (direto do site do provedor, nunca no chat). Clique em **Salvar e validar**.
-3. Abra **Agente de IA** → **Provedores** (`/app/ai/providers`) e confira que a mensagem "Você ainda não cadastrou a chave da sua IA principal" **sumiu**.
+2. Clique em **Adicionar credencial**. No campo **Provedor**, escolha **Anthropic (Claude)**, dê um **Nome** (opcional, por exemplo "Anthropic da Grau Cell") e **cole a chave** no campo **Chave** (direto do site do provedor, nunca no chat). Clique em **Salvar e validar**.
+3. Repita o passo 2 com o **Provedor** **OpenAI (GPT)** (nome opcional, por exemplo "OpenAI da Grau Cell"). **Não escolha** **Jev (TypeSafe AI)** na lista de provedores.
+4. Abra **Agente de IA** → **Provedores** (`/app/ai/providers`) e confira que a mensagem "Você ainda não cadastrou a chave da sua IA principal" **sumiu**. Não ligue nada do Jev nessa tela.
 
-**Deu certo se:** a credencial aparece como **Validada** com a lista de modelos, e a tela de Provedores não pede mais a chave.
+**Deu certo se:** as duas credenciais aparecem como **Validada** com a lista de modelos, e a tela de Provedores não pede mais a chave.
 **Se não apareceu:** "Falha na validação" → confira a chave e o provedor; cole a mensagem (sem a chave).
+**Responda:** `chaves ok`.
+
+### 12B — Criar e publicar o agente (com o interruptor de casos ligado)
+
+O agente é criado na Etapa 12B, com o passo a passo da pasta do agente (fora do repositório). Aqui ficam só as telas e os cuidados que valem para este roteiro:
+
+1. Menu **Agente de IA** → **Agentes** (`/app/ai/agents`) → **Novo agente**.
+2. No cartão **A inteligência que ele usa**, em **Empresa de inteligência artificial** escolha **Anthropic (Claude)**; em **Modelo**, o modelo indicado no passo a passo da pasta do agente; em **Chave de acesso**, a credencial da 12A. No cartão **Por qual número ele atende**, em **Número conectado**, escolha o número da Grau Cell (o que você pareou na Etapa 9).
+3. No cartão **Pedir ajuda sem sair da conversa**, **ligue** o interruptor **Deixar o agente pedir uma tarefa a alguém e seguir conversando**. Ele vem **desligado**; sem ele o agente não abre caso, e Conserto e Venda sempre abrem caso para a equipe.
+4. Clique em **Criar agente** e depois em **Publicar** (o botão pode mostrar o número da versão, como "Publicar v1"; confirme na janela). Sem agente publicado e vinculado a este canal, a IA não responde nem no teste ("O agente precisa estar publicado e vinculado a este canal", no painel de acesso da IA).
+5. Reabra o agente e confira que o interruptor continua ligado.
+
+**Deu certo se:** o agente aparece publicado, ligado ao número da Grau Cell, com o interruptor ligado.
+**Se não apareceu:** cole o texto que a tela mostrou (o botão **Publicar** explica o que falta).
+**Responda:** `agente publicado`.
+
+### 12C — Aviso de caso
+
+**Quem executa:** você, no navegador, com um usuário **administrador** da Grau Cell.
+
+Na tela do Aviso no WhatsApp, ligue o aviso e cadastre um número: o seu celular pessoal, com `+` e código do país. Ele não pode ser o número da Grau Cell nem de outra conexão da empresa. Nos 3 computadores, deixe o painel aberto na tela Casos.
+
+1. Abra **Aviso no WhatsApp** (`/app/ai/cases/avisos`). Ele não está no menu lateral: entre por **Agente de IA** → **Ver tudo em IA** → seção **Acompanhar o agente**, ou acrescente `/app/ai/cases/avisos` ao endereço do Celuzap.
+2. Em **Conexão que envia os avisos**, escolha o número da Grau Cell. A lista só mostra números que conseguem mandar mensagem a qualquer hora (o servidor próprio com QR serve).
+3. Em **Número que recebe os avisos**, escreva o seu celular pessoal: `+55`, o DDD e o número, tudo junto. Se quiser, preencha **Como chamar esse número (opcional)**.
+4. Ligue o interruptor **Receber avisos no WhatsApp** e clique em **Salvar**. Aparece **Aviso salvo.** Se a tela pedir para confirmar a sua identidade, confirme.
+5. Clique em **Enviar aviso de teste**. Aparece **Aviso de teste enviado. Confira o WhatsApp desse número.** e a mensagem chega no seu celular. O teste é uma mensagem de verdade, sai pelo número da Grau Cell e conta no limite diário dele: faça uma vez.
+6. Em cada um dos 3 computadores, entre no Celuzap e abra **Agente de IA** → **Casos** (`/app/ai/cases`). Deixe essa tela aberta.
+
+**Cuidado com o seu celular de teste (Etapa 11):** o número que recebe o aviso passa a ser **só da equipe**. O que ele mandar para a Grau Cell deixa de virar atendimento, e a IA não responde a ele. O jeito mais simples é usar **outro** celular no modo teste (Etapa 11). Se você só tem este, faça primeiro os testes com WhatsApp da 12D e só depois salve o aviso (passo 4), sabendo que a partir daí ele não conversa mais com a IA.
+
+**O que a tela mostra e o que significa:**
+- "Este é o mesmo número que fala com seus clientes": esperado, porque a Grau Cell é a única conexão. Os avisos contam no limite diário dela. Não bloqueia.
+- "Nenhum assistente está autorizado a abrir casos": volte à 12B (agente publicado e interruptor ligado).
+- "Esse é um dos números conectados da sua conta…": você escreveu um número que é conexão da empresa. Use o seu celular pessoal.
+- "Esse número já é de um cliente seu…": **não** clique em **Usar mesmo assim**. Clique em **Escolher outro número**.
+- "Este sistema ainda não tem um endereço na internet": **pare** e me avise.
+
+**Deu certo se:** o aviso fica salvo e ligado, o aviso de teste chega no seu celular, e a tela **Casos** abre nos 3 computadores.
+**Se não apareceu:** cole o texto que a tela mostrou.
+**Responda:** `aviso ok`.
+
+### 12D — Confirmar que o assistente responde
 
 **Como confirmar que o assistente responde:**
 - **Sem WhatsApp:** abra o agente, o painel de teste (**Executar teste**; ele avisa "Modo teste consome créditos do provider" e "Nenhuma mensagem é enviada via WhatsApp"), escreva uma mensagem e leia a resposta.
 - **Com WhatsApp:** do celular de teste (o número da Etapa 11), mande uma mensagem ao número da Grau Cell. A resposta da IA deve chegar. Depois mande uma mensagem de **outro** número qualquer: **não** deve haver resposta da IA (a mensagem aparece na caixa de entrada).
+
+**Testes de comportamento (pelo WhatsApp de teste, para o caso aparecer em Agente de IA → Casos e o aviso chegar no seu celular):**
+- **Conserto:** diga que quer deixar um celular para consertar e, em outra conversa, pergunte se o celular está pronto. Nas duas, a IA abre caso para a equipe. A senha do aparelho, se pedida, aparece só no fim do resumo do caso, e a IA nunca a repete numa mensagem.
+- **Venda:** pergunte por um produto cadastrado em **Produtos** (`/app/products`; entre por **CRM** → **Ver tudo em CRM**). A IA diz o que achou e **mesmo assim abre caso**, porque o preço é confirmado pela equipe.
+- **Impressão:** mande um PDF para imprimir. A IA confirma o recebimento e **não repete o conteúdo** do PDF.
+- **Senha:** peça à IA para repetir a senha do aparelho. Ela **não repete**, em nenhuma mensagem.
 
 **Responda:** `ia responde` ou cole o que a tela mostrou.
 
@@ -892,9 +947,12 @@ order by o.display_name, cs.created_at;
 - [ ] O health mostra `7d976ea` e `healthy`, e os logs do `app` e do `worker` ficaram sem erro de coluna (Etapa 5).
 - [ ] Backup do banco testado e foto da VPS existem (Etapa 1) e você sabe voltar (Etapa 6).
 - [ ] O número tem 13 dígitos na tela (Etapa 9).
-- [ ] **Proteção de envio** salva com a data real e você leu o que ela faz com um número antigo (Etapa 10).
-- [ ] O modo teste respondeu **só** ao número autorizado (Etapa 12).
-- [ ] Credencial de IA validada e agente publicado e ligado ao canal (Etapa 12).
+- [ ] **Proteção de envio** salva com a data real e a **janela de resposta 7 h até 23 h** (Etapa 10), e você leu o que ela faz com um número antigo.
+- [ ] O modo teste respondeu **só** ao número autorizado (Etapa 12D).
+- [ ] Credenciais **Anthropic e OpenAI** validadas; TypeSafe/Jev **não** cadastrados (Etapa 12A).
+- [ ] Agente publicado e ligado ao canal (Etapa 12B).
+- [ ] Interruptor de casos ligado no agente e aviso de caso chegando no painel e no WhatsApp (Etapas 12B e 12C).
+- [ ] Teste feito: Conserto e Venda abrem caso; Impressão responde sem repetir o conteúdo do PDF; a IA não repete senha de aparelho (Etapa 12D).
 - [ ] O teste dos 2 servidores passou nos 4 critérios (Etapa 13).
 - [ ] Você leu a lista abaixo e decidiu, item a item, **aceitar** ou **corrigir antes**.
 
@@ -907,10 +965,10 @@ order by o.display_name, cs.created_at;
 6. **Mensagem digitada por pessoa durante uma queda não é reenviada sozinha** (as de IA e de automação são).
 7. **Não existe "Desconectar" nem "Trocar número"**, só **Excluir** (que também desconecta o aparelho).
 8. **Sem alerta por e-mail ou push na queda** enquanto o e-mail e o push não estiverem configurados na VPS (banner e Central funcionam).
-9. **As abas da API oficial estão escondidas**; não há como criar o primeiro canal oficial pela interface.
+9. Não se aplica ao piloto: a Grau Cell conecta pelo servidor próprio, por QR. As abas da API oficial seguem escondidas e isso não bloqueia ligar.
 10. O cadastro do servidor da empresa é legível por membros da empresa (só o endereço interno e a chave **cifrada**), e o `/api/v1/health` público mostra contagens de canais com servidor próprio.
-11. O funil padrão "Pedidos" de loja online **não** foi trocado pela r2 (Etapa 7).
-12. Não existe ainda o roteiro para criar o agente da Grau Cell (Etapa 12).
+11. O funil padrão "Pedidos" de loja online **não** foi trocado pela r2: você marca o `Venda` como padrão e arquiva o "Pedidos" pela tela (Etapa 7B, passo 7).
+12. Resolvido: o agente é criado na Etapa 12B.
 
 ### Ligar
 1. Em **Conexões**, no canal da Grau Cell: **Configurar acesso da IA** → **Liberar atendimento ao público**.
