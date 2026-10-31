@@ -754,11 +754,17 @@ O WhatsApp devolve o número de celular brasileiro **sem** o 9 extra (12 dígito
 1. Em **Conexões**, no cartão do canal da Grau Cell, clique em **Proteção de envio**.
 2. Em **Este número é usado desde**, escolha uma data. Use a **data real** de quando o número começou a ser usado (a tela diz que ela conta a idade do **número**, não da conexão).
 3. **Não ligue** a opção **Este número já está aquecido — pular o aquecimento** a menos que você tenha decidido isso. Declarar a idade pela data é o jeito recomendado de dizer que o número é antigo.
-4. Deixe os demais campos (janela, ritmo, atraso humano, fuso) com o padrão seguro do sistema. **[LIDO]** Padrões: respostas das 7h às 22h (horário de Brasília), 1,2 s entre envios mais até 0,8 s de variação, domingos permitidos.
-5. Clique em **Salvar proteção**. Aparece **Proteção de envio atualizada.**
-6. Abra a ficha de novo e leia o texto abaixo da data.
+4. Ajuste a **janela de resposta** da IA para **7 às 23**. O padrão do sistema é 7 às 22, mas a loja quer responder um pouco mais tarde. Isto vale só para as respostas da IA a quem escreveu:
+   1. Na mesma ficha, desça até o campo **Janela de resposta (horário local)**. Ele fica abaixo da data e do interruptor de aquecimento e tem duas caixas de número, com o texto "h até" entre elas e "h" depois da segunda. Se ninguém mexeu antes, as caixas estão vazias e mostram o padrão (7 e 22) como sugestão.
+   2. Na **primeira caixa** (antes do "h até"), digite **7**. Na **segunda caixa** (depois do "h até"), digite **23**. A linha deve ficar "7 h até 23 h".
+   3. **Não mexa** no campo logo abaixo, **Janela de disparo (horário local)**: ele vale para disparos em massa, prospecção e retomada de conversa parada, e fica como está.
+   4. **[LIDO]** A hora final não entra na janela: com 23, a IA responde até as 22h59, e uma mensagem que chegar às 23h30 espera e só é respondida a partir das 7h da manhã seguinte (para responder até 23h59, a hora final seria 24).
+5. Deixe os demais campos (ritmo, atraso humano, fuso) com o padrão seguro do sistema. **[LIDO]** Padrões: 1,2 s entre envios mais até 0,8 s de variação, domingos permitidos, horário de Brasília.
+6. Clique em **Salvar proteção**. Aparece **Proteção de envio atualizada.**
+7. Abra a ficha de novo e leia o texto abaixo da data.
 
 **Deu certo se:** a ficha mostra a data salva e uma destas frases: "Número com N dia(s) de uso — já formado. Vale só o teto diário abaixo." (número de 31 dias ou mais) ou "Hoje o aquecimento libera X envio(s) — o número tem N dia(s) de uso." (número novo).
+**Deu certo (janela de resposta) se:** na ficha aberta de novo, as duas caixas de **Janela de resposta (horário local)** mostram **7** e **23** já escritos (e não mais o padrão como sugestão), e a **Janela de disparo** continua como estava. Se a tela recusar com "Janela de resposta inválida", confira que a primeira caixa tem 7 e a segunda tem 23.
 **Se não apareceu:** se a ficha continuar sem data, o salvamento não valeu: cole a mensagem de erro.
 
 **O que a r2 faz com um número antigo [LIDO] — leia antes de decidir:**
