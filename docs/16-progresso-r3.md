@@ -24,7 +24,7 @@
 | T08 regras locais L4 (senha) e L5 (documento) | `d393b05db` | ver abaixo | feita |
 | T09 tarefa conferencia: perguntas, state e cortes | `bb91188d1` | ver abaixo | feita |
 | T10 custo e observação do DEPOIS | `cf0a6ff89` | ver abaixo | feita |
-| T11 `jev_conferencia` na cadeia before_send (v8) | ver `git log` (`feat(jev): T11 ...`) | ver abaixo | feita |
+| T11 `jev_conferencia` na cadeia before_send (v8) | `463af5ad6` + correção de tipo no teste | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 

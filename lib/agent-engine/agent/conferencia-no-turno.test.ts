@@ -178,8 +178,9 @@ describe("quando confere", () => {
 
   it("o `state` enviado não leva o nome do contato nem a senha do cofre", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(ok(corpo(0.1, 0.1, 0.1)));
-    const e = entrada({ rascunho: "Oi Maria Souza, anotei a senha 4321. A troca custa R$ 250,00." });
-    e.evidencias.guardarSenhaDoCliente("4321", ORG);
+    const comSenha = criarEvidenciasDoTurno(ORG);
+    comSenha.guardarSenhaDoCliente("4321", ORG);
+    const e = entrada({ rascunho: "Oi Maria Souza, anotei a senha 4321. A troca custa R$ 250,00.", evidencias: comSenha });
     await conferirOTurno(e, { fetchImpl });
     // senha no rascunho = L4 → o Jev nem é chamado.
     expect(fetchImpl).not.toHaveBeenCalled();
