@@ -12,7 +12,7 @@
  * O que este módulo NÃO faz, de propósito: decidir por conta própria se o
  * fornecedor deve ser usado. Isso é do call site, que conhece o seu fallback.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Dublês do banco e da decifragem, para `chaveDaOrganizacao` real ──────────
 const banco = vi.hoisted(() => ({
@@ -63,7 +63,8 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { chaveDaOrganizacao, chaveDasTarefas, decidirNoPonto } from "@/lib/ai/decisao/ponto";
-import { TAREFA_DO_CLIMA, type TarefaDoJev } from "@/lib/ai/decisao/tarefas";
+import { TAREFA_DO_CLIMA, TAREFAS_DO_JEV, type TarefaDoJev } from "@/lib/ai/decisao/tarefas";
+import { env } from "@/lib/env";
 
 /** Ligado COM aceite — o único estado em que a chave pode sair. */
 const LIGADO = {
@@ -526,5 +527,100 @@ describe("a allowlist de egress deriva da mesma base do cliente", () => {
     );
     expect(r.ok).toBe(true);
     expect(String(fetchImpl.mock.calls[0]![0])).toBe("http://127.0.0.1:4010/v1/systemone");
+  });
+});
+
+describe("chaveDasTarefas — as cinco condições juntas para as tarefas novas (T03)", () => {
+  const ORG = "55555555-5555-4555-8555-555555555555";
+  const POR = "22222222-2222-4222-8222-222222222222";
+  const CREDENCIAL = { api_key_encrypted: "cifra", api_key_iv: "iv", api_key_tag: "tag" };
+  const ACEITE_MENSAGEM = { em: "2026-09-23T12:00:00.000Z", por: POR, alcance: "mensagem" };
+  const ACEITE_RESPOSTA = { em: "2026-11-01T12:00:00.000Z", por: POR, alcance: "resposta", versao: 2 };
+  const escrevivel = env as unknown as Record<string, unknown>;
+  const original = { t: env.JEV_TRIAGEM_DO_SISTEMA_ENABLED, c: env.JEV_CONFERENCIA_ENABLED };
+  const TRIAGEM = TAREFAS_DO_JEV.find((t) => t.id === "triagem")!;
+  const CONFERENCIA = TAREFAS_DO_JEV.find((t) => t.id === "conferencia")!;
+
+  const completo = (tarefa: "triagem" | "conferencia") => ({
+    jev: {
+      ligado: true,
+      modo: "observacao",
+      aceite: tarefa === "conferencia" ? ACEITE_RESPOSTA : ACEITE_MENSAGEM,
+      tarefas: { [tarefa]: { estado: "observando" } },
+    },
+  });
+  const ligarInstalacao = () => {
+    escrevivel.JEV_TRIAGEM_DO_SISTEMA_ENABLED = true;
+    escrevivel.JEV_CONFERENCIA_ENABLED = true;
+  };
+
+  afterEach(() => {
+    escrevivel.JEV_TRIAGEM_DO_SISTEMA_ENABLED = original.t;
+    escrevivel.JEV_CONFERENCIA_ENABLED = original.c;
+  });
+
+  it.each([
+    ["triagem", TRIAGEM],
+    ["conferencia", CONFERENCIA],
+  ] as const)("%s: com as cinco condições, a chave sai (controle)", async (id, tarefa) => {
+    ligarInstalacao();
+    banco.settings = completo(id);
+    banco.linha = CREDENCIAL;
+    expect(await chaveDasTarefas(ORG, [tarefa])).toBe("decifrada:cifra");
+  });
+
+  it.each([
+    ["triagem", TRIAGEM],
+    ["conferencia", CONFERENCIA],
+  ] as const)("%s: SÓ o interruptor da instalação desligado — nenhuma chamada, e nem o banco é consultado", async (id, tarefa) => {
+    ligarInstalacao();
+    escrevivel[id === "triagem" ? "JEV_TRIAGEM_DO_SISTEMA_ENABLED" : "JEV_CONFERENCIA_ENABLED"] = false;
+    banco.settings = completo(id);
+    banco.linha = CREDENCIAL;
+    expect(await chaveDasTarefas(ORG, [tarefa])).toBeNull();
+    expect(banco.chamadas).toEqual([]);
+    expect(avisos, "desligado é configuração, não incidente").toEqual([]);
+  });
+
+  it("o padrão (sem tocar no env) é desligado: a triagem não sai, mesmo com aceite antigo, tarefa ligada e credencial", async () => {
+    banco.settings = completo("triagem");
+    banco.linha = CREDENCIAL;
+    expect(env.JEV_TRIAGEM_DO_SISTEMA_ENABLED).toBe(false);
+    expect(await chaveDasTarefas(ORG, [TRIAGEM])).toBeNull();
+  });
+
+  it.each([
+    ["o interruptor mestre da empresa desligado", (c: ReturnType<typeof completo>) => ({ jev: { ...c.jev, ligado: false } })],
+    ["a tarefa desligada", (c: ReturnType<typeof completo>) => ({ jev: { ...c.jev, tarefas: { triagem: { estado: "desligada" }, conferencia: { estado: "desligada" } } } })],
+    ["sem aceite", (c: ReturnType<typeof completo>) => ({ jev: { ...c.jev, ligado: false, aceite: null } })],
+  ])("com %s, nenhuma chamada (mesmo com a instalação e a credencial)", async (_nome, quebrar) => {
+    ligarInstalacao();
+    banco.linha = CREDENCIAL;
+    for (const [id, tarefa] of [["triagem", TRIAGEM], ["conferencia", CONFERENCIA]] as const) {
+      banco.settings = quebrar(completo(id));
+      expect(await chaveDasTarefas(ORG, [tarefa]), id).toBeNull();
+    }
+  });
+
+  it("a conferência com o aceite só de `mensagem` não sai, mesmo com tudo mais ligado", async () => {
+    ligarInstalacao();
+    banco.linha = CREDENCIAL;
+    banco.settings = { jev: { ...completo("conferencia").jev, aceite: ACEITE_MENSAGEM } };
+    expect(await chaveDasTarefas(ORG, [CONFERENCIA])).toBeNull();
+  });
+
+  it("sem credencial validada, nenhuma chamada (a quinta condição não substitui a chave)", async () => {
+    ligarInstalacao();
+    banco.settings = completo("triagem");
+    banco.linha = null;
+    expect(await chaveDasTarefas(ORG, [TRIAGEM])).toBeNull();
+  });
+
+  it("a chamada que mistura uma tarefa nova desligada na instalação e uma antiga é tudo ou nada", async () => {
+    banco.settings = { jev: { ...completo("conferencia").jev, tarefas: { clima: { estado: "observando" }, conferencia: { estado: "observando" } } } };
+    banco.linha = CREDENCIAL;
+    expect(await chaveDasTarefas(ORG, [TAREFA_DO_CLIMA, CONFERENCIA])).toBeNull();
+    escrevivel.JEV_CONFERENCIA_ENABLED = true;
+    expect(await chaveDasTarefas(ORG, [TAREFA_DO_CLIMA, CONFERENCIA])).toBe("decifrada:cifra");
   });
 });

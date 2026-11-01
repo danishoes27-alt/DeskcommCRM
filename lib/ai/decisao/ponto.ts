@@ -41,6 +41,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { baseDaApiDoJev, decidir, TETO_PADRAO_MS, type Pergunta, type ResultadoDaDecisao } from "./cliente";
 import { lerConfigDoJev, type IdDaTarefa } from "./config";
 import { PROVEDOR_DO_JEV } from "./credencial";
+import { interruptorDaInstalacaoLigado } from "./interruptores";
 import { estadoEfetivoDaTarefa, TAREFAS_DO_JEV, type TarefaDoJev } from "./tarefas";
 
 interface EntradaComum {
@@ -86,7 +87,7 @@ export interface DependenciasDoPonto {
  * para a rede.
  *
  * **Só com TODAS as tarefas da chamada rodando** (`estadoEfetivoDaTarefa`: o
- * interruptor ligado, o aceite do administrador cobrindo o alcance delas, e
+ * interruptor da instalação das tarefas novas (`./interruptores`), o interruptor ligado, o aceite do administrador cobrindo o alcance delas, e
  * nenhuma desligada). Cadastrar a chave não é consentir: sem esta guarda, colar
  * a chave em Credenciais já mandava cada mensagem recebida ao fornecedor
  * estrangeiro, sem ninguém ter ligado nada (LGPD). E desligar uma tarefa é
@@ -107,6 +108,9 @@ export async function chaveDasTarefas(
   tarefas: readonly TarefaDoJev[],
 ): Promise<string | null> {
   if (tarefas.length === 0) return null;
+  // O interruptor da INSTALAÇÃO das tarefas novas (r3): lido antes de qualquer
+  // consulta, porque desligado é o estado de toda instalação e não custa banco.
+  if (tarefas.some((t) => !interruptorDaInstalacaoLigado(t.id))) return null;
   try {
     // Admin client passa por cima da RLS: o filtro por organização é
     // PROGRAMÁTICO e obrigatório (CLAUDE.md, anti-pattern 10).

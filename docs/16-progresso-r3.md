@@ -15,7 +15,8 @@
 | Tarefa | Commit | Testes | Estado |
 |---|---|---|---|
 | T01 alcance `resposta` | `93b902658` | (rodada anterior) | feita |
-| T02 registrar `triagem` e `conferencia` | ver `git log` (`feat(jev): T02 ...`) | ver abaixo | feita |
+| T02 registrar `triagem` e `conferencia` | `7fec303be` | ver abaixo | feita |
+| T03 interruptores da instalação | ver `git log` (`feat(jev): T03 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -27,6 +28,12 @@
   - A `triagem` usa o alcance `mensagem`, então, pela regra do item 5 do cabeçalho de `tarefas.ts`, **aparece observando** em empresa que já tem o Jev ligado. Nenhuma chamada sai por causa disso: o interruptor da instalação (T03) é quem barra.
 - **Atenção para a T17/T18:** `ponto.ts` (`tarefasDasPerguntas`) exige que cada pergunta de uma chamada sem ponto tenha por chave o **id de uma tarefa**. A triagem terá três perguntas (`categoria`, `destino`, `urgente`); a T17 precisa adaptar essa guarda sem enfraquecê-la (a chave da chamada continua passando pela tarefa `triagem`).
 - **Testes:** `lib/ai/decisao` + `app/api/v1/ai/jev` + `app/app/ai/providers` + i18n/estruturais: 552 + 230 verdes. `pnpm typecheck` verde. ESLint nos arquivos tocados limpo.
+
+### T03 — interruptores da instalação
+
+- **O que mudou:** `lib/env.ts` e `.env.example` (`JEV_TRIAGEM_DO_SISTEMA_ENABLED`, `JEV_CONFERENCIA_ENABLED`, padrão `false`), `lib/ai/decisao/interruptores.ts` (novo) e `chaveDasTarefas` em `ponto.ts` (a 5ª condição, lida antes de qualquer consulta ao banco).
+- **Decisão minha:** a guarda mora em `chaveDasTarefas`, o único caminho até a rede, e não em cada chamador; assim a T11/T17 herdam a regra sem lembrar dela. Os chamadores novos ainda devem checar `interruptorDaInstalacaoLigado` cedo para nem montar o `state` quando desligado.
+- **Testes:** `ponto.test.ts` (cada condição ausente = nenhuma chamada, nem banco quando é a instalação) e `interruptores.test.ts`; `lib/ai/decisao` 370 verdes, `.env` sync verde, typecheck e eslint limpos.
 
 ## Pendências e coisas que só o dono pode fornecer
 

@@ -514,6 +514,23 @@ const schemaBase = z.object({
     .optional()
     .default("false")
     .transform((v) => v === "true"),
+  // Interruptores da INSTALAÇÃO das duas tarefas novas do Jev (r3, spec 14 seção 5.1) —
+  // DESLIGADOS por padrão, e um `.env` antigo continua valendo sem edição. São a
+  // quinta condição de `chaveDasTarefas` (lib/ai/decisao/ponto.ts), junto do
+  // interruptor mestre, do aceite, da tarefa ligada e da credencial `typesafe`: sem
+  // eles, publicar a r3 faria a `triagem` (alcance `mensagem`, já coberto pelo aceite
+  // antigo) nascer observando e mandar mensagens à TypeSafe sem nenhum clique novo.
+  // Diferente de `JEV_TRIAGEM_ENABLED` (a triagem antiga, via AI Gateway, legado).
+  JEV_TRIAGEM_DO_SISTEMA_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false")
+    .transform((v) => v === "true"),
+  JEV_CONFERENCIA_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("false")
+    .transform((v) => v === "true"),
   // SEGUNDA CONFIRMAÇÃO da triagem do Jev: ligar `JEV_TRIAGEM_ENABLED` não basta.
   // O dono da instalação declara em qual plano da Vercel a conta está:
   //   pro              — conta Pro/Enterprise: o ZDR por chamada VALE;
