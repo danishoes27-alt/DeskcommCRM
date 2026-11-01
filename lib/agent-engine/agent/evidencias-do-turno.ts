@@ -19,6 +19,11 @@
  *     evidência descartada, e nunca um trecho de A servindo de fonte para B.
  *  3. **Sem duplicata.** A mesma consulta repetida no turno (a IA pergunta de
  *     novo) não infla a lista.
+ *  4. **A memória do cliente NÃO é evidência.** A senha de aparelho que o cliente
+ *     digitou (L4) e o texto dos documentos que ele enviou (L5) ficam num cofre à
+ *     parte, só para a conferência LOCAL comparar com o rascunho. Eles nunca
+ *     aparecem em `todas()`, nunca entram no `state` do Jev, nunca são gravados
+ *     nem logados — e morrem com o turno.
  *
  * Como o que a IA consulta vem de ferramentas diferentes (base de conhecimento,
  * catálogo, Bling), cada uma registra com a SUA origem, no mesmo formato.
@@ -42,6 +47,10 @@ export interface EvidenciaParaRegistrar {
 
 /** Teto de memória por turno: uma busca com trechos enormes não pode crescer sem limite. */
 export const EVIDENCIAS_NO_MAXIMO = 200;
+/** Quantas senhas e quantos documentos do cliente o cofre guarda, e quanto de cada documento. */
+export const SENHAS_DO_CLIENTE_NO_MAXIMO = 10;
+export const DOCUMENTOS_DO_CLIENTE_NO_MAXIMO = 5;
+export const TEXTO_DE_DOCUMENTO_NO_MAXIMO = 60_000;
 
 export interface EvidenciasDoTurno {
   /** A empresa do turno — a única cuja evidência é aceita. */
@@ -58,6 +67,14 @@ export interface EvidenciasDoTurno {
    * qual dos dois está segurando.
    */
   marcarConsulta(origem: OrigemDaEvidencia, organizationId: string): boolean;
+  /**
+   * O cofre do turno (ver o item 4 do cabeçalho). `guardar*` recusa registro em
+   * nome de outra empresa, como `registrar`. As leituras devolvem cópias.
+   */
+  guardarSenhaDoCliente(valor: string, organizationId: string): boolean;
+  guardarDocumentoDoCliente(texto: string, organizationId: string): boolean;
+  senhasDoCliente(): readonly string[];
+  documentosDoCliente(): readonly string[];
   todas(): readonly Evidencia[];
   daOrigem(origem: OrigemDaEvidencia): readonly Evidencia[];
   /** A consulta dessa origem aconteceu neste turno? */
@@ -69,6 +86,8 @@ export function criarEvidenciasDoTurno(organizationId: string): EvidenciasDoTurn
   const lista: Evidencia[] = [];
   const vistas = new Set<string>();
   const consultadas = new Set<OrigemDaEvidencia>();
+  const senhas = new Set<string>();
+  const documentos = new Set<string>();
 
   return {
     organizationId,
@@ -93,6 +112,20 @@ export function criarEvidenciasDoTurno(organizationId: string): EvidenciasDoTurn
       consultadas.add(origem);
       return true;
     },
+    guardarSenhaDoCliente(valor, daOrganizacao) {
+      const v = valor.trim();
+      if (daOrganizacao !== organizationId || v === "" || senhas.size >= SENHAS_DO_CLIENTE_NO_MAXIMO) return false;
+      senhas.add(v);
+      return true;
+    },
+    guardarDocumentoDoCliente(texto, daOrganizacao) {
+      const t = texto.trim().slice(0, TEXTO_DE_DOCUMENTO_NO_MAXIMO);
+      if (daOrganizacao !== organizationId || t === "" || documentos.size >= DOCUMENTOS_DO_CLIENTE_NO_MAXIMO) return false;
+      documentos.add(t);
+      return true;
+    },
+    senhasDoCliente: () => [...senhas],
+    documentosDoCliente: () => [...documentos],
     todas: () => lista.slice(),
     daOrigem: (origem) => lista.filter((e) => e.origem === origem),
     consultou: (origem) => consultadas.has(origem),

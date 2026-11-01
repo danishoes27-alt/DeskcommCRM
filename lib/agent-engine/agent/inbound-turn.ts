@@ -51,6 +51,7 @@ import {
 } from '../edge/crm/get-lead-context';
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
 import { criarEvidenciasDoTurno } from './evidencias-do-turno';
+import { guardarSegredosDoCliente } from './segredos-do-cliente-no-turno';
 import { comEvidenciaDoTurno, ORIGEM_DA_FERRAMENTA } from './evidencias-das-ferramentas';
 import type { CrmEdgeConfig } from '../edge/crm/mcp-client';
 import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
@@ -2699,6 +2700,10 @@ async function executarTurnoDoAgente(
   // "depois" precisa para dizer que um preço, prazo ou disponibilidade "tem fonte"
   // (lib/agent-engine/agent/evidencias-do-turno.ts).
   const evidencias = criarEvidenciasDoTurno(tenantId);
+  // E o cofre do turno: a senha de aparelho que o cliente digitou e o texto dos
+  // documentos que ele mandou, só em memória, para as regras L4 e L5 compararem com
+  // o rascunho. Nunca gravados, logados nem enviados (segredos-do-cliente-no-turno.ts).
+  guardarSegredosDoCliente(evidencias, effectiveContext.messages, tenantId);
   let runError: Error | null = null;
   const noteRunError = (err: Error): void => {
     runError ??= err;

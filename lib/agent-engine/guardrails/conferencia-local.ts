@@ -19,7 +19,16 @@
  *  - **L6 disponibilidade** — "tem", "não tem" ou "chegou" sem trecho consultado
  *    (catálogo, Bling ou base) que sustente a afirmação, sobre aquele produto.
  *
- * (L4 senha e L5 documento entram na T08, no mesmo arquivo.)
+ *  - **L4 senha** — o rascunho repete a senha, PIN ou padrão que o cliente digitou
+ *    (o cofre do turno, `evidencias-do-turno.ts`: só em memória, nunca gravada nem
+ *    enviada a ninguém).
+ *  - **L5 documento** — o rascunho copia 8 ou mais palavras seguidas do texto
+ *    extraído de um documento que o cliente enviou (comparado DENTRO do nosso
+ *    servidor: documento nunca vai ao Jev).
+ *
+ * O `trecho` de um achado de L4 e de L5 NUNCA leva a senha nem o texto do
+ * documento: o achado vai para o rastro (`before_send_traces`), e o rastro não
+ * pode virar o lugar onde o segredo passou a morar.
  *
  * ═══ AS DUAS PROMESSAS DESTE ARQUIVO ═══
  *
@@ -44,7 +53,9 @@ export type CodigoDoAchado =
   | "prazo_sem_fonte"
   | "garantia_sem_fonte"
   | "aprovacao_prometida"
-  | "disponibilidade_sem_fonte";
+  | "disponibilidade_sem_fonte"
+  | "senha_repetida"
+  | "documento_copiado";
 
 export interface AchadoLocal {
   regra: RegraLocal;
@@ -64,7 +75,8 @@ export interface ResultadoDaConferenciaLocal {
 /** O que a conferência local lê do turno: o rascunho e o que a IA consultou. */
 export interface EntradaDaConferenciaLocal {
   rascunho: string;
-  evidencias: Pick<EvidenciasDoTurno, "todas" | "consultou">;
+  evidencias: Pick<EvidenciasDoTurno, "todas" | "consultou"> &
+    Partial<Pick<EvidenciasDoTurno, "senhasDoCliente" | "documentosDoCliente">>;
 }
 
 /* ───────────────────────────── utilidades ───────────────────────────── */
@@ -406,6 +418,86 @@ export function conferirDisponibilidade(entrada: EntradaDaConferenciaLocal): Ach
   return achados;
 }
 
+/* ───────────────────── L4 — senha de aparelho repetida ───────────────────── */
+
+function escaparRegex(t: string): string {
+  return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** O valor da senha como padrão: sem caixa nem acento, palavra inteira, separadores do próprio valor flexíveis. */
+function padraoDaSenha(valor: string): RegExp | null {
+  const v = dobrar(valor).trim();
+  if (v.length < 3) return null;
+  const miolo = v
+    .split(/[\s.\-–]+/u)
+    .filter((x) => x !== "")
+    .map(escaparRegex)
+    .join(String.raw`[\s.\-–]?`);
+  return new RegExp(String.raw`(?<![\p{L}\p{N}])${miolo}(?![\p{L}\p{N}])`, "u");
+}
+
+export function conferirSenha(entrada: EntradaDaConferenciaLocal): AchadoLocal[] {
+  const senhas = entrada.evidencias.senhasDoCliente?.() ?? [];
+  if (senhas.length === 0) return [];
+  const padroes = senhas.flatMap((s) => {
+    const p = padraoDaSenha(s);
+    return p === null ? [] : [p];
+  });
+  const achados: AchadoLocal[] = [];
+  for (const frase of frases(entrada.rascunho)) {
+    const dobrada = dobrar(frase);
+    if (!padroes.some((p) => p.test(dobrada))) continue;
+    achados.push({
+      regra: "L4",
+      codigo: "senha_repetida",
+      // Nunca a frase: ela traz a senha. O rastro guarda só que a regra disparou.
+      trecho: "[trecho com a senha do aparelho]",
+      motivo:
+        "a resposta repete a senha, o PIN ou o padrão do aparelho que o cliente informou. Nunca repita esse dado na " +
+        "conversa: diga só que recebeu o que era preciso para o atendimento.",
+    });
+  }
+  return achados;
+}
+
+/* ───────────────────── L5 — trecho de documento copiado ───────────────────── */
+
+/** Quantas palavras seguidas iguais fazem uma cópia (spec 14, seção 3.3). */
+export const PALAVRAS_SEGUIDAS_DE_COPIA = 8;
+
+function palavrasDe(texto: string): string[] {
+  return dobrar(texto).match(/[\p{L}\p{N}]+/gu) ?? [];
+}
+
+export function conferirDocumento(entrada: EntradaDaConferenciaLocal): AchadoLocal[] {
+  const documentos = entrada.evidencias.documentosDoCliente?.() ?? [];
+  if (documentos.length === 0) return [];
+  const conhecidas = new Set<string>();
+  for (const doc of documentos) {
+    const palavras = palavrasDe(doc);
+    for (let i = 0; i + PALAVRAS_SEGUIDAS_DE_COPIA <= palavras.length; i++) {
+      conhecidas.add(palavras.slice(i, i + PALAVRAS_SEGUIDAS_DE_COPIA).join(" "));
+    }
+  }
+  if (conhecidas.size === 0) return [];
+  const palavras = palavrasDe(entrada.rascunho);
+  for (let i = 0; i + PALAVRAS_SEGUIDAS_DE_COPIA <= palavras.length; i++) {
+    if (!conhecidas.has(palavras.slice(i, i + PALAVRAS_SEGUIDAS_DE_COPIA).join(" "))) continue;
+    return [
+      {
+        regra: "L5",
+        codigo: "documento_copiado",
+        // Nunca o texto: é conteúdo do documento do cliente.
+        trecho: "[trecho copiado de um documento do cliente]",
+        motivo:
+          `a resposta copia ${PALAVRAS_SEGUIDAS_DE_COPIA} palavras seguidas ou mais de um documento que o cliente enviou. ` +
+          "Não reproduza o conteúdo do documento: diga com as suas palavras o que é preciso, ou que a equipe analisa o documento.",
+      },
+    ];
+  }
+  return [];
+}
+
 /* ───────────────────────────── a conferência ───────────────────────────── */
 
 /**
@@ -420,6 +512,8 @@ export function conferirLocalmente(entrada: EntradaDaConferenciaLocal): Resultad
       ...conferirPrazoEGarantia(entrada),
       ...conferirAprovacao(entrada),
       ...conferirDisponibilidade(entrada),
+      ...conferirSenha(entrada),
+      ...conferirDocumento(entrada),
     ];
     return { achados, faixa: achados.length > 0 ? "alta" : null };
   } catch {

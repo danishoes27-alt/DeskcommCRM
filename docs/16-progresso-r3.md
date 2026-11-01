@@ -20,7 +20,8 @@
 | T04 evidências: base de conhecimento | `e77453be7` | ver abaixo | feita |
 | T05 evidências: catálogo e Bling | `9af3c5b34` | ver abaixo | feita |
 | T06 máscara de dados pessoais e senha | `a566ddf99` | ver abaixo | feita |
-| T07 regras locais L1, L2, L3, L6 | ver `git log` (`feat(jev): T07 ...`) | ver abaixo | feita |
+| T07 regras locais L1, L2, L3, L6 | `368174b94` | ver abaixo | feita |
+| T08 regras locais L4 (senha) e L5 (documento) | ver `git log` (`feat(jev): T08 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -63,6 +64,14 @@
 - **L6:** "temos / tem / chegou / em estoque" exige trecho consultado que fale do MESMO produto (palavras de identidade em comum com a frase); "não temos / acabou / sem estoque" passa se a fonte diz que não tem OU se o catálogo/Bling foi consultado e o produto nem apareceu; contradição da fonte segura. Pergunta não afirma nada.
 - **Falso alarme conhecido (medido em `observando`):** L1 com soma legítima e L6 com produto nomeado diferente nas duas pontas. "Com garantia" sem número nem tipo fica para o Jev.
 - **Testes:** `conferencia-local.test.ts` (66 casos positivos e negativos por regra, inclusive "5 folhas × R$ 2 passa" e "2 itens somados = R$ 80 segura"); typecheck e eslint limpos.
+
+### T08 — regras locais L4 (senha) e L5 (documento)
+
+- **O que mudou:** `conferencia-local.ts` ganhou `conferirSenha` e `conferirDocumento` (entram em `conferirLocalmente`); `evidencias-do-turno.ts` ganhou o **cofre** (`guardarSenhaDoCliente`, `guardarDocumentoDoCliente`, leituras que devolvem cópias, tetos de 10 senhas / 5 documentos / 60 mil caracteres, recusa de outra empresa); `segredos-do-cliente-no-turno.ts` (novo) lê as mensagens do contexto do turno e abastece o cofre; `inbound-turn.ts` chama `guardarSegredosDoCliente` logo depois de criar as evidências.
+- **Garantias:** o cofre NÃO é evidência (nunca aparece em `todas()`, logo nunca no `state` do Jev); o `trecho` do achado de L4/L5 nunca leva a senha nem o texto do documento (vai para o rastro); a função não escreve em log/console (teste com espiões). A T09 repete a checagem no `state`.
+- **L4:** a senha vem de `encontrarSenhas` (a mesma regra da máscara) em texto digitado e áudio transcrito (foto não); comparação sem caixa/acento, palavra inteira, separadores do próprio valor flexíveis; senha com menos de 3 caracteres é ignorada. **L5:** 8 palavras seguidas iguais (sem caixa/acento/pontuação) entre o rascunho e o texto de um documento do cliente (`type = document`, texto com 40+ caracteres).
+- **Testes:** `conferencia-local-senha-e-documento.test.ts`, `segredos-do-cliente-no-turno.test.ts` (117 verdes com os vizinhos); typecheck e eslint limpos.
+- **Ambiente:** o terminal desta máquina recusa comandos com NUL literal ( ) dentro de here-doc; os arquivos de teste novos saem pela ferramenta de escrita.
 
 ## Pendências e coisas que só o dono pode fornecer
 
