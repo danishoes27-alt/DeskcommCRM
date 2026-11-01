@@ -56,14 +56,22 @@ interface EntradaComum {
  *
  *  - com `ponto` (o registro, `lib/ai/pontos/registro.ts`), a tarefa daquele
  *    ponto;
- *  - sem `ponto`, cada pergunta É de uma tarefa, pelo id: a tarefa sem ponto
+ *  - sem `ponto` e com `tarefa`, todas as perguntas são dessa tarefa sem ponto;
+ *  - sem `ponto` nem `tarefa`, cada pergunta É de uma tarefa, pelo id: a tarefa sem ponto
  *    (`./pedidos.ts`) não tem outro jeito de ser nomeada, e assim nenhuma
  *    pergunta sai sem que a tarefa dela tenha passado pela guarda.
  */
 export type EntradaDoPonto = EntradaComum &
   (
-    | { ponto: string; perguntas: Record<string, Pergunta> }
-    | { ponto?: undefined; perguntas: { [tarefa in IdDaTarefa]?: Pergunta } }
+    | { ponto: string; tarefa?: undefined; perguntas: Record<string, Pergunta> }
+    /**
+     * A tarefa sem ponto que faz VÁRIAS perguntas com nomes próprios (a
+     * `conferencia`: `sem_fonte`, `promete_aprovacao`, `inventa_dado`). A chave de
+     * cada pergunta não é um id de tarefa, então a chamada declara a que tarefa
+     * ela pertence — e é por essa tarefa que a guarda de `chaveDasTarefas` passa.
+     */
+    | { ponto?: undefined; tarefa: IdDaTarefa; perguntas: Record<string, Pergunta> }
+    | { ponto?: undefined; tarefa?: undefined; perguntas: { [tarefa in IdDaTarefa]?: Pergunta } }
   );
 
 export interface DependenciasDoPonto {
@@ -189,8 +197,14 @@ export async function decidirNoPonto(
   for (const [id, pergunta] of Object.entries(entrada.perguntas)) {
     if (pergunta !== undefined) perguntas[id] = pergunta;
   }
-  const { ponto } = entrada;
+  const { ponto, tarefa } = entrada;
   const chaveDaChamada = (org: string): Promise<string | null> => {
+    // A tarefa declarada: só vale a que existe e não tem ponto — uma tarefa de
+    // ponto passa pelo ponto, e um id inventado não leva chave nenhuma.
+    if (tarefa !== undefined) {
+      const registro = TAREFAS_DO_JEV.find((t) => t.id === tarefa && t.ponto === undefined);
+      return registro === undefined ? Promise.resolve(null) : chaveDasTarefas(org, [registro]);
+    }
     // Com ponto, a tarefa dele E toda pergunta cuja chave é id de uma tarefa do
     // Jev: uma pergunta de outra tarefa posta no pacote do ponto (o que o
     // pacote do clima nunca pode levar, `./pedidos.ts`) não sai com a tarefa

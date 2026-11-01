@@ -21,7 +21,8 @@
 | T05 evidências: catálogo e Bling | `9af3c5b34` | ver abaixo | feita |
 | T06 máscara de dados pessoais e senha | `a566ddf99` | ver abaixo | feita |
 | T07 regras locais L1, L2, L3, L6 | `368174b94` | ver abaixo | feita |
-| T08 regras locais L4 (senha) e L5 (documento) | ver `git log` (`feat(jev): T08 ...`) | ver abaixo | feita |
+| T08 regras locais L4 (senha) e L5 (documento) | `d393b05db` | ver abaixo | feita |
+| T09 tarefa conferencia: perguntas, state e cortes | ver `git log` (`feat(jev): T09 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -72,6 +73,14 @@
 - **L4:** a senha vem de `encontrarSenhas` (a mesma regra da máscara) em texto digitado e áudio transcrito (foto não); comparação sem caixa/acento, palavra inteira, separadores do próprio valor flexíveis; senha com menos de 3 caracteres é ignorada. **L5:** 8 palavras seguidas iguais (sem caixa/acento/pontuação) entre o rascunho e o texto de um documento do cliente (`type = document`, texto com 40+ caracteres).
 - **Testes:** `conferencia-local-senha-e-documento.test.ts`, `segredos-do-cliente-no-turno.test.ts` (117 verdes com os vizinhos); typecheck e eslint limpos.
 - **Ambiente:** o terminal desta máquina recusa comandos com NUL literal ( ) dentro de here-doc; os arquivos de teste novos saem pela ferramenta de escrita.
+
+### T09 — tarefa `conferencia`: perguntas, `state` e cortes
+
+- **O que mudou:** `lib/ai/decisao/conferencia.ts` (novo): as 3 perguntas `noul` (`sem_fonte`, `promete_aprovacao`, `inventa_dado`; resposta = probabilidade de haver problema), `montarEstadoDaConferencia` (state = só `{ resposta_da_ia, evidencias }`, mascarado, com teto de 4 mil/24 mil caracteres), cortes do DEPOIS (alta ≥ 0,80, média 0,50–0,80, baixa < 0,50), `veredictoDasRespostas`, **`juntarOsAchados`** (o Jev só aperta), `perguntarAoJev` e `conferirOMeuRascunho`. Modelo fixo `jev-1.13.0`.
+- **Mudança de apoio em `ponto.ts`:** `EntradaDoPonto` ganhou a variante `{ tarefa, perguntas }` (tarefa sem ponto que faz várias perguntas com nomes próprios); a guarda de `chaveDasTarefas` passa por essa tarefa (id inventado ou tarefa de ponto = sem chave). Isso também deixa a T17 (triagem, 3 perguntas) pronta para usar o mesmo caminho. `mascararSegredos` ganhou `valoresSecretos` (a senha do cofre sai como `[SENHA]` mesmo sem o rótulo).
+- **Decisões minhas:** (1) com achado L4/L5 no rascunho o Jev **nem é chamado** (`segredo_no_rascunho`): ele já está segurado, e mandar para fora um rascunho que repete um segredo é o que a regra evita; (2) Jev ausente + achado local = segura; Jev ausente sem achado = passa e fica "não conferida" (`conferidaPeloJev: false`); (3) média do Jev sem achado local = libera e marca `duvida`.
+- **Ainda não feito (de propósito):** gravar custo/observação (T10), pôr na cadeia (T11), queda/teto/aviso ao dono (T12). O disjuntor ainda não é consultado aqui.
+- **Testes:** `conferencia.test.ts` (39 casos: perguntas, state sem nenhum campo proibido — nome, sobrenome, telefone, e-mail, senha, endereço, documento, mensagem do cliente —, cortes, junção incluindo a propriedade "toda probabilidade do Jev, a faixa final nunca é menor que a local", chamada com `fetchImpl` simulado, interruptor da instalação, aceite só de `mensagem`, 401/429/529/500, resposta ilegível, rede); `lib/ai/decisao` + guardrails + cerca `jev-nunca-cala-bloqueia-nem-responde` 754 verdes; typecheck e eslint limpos.
 
 ## Pendências e coisas que só o dono pode fornecer
 

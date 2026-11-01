@@ -36,6 +36,12 @@ export interface OpcoesDaMascara {
    * com ou sem acento. Vazio ou ausente: só o que o cliente diz de si.
    */
   nomeDoContato?: string | null;
+  /**
+   * Valores que o cliente já entregou como segredo (a senha do aparelho que o cofre
+   * do turno guarda). Onde aparecerem — com ou sem o rótulo "senha" na frente —
+   * viram `[SENHA]`. Menos de 3 caracteres não vale (apagaria letra solta).
+   */
+  valoresSecretos?: readonly string[];
 }
 
 /** Pedaços de nome que não identificam ninguém e que apagar só estraga a frase. */
@@ -228,6 +234,11 @@ export function mascararSegredos(texto: string, opcoes: OpcoesDaMascara = {}): s
     t = scrubMessage(t);
     t = mascararQuemSeApresenta(t);
     t = trocarPalavras(t, pedacosDoNome(opcoes.nomeDoContato), "[NOME]");
+    t = trocarPalavras(
+      t,
+      (opcoes.valoresSecretos ?? []).map((v) => v.trim()).filter((v) => v.length >= 3),
+      "[SENHA]",
+    );
     return t;
   } catch {
     // Nunca lança — e, na dúvida, NADA sai: um texto que a máscara não consegue
