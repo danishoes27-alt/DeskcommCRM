@@ -2508,12 +2508,13 @@ async function executarTurnoDoAgente(
     {
       pool,
       organizationId: tenantId,
-      tipoDoJob: liveJob().kind,
+      // Na prévia não há job (`liveJob()` lança): nada disto é lido, e `preview` já barra a chamada.
+      tipoDoJob: preview ? 'previa' : liveJob().kind,
       preview: Boolean(preview),
       contatoBloqueado: optedOutThisTurn,
       conversationId: input.conversationId,
       messageId: input.inboundMessageId,
-      jobId: liveJob().id,
+      jobId: preview ? null : liveJob().id,
       contactId: leadId || null,
       agentId: agentConfig?.agentId ?? null,
       nomeDoContato: openingContext.context.contact.name,
@@ -3193,7 +3194,7 @@ async function executarTurnoDoAgente(
             {
               pool,
               organizationId: tenantId,
-              tipoDoJob: liveJob().kind,
+              tipoDoJob: preview ? 'previa' : liveJob().kind,
               preview: Boolean(preview),
               rascunho: body,
               evidencias,

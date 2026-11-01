@@ -187,6 +187,12 @@
 - **Teto (D12):** `teto.ts` (`tetoEstouradoParaOAntes`) usa a MESMA regra pura `decidirOrcamento` (modo bloquear + carência vencida + aviso dado no mês + chave de emergência) numa leitura SEM efeito colateral (não abre aviso nem registra bloqueio — isso é da IA principal), com falha aberta. Teto estourado em "bloquear" pula **só o ANTES** (`jev_antes` NÃO está na lista de isentos); o DEPOIS não consulta o teto (`jev_depois` isento; teste de fonte nos dois sentidos).
 - Testes: `teto.test.ts` (13), `triagem.test.ts` (com o disjuntor), invariante de turno contra Postgres real (19 casos no arquivo: 401 → ANTES pulado, linha de erro e incidente; 402 em duas lojas → um incidente com `ocorrencias: 2`; 500 sem incidente; 429 abre o disjuntor e a outra loja não é afetada; teto estourado pula o ANTES e teto folgado não).
 
+### Fechamento do Marco 2 — baterias completas
+
+- **`pnpm test:db` (todos os invariantes, Postgres real):** 344 arquivos / 2800 testes; falharam 4 testes em 3 arquivos, e TODOS eram meus: a chamada da triagem lia `liveJob()` ao montar os argumentos, e na PRÉVIA (que não tem job) isso lança `preview_operational_job_forbidden`. Consertado (`tipoDoJob` e `jobId` não leem o job na prévia) e os 3 arquivos mais os 2 invariantes do Jev passaram juntos (41 testes). Os demais 341 arquivos passaram.
+- **`pnpm test:unit` (sem caminho):** 53 falhas; **2 eram minhas** (`painel-de-seguranca`: a lista de conferências sem escolha foi de 10 para 11, e o texto da conferência do Jev agora diz "Neste painel ela não tem chave" em vez de "não é uma chave deste agente", que contradizia o "Isto não se desliga." do painel; `jev-nunca-cala-bloqueia-nem-responde`: a cerca proíbe `lib/ai/decisao/` de escrever em mensagem — o metadado da triagem em `messages.metadata` passou a ser gravado por `triagem-no-turno.ts`, no agent-engine, e o módulo do Jev só monta o conteúdo). Corrigidas e verdes. As outras 51 são as mesmas do commit-base (ambiente Windows).
+- Os três SQLs que ficaram sem prova no Marco 1 (T10, T12, T14) agora têm prova contra Postgres de verdade (invariante `jev-conferencia-no-turno`).
+
 ## Pendências e coisas que só o dono pode fornecer
 
 | O quê | Quando faz falta | Tarefas |

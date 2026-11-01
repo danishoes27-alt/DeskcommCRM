@@ -174,7 +174,7 @@ export const CONFERENCIAS_DE_SAIDA: readonly ConferenciaDeSaida[] = [
       "que a IA não leu em nenhuma fonte. Segurada duas vezes, a equipe recebe um caso e o cliente um aviso.",
     escolha: null,
     porQueNaoSeDesliga:
-      "Não é uma chave deste agente: ela se liga e se desliga no cartão do Jev, em Provedores de IA, " +
+      "Neste painel ela não tem chave: o controle fica no cartão do Jev, em Provedores de IA, " +
       "tarefa “Conferir a resposta da IA antes de enviar”. Enquanto só observa, não segura nenhuma resposta.",
     camada: null,
   },

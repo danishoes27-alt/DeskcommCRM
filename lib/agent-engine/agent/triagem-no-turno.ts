@@ -31,7 +31,7 @@ import { avisarQueEPraEquipe } from "@/lib/ai/decisao/aviso-da-triagem";
 import { registrarFalhaQuePedeAcao } from "@/lib/ai/decisao/pool";
 import { avisarODonoDaPlataforma } from "@/lib/ai/decisao/queda";
 import { tetoEstouradoParaOAntes } from "@/lib/ai/decisao/teto";
-import { registrarTriagemDoJev } from "@/lib/ai/decisao/observacao-da-triagem";
+import { metadadoDaTriagem, registrarTriagemDoJev } from "@/lib/ai/decisao/observacao-da-triagem";
 import type { DependenciasDoPonto } from "@/lib/ai/decisao/ponto";
 import { estadoEfetivoDaTarefa, TAREFA_DA_TRIAGEM, TRIAGEM_DA_MENSAGEM } from "@/lib/ai/decisao/tarefas";
 import { perguntarATriagem, type VeredictoDaTriagem } from "@/lib/ai/decisao/triagem";
@@ -153,6 +153,8 @@ export async function triarOTurno(
       modelo: r.modelo,
       latenciaMs: r.latenciaMs,
     });
+    await gravarMetadadoDaTriagem(e.pool, e.organizationId, e.messageId, metadadoDaTriagem({ estado, veredito: r.veredito }));
+
     // Certeza ALTA de "equipe", decidindo: abre UM aviso na Central. Não abre caso e não passa
     // a conversa (D5); a IA segue atendendo.
     if (estado === "decidindo" && r.veredito.destinoEfetivo === "equipe") {
@@ -202,6 +204,32 @@ export async function marcarOuDesmarcarUrgente(
     }
   } catch (erro) {
     logger.warn("marca de urgente do Jev não foi gravada", {
+      organization_id: organizationId,
+      erro: erro instanceof Error ? erro.name : typeof erro,
+    });
+  }
+}
+
+/**
+ * O resto da triagem (categoria, destino, urgente, faixas) em `messages.metadata.triagem_jev`, na
+ * mensagem de ENTRADA da empresa do turno. Só rótulos e números. Mora aqui, e não em
+ * `lib/ai/decisao/`, porque o Jev não escreve em mensagem (cerca do módulo). Nunca lança.
+ */
+export async function gravarMetadadoDaTriagem(
+  pool: pg.Pool,
+  organizationId: string,
+  messageId: string,
+  metadado: unknown,
+): Promise<void> {
+  try {
+    await pool.query(
+      `update public.messages
+          set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object('triagem_jev', $3::jsonb)
+        where organization_id = $1 and id = $2 and direction = 'inbound'`,
+      [organizationId, messageId, JSON.stringify(metadado)],
+    );
+  } catch (erro) {
+    logger.warn("metadado da triagem do Jev não foi gravado", {
       organization_id: organizationId,
       erro: erro instanceof Error ? erro.name : typeof erro,
     });

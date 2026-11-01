@@ -10,7 +10,10 @@
  *    aparece como "sem par". Um rótulo por linha bastou: nenhuma migração.
  *  - **`messages.metadata.triagem_jev`** guarda o resto (categoria, urgente, faixas), só em
  *    rótulos e números, na mensagem de ENTRADA da empresa certa. Chave própria: a triagem
- *    antiga (legado) usa `triagem`, e quem a lê não deve achar a nova.
+ *    antiga (legado) usa `triagem`, e quem a lê não deve achar a nova. **Quem escreve é o turno**
+ *    (`lib/agent-engine/agent/triagem-no-turno.ts`), e não este módulo: a cerca
+ *    `jev-nunca-cala-bloqueia-nem-responde` proíbe `lib/ai/decisao/` de escrever em mensagem,
+ *    conversa ou contato — aqui só o conteúdo (`metadadoDaTriagem`) é montado.
  *
  * Sem texto de cliente em nenhuma das três. Pelo `pg.Pool` do turno; nunca lança.
  */
@@ -65,10 +68,6 @@ export async function registrarTriagemDoJev(pool: pg.Pool, r: RegistroDaTriagem)
                 $7::text, $8::numeric, $9::numeric, null, $10::text, $11::integer
           where $5::uuid is not null
          on conflict (organization_id, tarefa, message_id) where message_id is not null do nothing
-       ), meta as (
-         update public.messages
-            set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object('triagem_jev', $20::jsonb)
-          where organization_id = $1::uuid and id = $5::uuid and direction = 'inbound'
        )
        insert into public.llm_calls
          (organization_id, contact_id, agent_id, job_id, purpose, provider, model,
@@ -94,7 +93,6 @@ export async function registrarTriagemDoJev(pool: pg.Pool, r: RegistroDaTriagem)
         r.uso.tokensDeSaida,
         custoDaChamada(r.modelo, r.uso),
         r.estado === "decidindo" ? "jev" : "jev_observacao",
-        JSON.stringify(metadadoDaTriagem(r)),
       ],
     );
   } catch (erro) {

@@ -11372,8 +11372,8 @@ export const DICIONARIO: Traducoes = {
   "Relê a resposta pronta e segura a que traz preço, prazo, garantia, aprovação de crédito ou estoque que a IA não leu em nenhuma fonte. Segurada duas vezes, a equipe recebe um caso e o cliente um aviso.": {
     es: "Relee la respuesta lista y retiene la que trae precio, plazo, garantía, aprobación de crédito o stock que la IA no leyó en ninguna fuente. Si se retiene dos veces, el equipo recibe un caso y el cliente un aviso.",
   },
-  "Não é uma chave deste agente: ela se liga e se desliga no cartão do Jev, em Provedores de IA, tarefa “Conferir a resposta da IA antes de enviar”. Enquanto só observa, não segura nenhuma resposta.": {
-    es: "No es un interruptor de este agente: se activa y se desactiva en la tarjeta de Jev, en Proveedores de IA, tarea “Revisar la respuesta de la IA antes de enviarla”. Mientras solo observa, no retiene ninguna respuesta.",
+  "Neste painel ela não tem chave: o controle fica no cartão do Jev, em Provedores de IA, tarefa “Conferir a resposta da IA antes de enviar”. Enquanto só observa, não segura nenhuma resposta.": {
+    es: "En este panel no tiene interruptor: el control está en la tarjeta de Jev, en Proveedores de IA, tarea “Revisar la respuesta de la IA antes de enviarla”. Mientras solo observa, no retiene ninguna respuesta.",
   },
   "Não prometer checar a agenda sem checar de verdade": {
     es: "No prometer revisar la agenda sin hacerlo de verdad",
