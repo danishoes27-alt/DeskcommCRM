@@ -50,6 +50,7 @@ import {
   type LeadContextResult,
 } from '../edge/crm/get-lead-context';
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
+import { criarEvidenciasDoTurno } from './evidencias-do-turno';
 import type { CrmEdgeConfig } from '../edge/crm/mcp-client';
 import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
 // applySendOutcome é disposição de FILA (cancel/reschedule + cache de opt-out), não
@@ -2692,6 +2693,11 @@ async function executarTurnoDoAgente(
   // Citações acumuladas por buscas de conhecimento DESTE turno — anexadas à
   // próxima outbound enviada (shape de lib/ai/citations/types, que a UI já lê).
   let pendingCitations: ReturnType<typeof citationsFromHits> = [];
+  // O que a IA consultou NESTE turno (base de conhecimento; catálogo e Bling na T05):
+  // só em memória e só da empresa do turno. É a fonte de que a conferência do
+  // "depois" precisa para dizer que um preço, prazo ou disponibilidade "tem fonte"
+  // (lib/agent-engine/agent/evidencias-do-turno.ts).
+  const evidencias = criarEvidenciasDoTurno(tenantId);
   let runError: Error | null = null;
   const noteRunError = (err: Error): void => {
     runError ??= err;
@@ -2985,6 +2991,15 @@ async function executarTurnoDoAgente(
           // cru — é por isso que os ids podem sair do que vai ao modelo sem
           // perder nada: quem precisa deles é esta linha, não o modelo.
           pendingCitations = citationsFromHits(out.results);
+        }
+        // A busca aconteceu (mesmo vazia) e o que ela trouxe é evidência do turno.
+        // `tenantId` é a empresa em nome de quem `searchKnowledge` filtrou acima.
+        if (out.ok) {
+          evidencias.registrar(
+            'base_de_conhecimento',
+            out.results.map((h) => ({ fonte: h.source_name ?? null, texto: h.content })),
+            tenantId,
+          );
         }
         // `chunk_id` e `knowledge_source_id` viajavam CRUS para o modelo em toda
         // busca com RAG — dois UUIDs por resultado, sem uso nenhum do lado dele
