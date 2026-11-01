@@ -1,15 +1,16 @@
 # Spec 14 — Jev antes e depois da IA
 
-> **Status:** rascunho para aprovação (fase 2 de 4: spec). Nada aqui foi implementado, ligado, comprado ou enviado a algum fornecedor.
+> **Status:** decisões D3 a D16 **fechadas em 01/11/2026** (fase 2 de 4: spec). Nada aqui foi implementado, ligado, comprado ou enviado a algum fornecedor. D1 e D2 seguem como recomendação nesta spec.
 > **Base de código:** tag `celuzap-1.69.0-r2` (commit `7d976ea83`). **Branch de trabalho:** `celuzap-jev`.
-> **Data:** 31/10/2026. **Fonte externa:** documentação oficial da TypeSafe, consultada em 31/10/2026 (Anexo A).
+> **Data:** 31/10/2026; atualizada em 01/11/2026 (decisões D3 a D16, regra L6 e ambiguidades fechadas, seção 11). **Fonte externa:** documentação oficial da TypeSafe, consultada em 31/10/2026 (Anexo A).
 
 Como ler as marcas:
 
 - **[CÓDIGO]** li no repositório; vem com `arquivo:linha`.
 - **[OFICIAL]** li na documentação da TypeSafe (Anexo A).
 - **[INFERIDO]** é dedução minha; precisa de medição antes de virar promessa.
-- **[NÃO CONFIRMADO]** não achei na fonte oficial; vira pergunta ao fornecedor ou teste.
+- **[NÃO CONFIRMADO]** não achei na fonte oficial; vira teste nosso (pela D10, nenhuma pergunta será enviada ao fornecedor).
+- **[DECIDIDO]** decisão fechada por você em 01/11/2026 (seção 10); a spec passa a tratá-la como regra, não como recomendação.
 
 Todo custo está em reais (R$). O código guarda e mostra dólar; a conversão proposta está na seção 7.
 
@@ -22,13 +23,13 @@ Todo custo está em reais (R$). O código guarda e mostra dólar; a conversão p
    - O *Jev do sistema* (`lib/ai/decisao/`) tem 6 tarefas (clima, manipulação, roteador, pedido de humano, pedido de parar, follow-up), chave **por empresa**, interruptor e aceite LGPD por empresa, disjuntor e custo gravado por chamada.
 2. **Já existe o lugar certo para o "depois da IA":** a cadeia `before_send` (11 conferências, versão 7 travada por teste). O Jev entra ali como uma conferência nova (versão 8). Hoje, quando uma conferência veta, o texto volta para o modelo reescrever e o cliente não recebe nada; só dois casos têm saída automática.
 3. **A regra "a IA nunca inventa preço" hoje depende quase só do texto de instruções.** A conferência de preço só funciona se a empresa tiver tabela de preços cadastrada, e a conferência semântica de promessa vem desligada por padrão.
-4. **O Jev é fraco em conta, contagem, datas e em ler texto "hostil"** [OFICIAL]. Por isso a proposta é **regra local primeiro** (valores, senha, documento) e **Jev só para o que regra não alcança** (frases de garantia, prazo e aprovação com palavras variadas). O Jev só pode deixar a decisão **mais rígida**, nunca liberar o que a regra local segurou.
-5. **Dinheiro é pouco; o trabalho é grande.** Uso do Jev custa frações de centavo por mensagem (seção 7). O custo real está em ~24 tarefas de código, na coleta de "evidências" do turno e no jurídico.
+4. **O Jev é fraco em conta, contagem, datas e em ler texto "hostil"** [OFICIAL]. Por isso a regra é **local primeiro** (L1 a L6: valores, prazo, aprovação, disponibilidade, senha, documento) e **Jev só para o que regra não alcança** (frases de garantia, prazo e aprovação com palavras variadas). O Jev só pode deixar a decisão **mais rígida**, nunca liberar o que a regra local segurou.
+5. **Dinheiro é pouco; o trabalho é grande.** Uso do Jev custa frações de centavo por mensagem (seção 7). O custo real está em ~26 tarefas de código, na coleta de "evidências" do turno e no jurídico.
 6. **A trava de teto mensal não alcança o Jev** [CÓDIGO]. O custo dele **já entra** na soma do mês, mas nenhuma chamada dele passa pela trava. Não existe teto definido pela plataforma por cliente.
-7. **A tela "Plano e pagamento" não cobra nada** [CÓDIGO]: é um aviso "Em breve — Fase 2". Não há integração de pagamento no código. A criação de empresa depois de um pagamento confirmado é manual hoje.
-8. **Jurídico:** a TypeSafe está nos EUA, **não treina** com o que você envia, mas **não informa prazo de retenção**, e "retenção zero" só existe para clientes enterprise, sob pedido [OFICIAL]. Não há SLA e o contrato diz que a saída "pode ser inexata" [OFICIAL]. Antes de qualquer dado real: perguntas por escrito à TypeSafe e revisão do contrato com a loja.
+7. **A tela "Plano e cobrança" não cobra nada** [CÓDIGO]: é um aviso "Em breve — Fase 2" (a tela chama-se "Billing" no código e o menu diz "Plano e cobrança"). Não há integração de pagamento no código. A criação de empresa depois de um pagamento confirmado é manual hoje.
+8. **Jurídico:** a TypeSafe está nos EUA, **não treina** com o que você envia, mas **não informa prazo de retenção**, e "retenção zero" só existe para clientes enterprise, sob pedido [OFICIAL]. Não há SLA e o contrato diz que a saída "pode ser inexata" [OFICIAL]. Pela decisão D10 (01/11/2026), nenhuma pergunta será enviada à TypeSafe e o Jev roda normalmente, com dado real: isso é **risco aceito por você**. A cláusula de contrato com a loja e o aviso de privacidade seguem como **pendência do advogado (LGPD)**.
 9. **Recomendação:** **(b)** fazer o Bloco D com a r2 agora, com controles de compensação nas primeiras semanas, e lançar o Jev como r3 logo depois, começando em modo **observando** (mede, não age). Justificativa na seção 9.
-10. **Há 16 decisões suas** na seção 10, cada uma com a minha recomendação.
+10. **As decisões D3 a D16 (seção 10) estão fechadas desde 01/11/2026**; D1 e D2 seguem como recomendação. As ambiguidades da primeira versão estão resolvidas na seção 11.
 
 ---
 
@@ -39,7 +40,7 @@ Todo custo está em reais (R$). O código guarda e mostra dólar; a conversão p
 Dar ao atendimento duas camadas rápidas e baratas de proteção, **sem trocar** as regras que já existem:
 
 - **ANTES da IA (triagem):** ler a mensagem do cliente e decidir (a) a **categoria** — Conserto, Venda, Impressão ou Outro — e (b) o **destino**: *atender* (a IA responde como hoje), *pedir dado que falta* ou *mandar para a equipe*.
-- **DEPOIS da IA (conferência):** antes de enviar a resposta que a IA montou, conferir se ela traz preço, prazo ou garantia sem fonte consultada, repete senha de dispositivo, promete aprovação da financeira, repete conteúdo de documento, ou diz qualquer coisa que a regra "a IA nunca inventa" proíbe. Se reprovar, **a resposta fica segurada e abre-se um caso para a equipe**.
+- **DEPOIS da IA (conferência):** antes de enviar a resposta que a IA montou, conferir se ela traz preço, prazo, garantia ou disponibilidade de produto (tem, não tem, chegou) sem fonte consultada, repete senha de dispositivo, promete aprovação da financeira, repete conteúdo de documento, ou diz qualquer coisa que a regra "a IA nunca inventa" proíbe. Se reprovar, **a resposta fica segurada e abre-se um caso para a equipe**.
 
 Isto complementa a regra do projeto: a IA nunca inventa preço, prazo, estoque ou garantia.
 
@@ -49,7 +50,7 @@ Isto complementa a regra do projeto: a IA nunca inventa preço, prazo, estoque o
 - O Jev **não bloqueia contato** e **não passa a conversa sozinho**. Quem bloqueia por pedido de parar é só a regra de hoje (`lib/opt-out/deteccao.ts`), como já está em `lib/ai/decisao/tarefas.ts:249-274`.
 - O Jev **não substitui** nenhuma conferência existente da cadeia `before_send`. Ele **soma** (família "soma" de `tarefas.ts`).
 - Nada de áudio, imagem ou PDF vai ao Jev. Ele só lê texto [OFICIAL]. Senha e documento são conferidos **localmente**.
-- **Fora desta spec:** cobrança real, criação automática de empresa depois do pagamento, e teto mensal definido pela plataforma por cliente. Aparecem como dependências na seção 8 e nas decisões 13 e 14.
+- **Fora desta spec:** cobrança real, criação automática de empresa depois do pagamento, e teto mensal definido pela plataforma por cliente. Aparecem como dependências na seção 8 e nas decisões D13 e D14 (a D14 vira outra spec).
 - **Proibido pelo contrato da TypeSafe:** usar as respostas do Jev para treinar um modelo nosso que o imite ("model distillation") [OFICIAL: contrato principal, cláusula 2.3(b)]. Os registros de concordância (`jev_observacoes`) servem para **medir**, nunca para treinar.
 - Fora da primeira entrega: mensagens de follow-up por modelo fixo, disparo em massa e prospecção (não passam pelo `send_message` da IA), e o texto fixo do aviso de escalação.
 - **Nenhuma ação em produção:** esta spec não liga nada, não cria conta e não aplica migração.
@@ -86,13 +87,13 @@ mensagem do cliente chega
   → IA principal monta a resposta
         o turno passa a guardar as EVIDÊNCIAS consultadas (trechos da base e do catálogo)
   → send_message
-        1) conferência LOCAL (valores, prazo, garantia, aprovação, senha, documento)
+        1) conferência LOCAL (L1 a L6: valores, prazo, garantia, aprovação, disponibilidade, senha, documento)
         2) JEV DEPOIS  (tarefa "conferencia"): 1 chamada com o rascunho + evidências
         3) nova conferência `jev_conferencia` na cadeia before_send (versão 8)
         → passou: envia
         → reprovou: 1ª vez devolve ao modelo para reescrever só com o que está nas evidências;
-          2ª vez SEGURA a resposta, abre caso para a equipe e (se aprovado) avisa o cliente
-          com um texto fixo de código
+          2ª vez SEGURA a resposta, abre caso para a equipe e avisa o cliente
+          com um texto fixo de código (D6)
 ```
 
 Em palavras simples: **antes**, o Jev ajuda a IA a entender o que o cliente quer; **depois**, ele é um fiscal que olha a resposta pronta antes de ela sair.
@@ -128,11 +129,11 @@ Observação: a triagem antiga usa o pacote `ai` (`experimental_evaluate`) e cha
 Notas de desenho:
 
 - O Jev tende a escolher a **primeira opção** quando está em dúvida [OFICIAL: página de limitações]. Por isso `outro` fica por último e a ordem das opções entra no teste.
-- `pedir_dado` só é confiável na **primeira mensagem** da conversa: o Jev vê uma mensagem sozinha e não sabe o que o cliente já contou antes. Proposta: perguntar `pedir_dado` só quando a conversa não tem mensagem anterior do cliente (decisão 4). Alternativa é mandar as últimas mensagens, o que exige um aceite mais largo (alcance "conversa", `config.ts:48`).
-- As categorias saem de **uma lista única por empresa**, com este padrão de quatro. A categoria `financeiro` da triagem antiga (`jev.ts:41-48`) deixa de ser categoria; boleto e parcelamento ficam descritos dentro de `venda` (decisão 3).
+- `pedir_dado` só é confiável na **primeira mensagem** da conversa: o Jev vê uma mensagem sozinha e não sabe o que o cliente já contou antes. **DECIDIDO (D4, 01/11/2026):** `pedir_dado` vale só na primeira mensagem, isto é, só quando a conversa não tem mensagem anterior do cliente. A alternativa descartada era mandar as últimas mensagens, o que exigiria um aceite mais largo (alcance "conversa", `config.ts:48`).
+- **DECIDIDO (D3, 01/11/2026):** as categorias saem de **uma lista única por empresa**, com este padrão de quatro (Conserto, Venda, Impressão, Outro). A categoria `financeiro` da triagem antiga (`jev.ts:41-48`) deixa de ser categoria; boleto e parcelamento ficam descritos dentro de `venda`.
 - Se a empresa já tem **roteador de intenção** configurado, o Jev roteador (`lib/ai/decisao/roteador.ts`) continua escolhendo *qual agente atende*. A triagem não escolhe agente; só rotula e dá dica.
 
-**Cortes de confiança (ANTES).** Usa a mesma régua do código de hoje como piso (`jev.ts:78-80`: probabilidade ≥ 0,70 e confiança ≥ 0,60) e acrescenta uma faixa alta.
+**Cortes de confiança (ANTES) — DECIDIDO (D7, 01/11/2026).** Usa a mesma régua do código de hoje como piso (`jev.ts:78-80`: probabilidade ≥ 0,70 e confiança ≥ 0,60) e acrescenta uma faixa alta.
 
 | Faixa | Regra (opção escolhida) | O que acontece |
 |---|---|---|
@@ -140,7 +141,9 @@ Notas de desenho:
 | **Média** | probabilidade 0,70 a 0,80 **ou** confiança 0,60 a 0,70 | Só **registra** (categoria e destino ficam no registro). A IA decide como hoje. |
 | **Baixa** | abaixo de 0,70 ou de 0,60 | Ignora. A IA principal decide, com motivo em código (`baixa_confianca`, `baixa_probabilidade`), como já faz `jev.ts:263-266`. |
 
-Isso respeita a regra do dono do produto de 24/09/2026, registrada em `jev.ts:51-56`: **dúvida do Jev vai para a IA principal, nunca direto para o humano**. A exceção proposta é só quando o Jev tem confiança **alta** de que o destino é a equipe, e mesmo assim só abre aviso (decisão 5).
+Isso respeita a regra do dono do produto de 24/09/2026, registrada em `jev.ts:51-56`: **dúvida do Jev vai para a IA principal, nunca direto para o humano**. **DECIDIDO (D5, 01/11/2026):** a exceção é só quando o Jev tem confiança **alta** de que o destino é a equipe, e mesmo assim só abre aviso na Central: não abre caso e não passa a conversa.
+
+**Corte do `urgente` (resolvido em 01/11/2026):** 0,80. Marca só o cartão na Central; não muda o destino. O corte é ajustado durante a observação.
 
 ### 3.3 JEV DEPOIS — conferência da resposta
 
@@ -150,11 +153,12 @@ Duas camadas, **nesta ordem**.
 
 | Código | O que confere | Como |
 |---|---|---|
-| L1 valores | todo valor em R$ do rascunho aparece nas evidências | lê os números do rascunho e procura nas evidências, aceitando múltiplos inteiros de um preço unitário (ex.: 5 folhas × R$ 2 = R$ 10). Reaproveita a tabela de preços da empresa quando existir (gate `promise`, `before-send.ts:362`). |
+| L1 valores | todo valor em R$ do rascunho aparece nas evidências | lê os números do rascunho e procura nas evidências. **Segura** valor que não seja igual a um valor consultado nem múltiplo inteiro de um preço unitário consultado (ex.: 5 folhas × R$ 2 = R$ 10 passa). **Soma de itens não é aceita:** se a IA somar itens, o valor precisa vir de fonte, ou a resposta é segurada. Reaproveita a tabela de preços da empresa quando existir (gate `promise`, `before-send.ts:362`). |
 | L2 prazo e garantia | expressões como "em N dias", "hoje", "amanhã", "garantia de N meses" estão nas evidências | lista de padrões; sem evidência correspondente, marca |
 | L3 aprovação | "aprovado", "sem consulta", "sem análise", "100%", "garantido" sobre crédito, boleto ou financiamento | lista de padrões; sempre marca |
 | L4 senha | o rascunho repete a senha, PIN ou padrão que o cliente digitou antes | guarda só na memória do turno, nunca grava; compara com o rascunho |
 | L5 documento | o rascunho copia trecho do texto extraído de um documento que o cliente enviou | sequência de 8 ou mais palavras iguais |
+| L6 disponibilidade (nova, 01/11/2026) | o rascunho afirma que um produto **tem**, **não tem** ou **chegou**, e nenhum trecho consultado (Bling ou base de conhecimento) sustenta isso | padrão de texto (ex.: "tem em estoque", "temos", "não temos", "acabou", "chegou"; a lista final sai na construção), sem Jev, igual às L1 a L5. Sem trecho consultado que sustente a afirmação, segura |
 
 Um achado local é **sempre** faixa alta: segura, mesmo que o Jev esteja fora do ar.
 
@@ -166,23 +170,23 @@ Um achado local é **sempre** faixa alta: segura, mesmo que o Jev esteja fora do
 | `promete_aprovacao` | "A resposta promete ou dá como certa a aprovação de crédito, financiamento ou boleto?" |
 | `inventa_dado` | "A resposta afirma algum fato sobre produto, serviço, estoque, loja ou regra que não está nas evidências?" |
 
-O Jev **só aperta**: se a camada local achou problema, o Jev não pode liberar. Se o texto do cliente tentar "convencer" o verificador (ele não trata texto como hostil por padrão [OFICIAL]), a regra local continua mandando.
+O Jev **só aperta**: se a camada local (L1 a L6) achou problema, o Jev não pode liberar. Se o texto do cliente tentar "convencer" o verificador (ele não trata texto como hostil por padrão [OFICIAL]), a regra local continua mandando.
 
-**Cortes de confiança (DEPOIS).** A resposta errada que sai custa mais do que uma resposta segurada, então a régua é mais baixa.
+**Cortes de confiança (DEPOIS) — DECIDIDO (D7, 01/11/2026).** A resposta errada que sai custa mais do que uma resposta segurada, então a régua é mais baixa.
 
 | Faixa | Regra (maior probabilidade de problema entre as perguntas) | O que acontece |
 |---|---|---|
-| **Alta** | achado local, **ou** Jev ≥ 0,80 | **Segura.** 1ª vez: devolve ao modelo o motivo, para reescrever só com o que está nas evidências. 2ª vez: segura de vez, **abre caso** para a equipe e (decisão 6) avisa o cliente com texto fixo. |
+| **Alta** | achado local, **ou** Jev ≥ 0,80 | **Segura.** 1ª vez: devolve ao modelo o motivo, para reescrever só com o que está nas evidências. 2ª vez: segura de vez, **abre caso** para a equipe e avisa o cliente com texto fixo (D6). |
 | **Média** | Jev entre 0,50 e 0,80 | **Libera e registra como "dúvida"** para revisão no cartão do Jev. Em fase de medição, é o que alimenta o ajuste do corte. |
 | **Baixa** | Jev abaixo de 0,50 | Libera. |
 
-Na primeira fase (tarefa em `observando`), **nenhuma faixa age**: o Jev só registra o que faria.
+Na primeira fase (tarefa em `observando`), **nenhuma faixa age**: o Jev só registra o que faria. **A saída de `observando` exige as duas condições juntas (D7 e D16): duas semanas em `observando` E corpus em português de pelo menos 200 mensagens e 100 rascunhos rotulados (seção 8.5).**
 
 ### 3.4 O que o cliente vê enquanto a resposta está segurada
 
 - Hoje, quando um veto não tem saída automática, o motivo volta ao modelo (`inbound-turn.ts:3361-3376`) e **o cliente não recebe nada dessa tentativa**. Se o modelo não conseguir reescrever, o cliente fica sem resposta. Em WhatsApp isso parece abandono.
-- Proposta: um **aviso fixo de código**, uma vez por resposta segurada, no mesmo molde de `avisarLeadDaEscalacao` (`lib/agent-engine/agent/aviso-de-escalacao.ts:115`), por exemplo "Vou confirmar essa informação com a equipe e já te respondo". Passa pelo mesmo anti-ban, janela e bloqueio de contato. É a decisão 6.
-- O caso abre pelo sistema existente (`openCase`, `lib/agent-engine/agent/human-cases.ts:168`). **Só pode haver um caso aberto por conversa.** Se já houver um, a resposta fica segurada, o fato é registrado no rastro (`before_send_traces`) e a equipe vê o caso existente; risco anotado na seção 8.
+- **DECIDIDO (D6, 01/11/2026):** um **aviso fixo de código**, uma vez por resposta segurada, no mesmo molde de `avisarLeadDaEscalacao` (`lib/agent-engine/agent/aviso-de-escalacao.ts:115`), por exemplo "Vou confirmar essa informação com a equipe e já te respondo". Passa pelo mesmo anti-ban, janela e bloqueio de contato.
+- O caso abre pelo sistema existente (`openCase`, `lib/agent-engine/agent/human-cases.ts:168`). **Só pode haver um caso aberto por conversa.** Se já houver um, a resposta fica segurada, o fato é registrado no rastro (`before_send_traces`) e a equipe vê o caso existente; risco anotado na seção 8. **Resolvido (01/11/2026):** nessa situação não se abre caso novo e o aviso fixo ao cliente sai **uma única vez por conversa** (seção 11).
 
 ---
 
@@ -198,7 +202,7 @@ O que já existe e será reaproveitado [CÓDIGO]: teto de 1,5 s por chamada (`cl
 | Prós | Nunca atrapalha o atendimento. Simples. É o desenho que o código já usa (`jev.ts:25-27`). | Mais seguro durante queda. |
 | Contras | Na queda, perde o aviso de "equipe" e a categoria. | Atendimento pior em toda queda; mais código; a queda é frequente em fornecedor novo sem SLA. |
 
-**Recomendo a Opção 1.** O "antes" só ajuda; quem protege é o "depois" e as regras que já existem.
+**DECIDIDO (01/11/2026): Opção 1.** O "antes" só ajuda; quem protege é o "depois" e as regras que já existem. Na queda, o ANTES é pulado, a IA atende sem dica e a aba Status mostra "Jev fora do ar".
 
 ### 4.2 DEPOIS
 
@@ -210,15 +214,15 @@ O que já existe e será reaproveitado [CÓDIGO]: teto de 1,5 s por chamada (`cl
 
 Descartada: "segura tudo se o Jev falhar". A TypeSafe não dá garantia de disponibilidade nem de saída sem erro [OFICIAL: contrato principal, cláusula 9.3], então uma queda deixaria todos os clientes sem resposta e inundaria a equipe de casos.
 
-**Recomendo a Opção 2**, e **só em modo `decidindo`**. Em `observando`, nunca segura.
+**DECIDIDO (01/11/2026): Opção 2**, e **só em modo `decidindo`**. Em `observando`, nunca segura. Na queda, o DEPOIS usa só as regras locais L1 a L6, com a regra das 2 tentativas: se uma regra local segurar, a 1ª vez volta para a IA reescrever e a 2ª vez segura e abre caso; se nenhuma regra segurar, a resposta sai. A aba Status mostra "Jev fora do ar".
 
 ### 4.3 Quando o Jev "responde errado"
 
 - **Falso positivo** (segura resposta boa): custo é tempo da equipe. Mitigação: duas semanas em `observando`, revisão por amostra, corte ajustável por empresa, interruptor de emergência.
 - **Falso negativo** (deixa passar invenção): por isso a camada local é primeira e o Jev só aperta.
-- **Português:** a documentação não diz que o português é suportado nem mede acurácia [NÃO CONFIRMADO]. Fonte secundária diz que o inglês é o idioma principal. **Não passa para `decidindo` sem teste com mensagens reais em português.**
+- **Português:** a documentação não diz que o português é suportado nem mede acurácia [NÃO CONFIRMADO]. Fonte secundária diz que o inglês é o idioma principal. **Não passa para `decidindo` sem o corpus de mensagens reais em português (D16, seção 8.5).**
 - **Limites conhecidos do modelo** [OFICIAL: página "jev-1.13 jaggedness"]: lê "ao pé da letra"; "não é calculadora" e não conta de forma confiável; trata datas como texto; acerta menos com negação dupla; perde precisão quando o texto tem muito detalhe irrelevante; tende à primeira opção; não trata texto como hostil. Cada um já tem contramedida na seção 3.
-- **Versão:** o código fixa `jev-1.13.0` (`cliente.ts:71`). A `1.14.0` existe desde 14/10/2026 e o apelido `jev-latest` já aponta para ela [OFICIAL]. Manter fixa evita mudar o comportamento sem aviso (a própria TypeSafe recomenda fixar quando há corte ajustado). Subir de versão exige nova linha de preço (`pricing.ts:96` casa pelo id exato; versão sem preço grava custo vazio) e nova medição. É a decisão 8.
+- **Versão:** o código fixa `jev-1.13.0` (`cliente.ts:71`). A `1.14.0` existe desde 14/10/2026 e o apelido `jev-latest` já aponta para ela [OFICIAL]. Manter fixa evita mudar o comportamento sem aviso (a própria TypeSafe recomenda fixar quando há corte ajustado). Subir de versão exige nova linha de preço (`pricing.ts:96` casa pelo id exato; versão sem preço grava custo vazio) e nova medição. **DECIDIDO (D8, 01/11/2026): modelo fixo na 1.13.0; a 1.14.0 será medida em paralelo depois.**
 
 ---
 
@@ -231,7 +235,7 @@ Reaproveita `organizations.settings.jev` [CÓDIGO: `lib/ai/decisao/config.ts:77-
 - **Interruptor mestre** `ligado` + **aceite do administrador** (LGPD). Ligado sem aceite vale como desligado (`config.ts:109-111`).
 - **Por tarefa**, três estados: `desligada`, `observando`, `decidindo` (`config.ts:34`). Ilegível vale `desligada`.
 - Duas tarefas novas: `triagem` e `conferencia`. Os cartões, a rota e o "usada em" da chave derivam da lista `TAREFAS_DO_JEV` (`tarefas.ts:309-316`), então a tela quase não muda.
-- **Novo alcance de consentimento: `resposta`** (rascunho da IA + trechos consultados), entre `mensagem` e `conversa` (`config.ts:48`). O aceite atual cobre só "cada mensagem do cliente, sozinha". Como a conferência manda outro tipo de dado, **exige novo aceite do administrador** e a tarefa `conferencia` nasce `desligada`, não `observando` (regra do item 5 de `tarefas.ts:20-23`: tarefa que pede mais que o aceite nunca começa sozinha).
+- **DECIDIDO (D9, 01/11/2026) — novo alcance de consentimento: `resposta`** (rascunho da IA + trechos consultados, sem a mensagem do cliente), entre `mensagem` e `conversa` (`config.ts:48`). O aceite atual cobre só "cada mensagem do cliente, sozinha". Como a conferência manda outro tipo de dado, **exige novo aceite do administrador** e a tarefa `conferencia` nasce `desligada`, não `observando` (regra do item 5 de `tarefas.ts:20-23`: tarefa que pede mais que o aceite nunca começa sozinha).
 - **Atenção com a `triagem`:** ela usa o alcance `mensagem`, que o aceite atual já cobre. Pela regra do código, tarefa nova nesse alcance **começa `observando` sozinha** em toda empresa que já tem o Jev ligado com aceite (`tarefas.ts:20-23`). Ou seja, publicar a r3 poderia passar a mandar mensagens à TypeSafe sem novo clique. Por isso existem os interruptores da instalação abaixo, com padrão desligado.
 - Quem liga: administrador da empresa (`app/api/v1/ai/jev/route.ts:594-668`); gerente só lê (`:304-306`).
 - **Interruptores da instalação**, novos, com padrão desligado, um por tarefa nova: `JEV_TRIAGEM_DO_SISTEMA_ENABLED` e `JEV_CONFERENCIA_ENABLED`. Sem eles, publicar a r3 não liga nada (regra do projeto: variável nova com padrão que não quebra `.env` antigo). A triagem antiga mantém `JEV_TRIAGEM_ENABLED` (`lib/env.ts:512`) e fica como legado.
@@ -259,7 +263,7 @@ E o estado **`observando`** é o "modo teste do Jev": ele pergunta e grava, mas 
 | Não vai | nome, telefone, id, empresa, transcrição de áudio, descrição de foto, texto de documento (`aplicar.ts:28-34`) | mensagem do cliente, nome, telefone, id, empresa, qualquer texto de documento |
 | Sempre vai junto | o texto das perguntas e critérios (escrito pela loja, não pelo cliente) | idem |
 
-Máscara (`lib/sentry/scrub.ts:76-106`): hoje tira e-mail, CPF e telefone. **Não tira senha de dispositivo, nem nome.** Proposta: uma máscara nova, `mascararSegredos`, que troca por `[SENHA]` o que vem depois de "senha", "PIN", "padrão" e "código de desbloqueio", e troca o primeiro nome do contato por `[NOME]` no rascunho.
+Máscara (`lib/sentry/scrub.ts:76-106`): hoje tira e-mail, CPF e telefone. **Não tira senha de dispositivo, nem nome.** **DECIDIDO (01/11/2026):** uma máscara nova, `mascararSegredos`, que troca por `[SENHA]` o que vem depois de "senha", "PIN", "padrão" e "código de desbloqueio" e, além do primeiro nome (`[NOME]`), mascara **sobrenome, telefone, CPF, e-mail e endereço**, tanto no texto do ANTES quanto no rascunho que vai ao DEPOIS.
 
 **Senha de dispositivo:** nunca vai à TypeSafe e nunca é gravada. A conferência L4 guarda o valor só na memória do turno. A decisão da loja sobre *coletar senha pelo chat ou só na loja* (pendente do dono) muda a frequência desse caso, não o desenho.
 
@@ -275,14 +279,16 @@ Máscara (`lib/sentry/scrub.ts:76-106`): hoje tira e-mail, CPF e telefone. **Nã
 - Lista de operadores subcontratados: fica fora do texto, em uma página própria da TypeSafe.
 - Contrato: créditos **pré-pagos em dólar**, que vencem em 12 meses e não são reembolsados; sem garantia de disponibilidade; a saída "pode ser inexata"; o cliente responde por ter os consentimentos necessários para o que envia.
 
-### 6.3 O que isso exige (a validar com advogado)
+### 6.3 O que isso exige (pendência do advogado) e o risco aceito
+
+A cláusula de contrato, o aviso de privacidade e a base legal da transferência internacional abaixo são **pendência do advogado (LGPD)**.
 
 - **Contrato do Celuzap com a loja:** cláusula nomeando a TypeSafe como operador subcontratado, localizada nos EUA, para as finalidades "classificar a mensagem" e "conferir a resposta"; que não treina com os dados; que o prazo de retenção depende de resposta da TypeSafe; e que o recurso **não garante** ausência de erro.
 - **Aviso de privacidade da loja** para os clientes finais: mencionar a transferência internacional.
 - **LGPD, transferência internacional** (art. 33): a base precisa estar escolhida e documentada. O acordo da TypeSafe usa cláusulas europeias; se isso basta para o Brasil, **não verifiquei** — é pergunta para o advogado.
 - **Aceite do administrador** dentro do sistema (já existe: `config.ts:90-98`, com `versao`). O novo alcance `resposta` pede novo aceite.
-- **Perguntas por escrito à TypeSafe** (via o formulário de suporte), antes de qualquer dado real: prazo de retenção da entrada e da saída; ZDR e seu preço; região de processamento; exclusão a pedido; subcontratados; limites de taxa; política de descontinuação de versões; acurácia em português.
-- **Até as respostas chegarem: só dados de teste.**
+- **DECIDIDO (D10, 01/11/2026):** nenhuma pergunta será enviada à TypeSafe e o Jev roda normalmente, com dado real. Ficam como **RISCO ACEITO por você**: prazo de retenção da entrada e da saída, região de processamento além dos EUA, retenção zero (ZDR) e exclusão a pedido, **não confirmados pelo fornecedor**. Seguem também sem resposta os subcontratados, os limites de taxa e a política de descontinuação de versões. A acurácia em português não depende do fornecedor: é medida por nós, com o corpus da D16.
+- **Pendência do advogado (LGPD):** a cláusula de contrato com a loja, o aviso de privacidade aos clientes finais e a base legal da transferência internacional (itens acima). A spec registra a pendência; o prazo dela não foi definido.
 
 ---
 
@@ -307,6 +313,17 @@ Por mês, supondo uma triagem e uma conferência por mensagem respondida:
 | 5.000 | ~R$ 3,35 | ~R$ 12 |
 | 30.000 | ~R$ 20 | ~R$ 72 |
 
+**Segunda chamada nas respostas reprovadas (somada em 01/11/2026).** Quando o DEPOIS reprova uma resposta na 1ª vez, a IA reescreve e o DEPOIS confere de novo: é uma segunda chamada, do mesmo tamanho da primeira. A taxa de reprovação é **[INFERIDO]** (só a medição em `observando` dirá). Duas hipóteses: 10% e 30% das respostas reprovadas na 1ª vez. A reescrita da IA principal tem custo próprio, fora desta conta.
+
+| Mensagens respondidas por mês | Evidência | Conta original | Com reescrita em 10% | Com reescrita em 30% |
+|---|---|---|---|---|
+| 5.000 | normal | ~R$ 3,35 | ~R$ 3,64 | ~R$ 4,22 |
+| 5.000 | grande | ~R$ 12,01 | ~R$ 13,17 | ~R$ 15,48 |
+| 30.000 | normal | ~R$ 20,10 | ~R$ 21,83 | ~R$ 25,29 |
+| 30.000 | grande | ~R$ 72,07 | ~R$ 79,00 | ~R$ 92,86 |
+
+Mesmo com 30% reprovadas, a estimativa continua abaixo de R$ 100 por mês (com a cotação de exemplo).
+
 O que **não** está nessas contas: valor mínimo de compra de créditos, impostos e taxa de cartão internacional [NÃO CONFIRMADO: a página de preços da TypeSafe não existe e a documentação não fala de cobrança]. Créditos vencem em 12 meses e não voltam [OFICIAL].
 
 ### 7.2 Como o custo é registrado hoje [CÓDIGO]
@@ -317,18 +334,18 @@ O que **não** está nessas contas: valor mínimo de compra de créditos, impost
 
 ### 7.3 Como entra no teto de cada cliente
 
-- Cada tarefa nova grava uma linha por chamada com finalidade própria (`jev_triagem`, `jev_conferencia`), como o roteador faz hoje. Zero mudança de banco para o registro.
-- **Hoje o Jev nunca é barrado pela trava** (nenhum arquivo de `lib/ai/decisao/` consulta o orçamento). Proposta:
+- **DECIDIDO (D13, 01/11/2026):** cada **chamada** grava **uma linha** em `llm_calls`, com finalidade `jev_antes` ou `jev_depois`, como o roteador faz hoje (a segunda chamada da reescrita grava a sua). A chamada do ANTES tem 3 perguntas e é **uma** linha, não três. Zero mudança de banco para o registro.
+- **Hoje o Jev nunca é barrado pela trava** (nenhum arquivo de `lib/ai/decisao/` consulta o orçamento). **DECIDIDO (D12, 01/11/2026):** o Jev conta no teto mensal de IA, mas só a triagem é pulada quando o teto estoura:
   - **ANTES:** pula a chamada quando o teto da empresa já estourou em modo "bloquear" (economiza e a IA segue como hoje).
   - **DEPOIS:** **isento do bloqueio**, como as camadas de segurança que já são isentas (`jailbreak_detect` e `promise_semantic`, `lib/agent-engine/edge/llm/orcamento.ts:50-54`). O custo soma, mas a conferência não desliga por teto. Na prática, com o teto estourado a IA principal já fica bloqueada e não há rascunho para conferir.
-- O teto hoje é do **próprio cliente**, que pode desligar (`ai_budgets.enforcement_mode` nasce `off`, migração 0159:189). **Não existe teto definido pela plataforma por cliente**; a especificação de cobrança do revendedor prevê `teto_ia_usd_cents`, mas isso não existe no código. É outra spec (decisão 14).
+- O teto hoje é do **próprio cliente**, que pode desligar (`ai_budgets.enforcement_mode` nasce `off`, migração 0159:189). **Não existe teto definido pela plataforma por cliente**; a especificação de cobrança do revendedor prevê `teto_ia_usd_cents`, mas isso não existe no código. **DECIDIDO (D14, 01/11/2026): fica FORA da r3 e vira outra spec, a fazer antes de vender para várias lojas.**
 
 ### 7.4 Conversão para reais (a proposta)
 
 - **Fonte de verdade continua em dólar**, porque é a moeda do fornecedor e das tabelas de preço.
-- **Exibição em reais:** uma configuração da plataforma `cotacao_usd_brl` (com valor inicial vindo de uma variável de ambiente) usada em `formatCentsUSD` (`app/app/ai/usage/_client.tsx:94`) e `BudgetCard.tsx:66-72`. As telas passam a dizer "R$ X (cotação R$ Y)".
+- **Exibição em reais:** uma configuração da plataforma `cotacao_usd_brl` (com valor inicial pesquisado na construção) usada em `formatCentsUSD` (`app/app/ai/usage/_client.tsx:94`) e `BudgetCard.tsx:66-72`. As telas passam a dizer "R$ X (cotação R$ Y)".
 - O campo do teto mensal também entra em reais, convertido com a cotação do dia e **gravando a cotação usada na auditoria**, para o teto não "mudar sozinho".
-- Atualização da cotação: manual, mensal, pelo administrador da plataforma (decisão 11).
+- **DECIDIDO (D11, 01/11/2026):** a cotação fica numa configuração da plataforma, com valor inicial pesquisado na construção; a atualização é manual, mensal, pelo administrador da plataforma; as telas mostram R$ com a cotação visível.
 
 ### 7.5 Chave: quem paga a conta da TypeSafe
 
@@ -337,7 +354,7 @@ O código foi escrito para **cada empresa ter a própria chave** do Jev (`ponto.
 - **A. Chave da própria loja (como o código faz hoje).** Custo zero para você; atrito alto para a loja; cada loja assina o contrato da TypeSafe.
 - **B. Chave única da plataforma.** Você tem uma conta; o custo por loja sai de `llm_calls` e é repassado. Para o piloto funciona **sem mudar código**, colando a mesma chave na credencial `typesafe` de cada empresa (tela de Credenciais). Para muitas lojas, vale criar "credencial da plataforma" com busca própria. Contras: um segredo repetido em várias linhas; rodízio de chave exige atualizar todas; o administrador da loja pode apagar a credencial (isso desliga o Jev).
 
-**Recomendo B para o piloto** (decisão 2).
+**Recomendo B para o piloto** (D2, ainda como recomendação).
 
 ---
 
@@ -349,11 +366,13 @@ O código foi escrito para **cada empresa ter a própria chave** do Jev (`ponto.
 |---|---|
 | `lib/ai/decisao/triagem.ts` (+ teste) | tarefa `triagem`: perguntas, cortes, gravação |
 | `lib/ai/decisao/conferencia.ts` (+ teste) | tarefa `conferencia`: perguntas, montagem do `state`, cortes |
-| `lib/agent-engine/guardrails/conferencia-local.ts` (+ teste) | L1 a L5 |
+| `lib/agent-engine/guardrails/conferencia-local.ts` (+ teste) | L1 a L6 |
 | `lib/agent-engine/guardrails/mascarar-segredos.ts` (+ teste) | máscara de senha e nome |
 | `lib/agent-engine/agent/evidencias-do-turno.ts` (+ teste) | guarda as evidências consultadas no turno |
 | `tests/invariants/jev-conferencia-no-turno.test.ts`, `jev-triagem-no-turno.test.ts`, `jev-isolamento-entre-empresas.test.ts` | invariantes |
 | 1 migração (opcional) | estender o CHECK de `agent_cases.source`; sem ela, usa `guardrail_autofallback` (`baseline.sql:7581`) |
+
+**Tabela `jev_observacoes` (conferido em 01/11/2026, só pelos arquivos):** ela **já existe**. Foi criada pela migração 0421 (`20260926030000_0421_jev_observacoes.sql`) e consta do `baseline.sql` e do dump do banco de produção de 31/10/2026. Nenhuma migração é obrigatória para ela, e o vocabulário de `tarefa` é aberto (sem CHECK). Ela guarda **um rótulo por linha** e é única por (empresa, tarefa, mensagem): como a triagem tem 3 perguntas e a conferência tem várias, o plano da r3 (`docs/15-plano-r3-jev.md`) define qual rótulo vai para cada linha. Se isso não bastar, entra uma migração aditiva.
 
 ### 8.2 Arquivos alterados
 
@@ -362,9 +381,10 @@ O código foi escrito para **cada empresa ter a própria chave** do Jev (`ponto.
 | `lib/ai/decisao/tarefas.ts`, `config.ts` (+ testes) | 2 tarefas, alcance `resposta` |
 | `lib/agent-engine/guardrails/before-send.ts` | conferência `jev_conferencia`; `BEFORE_SEND_CHAIN_VERSION` de 7 para 8 (`:819`) |
 | `tests/unit/before-send-chain-shape.test.ts` | novo formato da cadeia (esse teste existe justamente para forçar a revisão) |
-| `lib/agent-engine/agent/inbound-turn.ts` (4.921 linhas) | 2 pontos: triagem (`:2123-2144`) e `send_message` (`:3284`) com segurar e abrir caso |
+| `lib/agent-engine/agent/inbound-turn.ts` (4.921 linhas) | 2 pontos: triagem (`:2123-2144`, incluindo a dica de uma linha no prompt da IA, no mesmo ponto onde o prompt é montado) e `send_message` (`:3284`) com segurar e abrir caso |
 | `lib/agent-engine/agent/human-cases.ts` | tipo de `source` |
-| `lib/agent-engine/agent/aviso-de-escalacao.ts` | novo motivo de aviso (se aprovado) |
+| `lib/agent-engine/agent/aviso-de-escalacao.ts` | novo motivo de aviso ao cliente (D6); continua sendo só o aviso ao cliente |
+| aviso na Central do ANTES (arquivo a definir no plano; mecanismo de `lib/ai/decisao/aviso.ts`) | aviso "equipe" com certeza alta (D5), pelo mecanismo de avisos que a Central já tem |
 | `lib/ai/triagem/*` | marcar como legado (desligado) |
 | `lib/env.ts`, `.env.example` | `JEV_TRIAGEM_DO_SISTEMA_ENABLED`, `JEV_CONFERENCIA_ENABLED`, cotação inicial |
 | `lib/agent-engine/edge/llm/pricing.ts` | só se subir a versão |
@@ -373,26 +393,27 @@ O código foi escrito para **cada empresa ter a própria chave** do Jev (`ponto.
 
 ### 8.3 Tarefas (estimativa para o plano)
 
-Cerca de **24 tarefas pequenas** em 7 grupos: base de configuração (3), triagem (5), evidências do turno (2), conferência local (3), conferência com Jev e cadeia (4), segurar, caso e aviso (3), custo em reais e telas (2), testes de isolamento e dublê (2). O plano (fase 3) refina isto.
+Cerca de **26 tarefas pequenas** em **8 grupos** (as 24 da primeira versão, que somavam 3+5+2+3+4+3+2+2, mais 2 tarefas novas): base de configuração (3), evidências do turno (2), conferência local (3, com a L6 dentro), conferência com Jev e cadeia (4), segurar, caso e aviso (3), triagem (5 + 2 novas = 7), custo em reais e telas (2), testes de isolamento e dublê (2). **As 2 tarefas novas entram no grupo da triagem:** o aviso na Central quando o destino é equipe com certeza alta (D5) e a dica de uma linha no prompt da IA. A L6 não tem tarefa própria: entra junto das regras locais. O plano da r3 está em `docs/15-plano-r3-jev.md`; a ordem é o DEPOIS primeiro (D15).
 
-Dependências fora do código: respostas da TypeSafe, revisão jurídica, aceite do administrador, corpus de teste em português.
+Dependências fora do código: crédito e chave na TypeSafe, cotação do dólar, aceite do administrador (novo, alcance `resposta`), corpus de teste em português (D16) e a pendência do advogado (cláusula e aviso de privacidade). Respostas da TypeSafe deixaram de ser dependência (D10).
 
 ### 8.4 Riscos
 
 1. **`inbound-turn.ts` é grande e cheio de invariantes.** Mitigação: mudança mínima nos dois pontos, lógica nos módulos novos, teste de cadeia.
 2. **Evidências incompletas = falso positivo.** O turno hoje só guarda citações da base de conhecimento (`inbound-turn.ts:2694, 2987`); resultados do catálogo não ficam num lugar único. Se a evidência faltar, uma resposta correta é segurada. É o maior risco técnico, e é por isso que há fase `observando`.
-3. **Conta derivada** (5 folhas × preço) dar falso alarme em L1. Mitigação: aceitar múltiplos e somas simples.
+3. **Conta derivada** dar falso alarme em L1. Mitigação (01/11/2026): aceitar só valor consultado ou múltiplo inteiro de um preço unitário consultado (5 folhas × preço); **somas não são aceitas**: se a IA somar itens, o valor precisa vir de fonte, ou a resposta é segurada. O falso alarme (IA que soma certo e é segurada) é medido em `observando`.
 4. **Trava de uma resposta por vez:** `runBeforeSend` segura um bloqueio por número durante a conferência (`before-send.ts:1118`), e a conferência semântica atual já chama modelo aí dentro (`:1196`). Para o Jev, **chamar antes de pegar o bloqueio** e passar o veredito já pronto.
-5. **Um caso aberto por conversa** (`human-cases.ts:184-226`): se já houver um, a resposta segurada fica sem caso novo. Mitigação: registrar no rastro e mostrar o caso existente.
-6. **Português não medido** (seção 4.3).
+5. **Um caso aberto por conversa** (`human-cases.ts:184-226`): se já houver um, a resposta segurada fica sem caso novo. Mitigação: registrar no rastro e mostrar o caso existente. **Resolvido (01/11/2026):** não abre caso novo; o aviso fixo ao cliente sai uma única vez por conversa.
+6. **Português não medido** (seção 4.3; o corpus da D16 é o portão).
 7. **Fornecedor jovem:** versão 1.14 já saiu; sem SLA; sem política de descontinuação [OFICIAL]. A página do modelo no AI Gateway mostra outra função do pacote `ai` (`experimental_decide`) que a versão instalada (7.0.116, `experimental_evaluate`) não tem; **atualizar o pacote `ai` pode quebrar a triagem antiga**.
-8. **Cobrança sem teto** do Jev: hoje não há bloqueio; o custo é pequeno, mas o desenho de teto precisa da decisão 14.
-9. **Cliente mudo:** segurar sem avisar parece abandono (decisão 6).
+8. **Cobrança sem teto** do Jev: hoje não há bloqueio; o custo é pequeno, mas o desenho de teto precisa da D14, que ficou fora da r3 (outra spec).
+9. **Cliente mudo:** segurar sem avisar parece abandono. Resolvido pela D6: aviso fixo, uma vez por resposta segurada.
 10. **Proibição de "distillation"** no contrato da TypeSafe: nada de treinar modelo nosso com saídas do Jev.
+11. **Dado real sem confirmação do fornecedor** (retenção, região, ZDR e exclusão): **risco aceito por você** (D10, 01/11/2026), com a cláusula de contrato e o aviso de privacidade como pendência do advogado (LGPD).
 
 ### 8.5 Plano de teste
 
-- **Unidade:** perguntas e cortes; mapeamento de cada código de erro para motivo (`cliente.ts:208-223`); máscara; L1 a L5. Nunca contra o Jev real no CI; usar `fetchImpl` simulado como em `lib/ai/decisao/cliente.test.ts`.
+- **Unidade:** perguntas e cortes; mapeamento de cada código de erro para motivo (`cliente.ts:208-223`); máscara; L1 a L6. Nunca contra o Jev real no CI; usar `fetchImpl` simulado como em `lib/ai/decisao/cliente.test.ts`.
 - **Cadeia:** `before-send-chain-shape.test.ts` com a versão 8; teste de que o Jev **só aperta** (achado local nunca vira "passou").
 - **Invariantes de turno:** sem chamada sem interruptor mestre, aceite, tarefa ligada e chave; sem chamada quando o contato está bloqueado; sem chamada em prévia de teste; opt-out sempre antes de tudo; nenhum campo proibido no `state`.
 - **Isolamento entre empresas:**
@@ -403,7 +424,7 @@ Dependências fora do código: respostas da TypeSafe, revisão jurídica, aceite
   5. as evidências do turno vêm só da base da empresa do turno;
   6. e2e com o dublê (`scripts/duble-jev-e2e.mjs`, `tests/e2e/helpers/jev.ts`) com duas empresas ao mesmo tempo, com credenciais, aceites e estados diferentes;
   7. varredura de RLS existente (`tests/invariants/rls-completude-varredura.test.ts`) sem exceção nova.
-- **Corpus em português (portão para `decidindo`):** pelo menos 200 mensagens reais anonimizadas para a triagem e 100 rascunhos para a conferência, incluindo casos ruins conhecidos (preço inventado, prazo, garantia, aprovação, senha, documento), rotulados por quem conhece a loja. Mede acerto, falso alarme e ordem das opções.
+- **Corpus em português (portão para `decidindo`) — DECIDIDO (D16, 01/11/2026):** conversas reais anonimizadas da loja piloto (Grau Cell), rotuladas por você ou por uma segunda pessoa que você indicar. Pelo menos 200 mensagens para a triagem e 100 rascunhos para a conferência, incluindo casos ruins conhecidos (preço inventado, prazo, garantia, aprovação, disponibilidade, senha, documento). Mede acerto, falso alarme e ordem das opções. **A saída de `observando` exige as duas condições juntas: duas semanas E este corpus.**
 - **Revisão e auditoria:** o auditor do projeto roda antes de qualquer publicação.
 
 ---
@@ -415,7 +436,7 @@ Dependências fora do código: respostas da TypeSafe, revisão jurídica, aceite
 Por quê:
 
 1. **O Jev é rede de segurança, não condição de funcionamento.** A r2 já tem 11 conferências antes do envio, bloqueio de contato, promessa de humano sem caso, vazamento de vocabulário interno e o texto de instruções da loja que manda confirmar preço de seminovo e peça com a vendedora.
-2. **Ele ainda não pode entrar com dado real.** Faltam respostas da TypeSafe (retenção, região, exclusão), revisão jurídica do contrato com a loja, novo aceite do administrador e teste em português. Isso leva tempo mesmo que o código estivesse pronto.
+2. **Ele ainda não está pronto para decidir.** Faltam o código, o novo aceite do administrador e o corpus em português (D16). A cláusula de contrato com a loja segue como pendência do advogado. Pela D10, não esperamos respostas da TypeSafe (risco aceito: retenção e região não confirmadas). Isso leva tempo mesmo que o código estivesse pronto.
 3. **Mexe no coração do atendimento** (`inbound-turn.ts`, cadeia `before_send`, casos). Misturar essa mudança com a primeira ida ao ar aumenta o risco dos dois.
 4. **O "antes" tem pouco valor imediato:** hoje ninguém lê a categoria. O valor está no "depois".
 5. **Entrar em `observando` precisa de tráfego real.** Os primeiros dias do piloto geram o corpus de que a medição depende.
@@ -429,30 +450,58 @@ Controles de compensação para as primeiras semanas do Bloco D (sem código nov
 
 **Quando eu mudaria para (a):** se a loja não aceitar nenhuma chance de resposta com preço, prazo ou aprovação errados na primeira semana, **nem com revisão por amostra**. Aí o Bloco D espera a r3 (semanas, não dias), e só entra em `decidindo` depois do corpus em português. Essa é uma escolha de apetite a risco do negócio e não posso decidir por você.
 
-**Ordem dentro da r3:** primeiro **DEPOIS + conferência local** em `observando`; depois o **ANTES**.
+**Ordem dentro da r3 (DECIDIDO, D15, 01/11/2026):** primeiro **DEPOIS + conferência local** em `observando`; depois o **ANTES**.
 
 ---
 
-## 10. Decisões que dependem de você
+## 10. Decisões (fechadas em 01/11/2026)
 
-| # | Pergunta | Minha recomendação |
+D3 a D16 foram **decididas por você em 01/11/2026** e viraram regra desta spec. D1 e D2 não constam do pedido de atualização e seguem como recomendação.
+
+| # | Pergunta | Situação |
 |---|---|---|
-| 1 | Fazer o Bloco D com a r2 agora e o Jev como r3 **(b)**, ou segurar o Bloco D até o Jev entrar **(a)**? | **(b)**, com os controles da seção 9. |
-| 2 | Quem tem a conta da TypeSafe: uma **conta da plataforma** (você paga em dólar e repassa) ou **uma por loja** (como o código faz hoje)? | Conta da plataforma no piloto, colando a chave na credencial `typesafe` de cada empresa; "credencial da plataforma" nativa só depois. |
-| 3 | Categorias: as **quatro** (Conserto, Venda, Impressão, Outro), com boleto e parcelamento dentro de Venda; ou manter cinco com Financeiro; ou lista livre por empresa? | Quatro, definidas num lugar só por empresa, com este padrão. |
-| 4 | O destino "pedir dado que falta" fica só para a **primeira mensagem** da conversa (o Jev vê uma mensagem isolada), ou mando as últimas mensagens (exige aceite mais largo)? | Só primeira mensagem. |
-| 5 | Quando o Jev tem confiança **alta** de que o cliente precisa da equipe: **só abre aviso na Central** ou **abre caso e passa a conversa**? (A regra de 24/09/2026 diz que dúvida vai para a IA; isto é certeza.) | Só aviso na Central na primeira versão. |
-| 6 | Enquanto a resposta está segurada, o cliente recebe um **aviso fixo** ("vou confirmar com a equipe") ou **fica em silêncio**? | Aviso fixo, uma vez por resposta segurada. |
-| 7 | Os cortes (alta 0,80, média 0,50 a 0,80 no depois; 0,70/0,60 e 0,80/0,70 no antes) e **duas semanas em `observando`** antes de agir? | Sim aos dois. |
-| 8 | Versão do modelo: manter a **1.13.0** fixa ou subir para a **1.14.0** (já é a `latest`)? | Manter 1.13.0 e medir a 1.14 em paralelo depois. |
-| 9 | Aprovar o **novo consentimento "resposta"** (rascunho + trechos consultados, sem a mensagem do cliente), com novo aceite do administrador e texto jurídico? | Sim; a tarefa nasce desligada. |
-| 10 | Quem manda as **perguntas à TypeSafe** (retenção, ZDR, região, exclusão, limites, português) e quem faz a **revisão jurídica** do contrato com a loja? Até lá, só dados de teste. | Você pede, no formulário de suporte, antes de qualquer dado real. Advogado revisa a cláusula. |
-| 11 | **Cotação do dólar**: onde fica, valor inicial e quem atualiza? Telas em R$ com a cotação visível. | Configuração da plataforma, atualização mensal manual. |
-| 12 | O Jev **conta no teto** mensal, mas a conferência do "depois" **nunca é bloqueada** por teto estourado e a triagem é pulada? | Sim. |
-| 13 | Cada pergunta ao Jev gravada com finalidade própria no mesmo registro de custos, sem migração, ok? | Sim. |
-| 14 | O **teto mensal definido pela plataforma por cliente** (campo só seu, tela de administração, auditoria) entra agora ou vira outra spec? | Outra spec, antes de vender para várias lojas. |
-| 15 | **Ordem de entrega** na r3: primeiro o "depois" (com conferência local) e depois o "antes"? | Sim. |
-| 16 | Autoriza usar conversas reais **anonimizadas** da loja piloto como corpus de teste em português, rotuladas por quem conhece o negócio? | Sim, é o portão para sair de `observando`. |
+| 1 | Fazer o Bloco D com a r2 agora e o Jev como r3 **(b)**, ou segurar o Bloco D até o Jev entrar **(a)**? | **Recomendação (em aberto nesta spec):** **(b)**, com os controles da seção 9. |
+| 2 | Quem tem a conta da TypeSafe: uma **conta da plataforma** (você paga em dólar e repassa) ou **uma por loja** (como o código faz hoje)? | **Recomendação (em aberto nesta spec):** conta da plataforma no piloto, colando a chave na credencial `typesafe` de cada empresa; "credencial da plataforma" nativa só depois. |
+| 3 | Categorias: as **quatro** (Conserto, Venda, Impressão, Outro), com boleto e parcelamento dentro de Venda; ou manter cinco com Financeiro; ou lista livre por empresa? | **DECIDIDO:** 4 categorias (Conserto, Venda, Impressão, Outro), definidas num lugar só por empresa; boleto e parcelamento ficam dentro de Venda. |
+| 4 | O destino "pedir dado que falta" fica só para a **primeira mensagem** da conversa (o Jev vê uma mensagem isolada), ou mando as últimas mensagens (exige aceite mais largo)? | **DECIDIDO:** "pedir dado que falta" vale só na primeira mensagem. |
+| 5 | Quando o Jev tem confiança **alta** de que o cliente precisa da equipe: **só abre aviso na Central** ou **abre caso e passa a conversa**? (A regra de 24/09/2026 diz que dúvida vai para a IA; isto é certeza.) | **DECIDIDO:** certeza alta de "equipe" no ANTES só abre aviso na Central (não abre caso, não passa a conversa). |
+| 6 | Enquanto a resposta está segurada, o cliente recebe um **aviso fixo** ("vou confirmar com a equipe") ou **fica em silêncio**? | **DECIDIDO:** a resposta segurada manda aviso fixo ao cliente (ex.: "vou confirmar com a equipe"), uma vez por resposta segurada. |
+| 7 | Os cortes (alta 0,80, média 0,50 a 0,80 no depois; 0,70/0,60 e 0,80/0,70 no antes) e **duas semanas em `observando`** antes de agir? | **DECIDIDO:** cortes do DEPOIS: alta a partir de 0,80, média de 0,50 a 0,80. Cortes do ANTES: piso 0,70/0,60, alta com 0,80/0,70. Duas semanas em `observando`. |
+| 8 | Versão do modelo: manter a **1.13.0** fixa ou subir para a **1.14.0** (já é a `latest`)? | **DECIDIDO:** modelo fixo na 1.13.0; medir a 1.14.0 em paralelo depois. |
+| 9 | Aprovar o **novo consentimento "resposta"** (rascunho + trechos consultados, sem a mensagem do cliente), com novo aceite do administrador e texto jurídico? | **DECIDIDO:** novo consentimento "resposta" aprovado, com novo aceite do administrador e texto jurídico; cobre o rascunho e os trechos consultados, sem a mensagem do cliente; a tarefa nasce desligada. |
+| 10 | Quem manda as **perguntas à TypeSafe** (retenção, ZDR, região, exclusão, limites, português) e quem faz a **revisão jurídica** do contrato com a loja? | **DECIDIDO por você:** nenhuma pergunta será enviada à TypeSafe e o Jev roda normalmente, com dado real. **RISCO ACEITO por você:** retenção e região não confirmadas pelo fornecedor. A cláusula de contrato e a política de privacidade seguem como **pendência do advogado (LGPD)**. |
+| 11 | **Cotação do dólar**: onde fica, valor inicial e quem atualiza? Telas em R$ com a cotação visível. | **DECIDIDO:** cotação do dólar numa configuração da plataforma, valor inicial pesquisado na construção, atualização manual mensal; as telas mostram R$ com a cotação visível. |
+| 12 | O Jev **conta no teto** mensal, mas a conferência do "depois" **nunca é bloqueada** por teto estourado e a triagem é pulada? | **DECIDIDO:** o Jev conta no teto mensal de IA, mas a conferência (DEPOIS) nunca é bloqueada por teto estourado; só a triagem (ANTES) é pulada quando o teto estoura. |
+| 13 | Cada **chamada** ao Jev gravada em uma linha, com finalidade própria, no mesmo registro de custos, sem migração, ok? | **DECIDIDO:** uma linha de registro de custo por chamada (seção 7.3), com finalidade `jev_antes` ou `jev_depois`, sem migração. |
+| 14 | O **teto mensal definido pela plataforma por cliente** (campo só seu, tela de administração, auditoria) entra agora ou vira outra spec? | **DECIDIDO:** fica **FORA da r3** e vira outra spec, antes de vender para várias lojas. |
+| 15 | **Ordem de entrega** na r3: primeiro o "depois" (com conferência local) e depois o "antes"? | **DECIDIDO:** primeiro o DEPOIS (com as regras locais), depois o ANTES. |
+| 16 | Autoriza usar conversas reais **anonimizadas** da loja piloto como corpus de teste em português, rotuladas por quem conhece o negócio? | **DECIDIDO:** corpus em português com conversas reais anonimizadas da loja piloto (Grau Cell), rotuladas por você ou por uma segunda pessoa que você indicar. A saída de `observando` exige **as duas condições juntas**: duas semanas E corpus de pelo menos 200 mensagens e 100 rascunhos rotulados. |
+
+---
+
+## 11. Ambiguidades resolvidas (01/11/2026)
+
+A primeira versão desta spec deixou os pontos abaixo em aberto. Todos foram resolvidos por você em 01/11/2026.
+
+| # | Ponto | Resolução |
+|---|---|---|
+| 1 | Queda do Jev | O ANTES é pulado e a IA atende sem dica. O DEPOIS usa só as regras locais L1 a L6, com a regra das 2 tentativas: 1ª vez volta para a IA reescrever; 2ª vez segura e abre caso; se a regra local não segurar, a resposta sai. A aba Status mostra "Jev fora do ar". |
+| 2 | Aviso na Central do ANTES | Usa o mecanismo de avisos que a Central já tem. O `aviso-de-escalacao.ts` continua sendo só o aviso ao cliente. Nova tarefa na r3. |
+| 3 | Dica no prompt da IA | Uma linha curta, no mesmo ponto do `inbound-turn.ts` onde o prompt é montado. Nova tarefa na r3. |
+| 4 | Segurar com caso já aberto | Sem abrir caso novo. O aviso fixo ao cliente sai uma única vez por conversa nessa situação. |
+| 5 | Corte do "urgente" | 0,80. Só marca o cartão na Central; não muda o destino. Ajustar na observação. |
+| 6 | Máscara de dados | Além do primeiro nome, mascarar sobrenome, telefone, CPF, e-mail e endereço, no ANTES e no rascunho que vai ao DEPOIS. |
+| 7 | Contagem de grupos (seção 8.3) | Eram 8 grupos (24 tarefas), não 7. As 2 tarefas novas (aviso na Central e dica no prompt) entram no grupo da triagem: 26 tarefas. |
+| 8 | L1 (valores) | Segura valor que não seja múltiplo inteiro de um preço unitário consultado. "E somas simples" saiu do risco 3 (seção 8.4). Se a IA somar itens, o valor precisa vir de fonte, ou a resposta é segurada. |
+| 9 | Nome da tela de cobrança | "Plano e cobrança" (nome real no código); a seção 0 foi corrigida. |
+| 10 | Tabela `jev_observacoes` | Conferida em 01/11/2026 só pelos arquivos: existe (migração 0421, `baseline.sql` e dump do banco de produção de 31/10/2026). Nenhuma migração obrigatória. Atenção: guarda um rótulo por linha (seção 8.1). |
+| 11 | Custo da reescrita | Somada à conta da seção 7.1: segunda chamada nas respostas reprovadas. |
+| 12 | Quando sair de `observando` | Resolvido pela D16: as duas condições juntas, duas semanas E corpus de pelo menos 200 mensagens e 100 rascunhos rotulados. |
+| 13 | Estoque sem regra local | Resolvido pela regra nova L6 (disponibilidade sem fonte). |
+
+### Regra nova L6 — disponibilidade sem fonte
+
+Se o rascunho afirma que um produto **tem**, **não tem** ou **chegou**, e nenhum trecho consultado (Bling ou base de conhecimento) sustenta isso, a resposta é **segurada**. É checagem por padrão de texto, **sem Jev**, igual às L1 a L5, e entra na mesma tarefa das regras locais. O Jev continua só podendo apertar, nunca liberar o que a regra local segurou.
 
 ---
 
@@ -484,10 +533,10 @@ Controles de compensação para as primeiras semanas do Bloco D (sem código nov
 
 Marcas: ✔ conferido por mim no código; ◐ relatado pela leitura de apoio e não reconferido linha a linha.
 
-### 1. Telas "Uso e orçamento" e "Plano e pagamento"
+### 1. Telas "Uso e orçamento" e "Plano e cobrança"
 
 - ✔ Menu "Uso e orçamento": `lib/navigation/catalogo.ts:661-668`. Dados vêm da tabela `llm_calls` por empresa (`app/api/v1/ai/usage/route.ts:95-102`) ◐; custo em dólar (`app/app/ai/usage/_client.tsx:94`, `BudgetCard.tsx:66-72`) ◐. **Mostra, não cobra.**
-- ✔ A tela de cobrança (`app/app/settings/billing/page.tsx`) chama-se **"Billing"** e a descrição do menu é "Plano e cobrança." (`catalogo.ts:974`). O texto "Plano e pagamento" não existe no código. A tela é só "Em breve — Fase 2" (`page.tsx:35-37`); só administrador entra (`:21-22`). Não mede nem cobra.
+- ✔ A tela de cobrança (`app/app/settings/billing/page.tsx`) chama-se **"Billing"** e a descrição do menu é "Plano e cobrança." (`catalogo.ts:974`). O texto "Plano e pagamento", usado na primeira versão desta spec, não existe no código; o nome correto é "Plano e cobrança" (corrigido na seção 0 em 01/11/2026). A tela é só "Em breve — Fase 2" (`page.tsx:35-37`); só administrador entra (`:21-22`). Não mede nem cobra.
 
 ### 2. Consumo e teto por empresa
 
