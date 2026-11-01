@@ -22,6 +22,7 @@ vi.mock("@/lib/logger", () => ({ logger: { warn: () => undefined, info: () => un
 import { env } from "@/lib/env";
 
 import { CATEGORIAS_PADRAO } from "./categorias";
+import { registrarSucesso } from "./disjuntor";
 import type { Resposta } from "./cliente";
 import {
   CARACTERES_NO_MAXIMO,
@@ -50,6 +51,9 @@ const respostas = (c: [string, number, number], d: [string, number, number], u: 
 });
 
 beforeEach(() => {
+  // O disjuntor mora em memória do processo: um teste que derruba o Jev não pode abri-lo para o seguinte.
+  registrarSucesso({ organizationId: ORG, tarefa: "triagem" });
+  registrarSucesso(ORG);
   escrevivel.JEV_TRIAGEM_DO_SISTEMA_ENABLED = true;
   banco.settings = {
     jev: { ligado: true, aceite: { em: "2026-10-01T12:00:00.000Z", por: POR, alcance: "mensagem" }, tarefas: { triagem: { estado: "observando" } } },

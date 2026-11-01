@@ -408,3 +408,99 @@ describe("DECIDINDO: o efeito da triagem no atendimento (T19, T20, T21)", () => 
     expect((await marcaUrgente(b)).m).toBeNull();
   });
 });
+
+describe("a queda do Jev e o teto no ANTES (T22)", () => {
+  const incidentes = (tipo: string) => q(`select organization_id, severity, status, payload from incidents where type = $1`, [tipo]);
+  const errosDoJev = (org: string) => q(`select purpose, status, error_code from llm_calls where organization_id = $1 and provider = 'typesafe' and status = 'erro'`, [org]);
+
+  beforeEach(async () => {
+    await pool.query(`delete from incidents where type in ('jev_chave_recusada', 'jev_sem_credito')`);
+  });
+
+  it("Jev recusa a chave: o ANTES é pulado, a IA atende sem dica, a queda fica registrada e o DONO DA PLATAFORMA é avisado", async () => {
+    const c = await cenario("decidindo");
+    const r = novaRodada();
+    await rodaTurno(c, deps(r, jevDuble(r, 401)));
+    expect(r.enviadas).toEqual(["Posso ajudar com o seu pedido."]);
+    expect(r.prompts.some((p) => p.includes("Dica da triagem"))).toBe(false);
+    expect(await observacoes(c.org)).toEqual([]);
+    expect(await errosDoJev(c.org)).toEqual([{ purpose: "jev_antes", status: "erro", error_code: "jev_credencial_invalida" }]);
+    expect((await metadado(c)).t).toBeNull();
+    const inc = await incidentes("jev_chave_recusada");
+    expect(inc).toHaveLength(1);
+    expect(inc[0]).toMatchObject({ organization_id: null, severity: "critical", status: "open" });
+    expect(inc[0].payload).toMatchObject({ tarefas: { triagem: expect.any(String) }, primeira_organizacao: c.org });
+  });
+
+  it("conta sem crédito: outro tipo de incidente; e uma segunda loja com a mesma chave ATUALIZA o aberto em vez de abrir outro", async () => {
+    const a = await cenario("observando");
+    const b = await cenario("observando");
+    const ra = novaRodada();
+    const rb = novaRodada();
+    await rodaTurno(a, deps(ra, jevDuble(ra, 402)));
+    await rodaTurno(b, deps(rb, jevDuble(rb, 402)));
+    const inc = await incidentes("jev_sem_credito");
+    expect(inc).toHaveLength(1);
+    expect(inc[0].payload).toMatchObject({ primeira_organizacao: a.org, ultima_organizacao: b.org, ocorrencias: 2 });
+  });
+
+  it("falha que passa sozinha (500): linha de erro, mas NENHUM incidente para o dono", async () => {
+    const c = await cenario("observando");
+    const r = novaRodada();
+    await rodaTurno(c, deps(r, jevDuble(r, 500)));
+    expect(await errosDoJev(c.org)).toEqual([{ purpose: "jev_antes", status: "erro", error_code: "jev_provedor_indisponivel" }]);
+    expect(await incidentes("jev_chave_recusada")).toEqual([]);
+    expect(await incidentes("jev_sem_credito")).toEqual([]);
+    expect(r.enviadas).toEqual(["Posso ajudar com o seu pedido."]);
+  });
+
+  it("o disjuntor: depois de um 429 o ANTES nem tenta a rede na mensagem seguinte; outra loja não é afetada", async () => {
+    const a = await cenario("observando");
+    const r1 = novaRodada();
+    await rodaTurno(a, deps(r1, jevDuble(r1, 429)));
+    expect(r1.pedidosAoJev).toHaveLength(1);
+    const segunda = { ...a, mensagem: randomUUID() };
+    await novaMensagem(segunda, "Alô?");
+    const r2 = novaRodada();
+    await rodaTurno(segunda, deps(r2, jevDuble(r2, ALTA)));
+    expect(r2.pedidosAoJev).toEqual([]);
+
+    const b = await cenario("observando");
+    const rb = novaRodada();
+    await rodaTurno(b, deps(rb, jevDuble(rb, ALTA)));
+    expect(rb.pedidosAoJev).toHaveLength(1);
+  });
+
+  it("TETO estourado em modo bloquear PULA o ANTES (a IA principal fica bloqueada pelo mesmo teto); teto folgado não pula", async () => {
+    const estourada = await cenario("observando");
+    await pool.query(
+      `insert into ai_budgets (organization_id, monthly_limit_cents, enforcement_mode, enforcement_effective_at, alarm_threshold_pct)
+       values ($1, 100, 'bloquear', now() - interval '10 days', 80)`,
+      [estourada.org],
+    );
+    await pool.query(
+      `insert into llm_calls (organization_id, purpose, provider, model, input_tokens, output_tokens, cost_cents, status)
+       values ($1, 'agent_turn', 'anthropic', 'claude', 1, 1, 500, 'ok')`,
+      [estourada.org],
+    );
+    await pool.query(
+      `insert into agent_inbox_items (organization_id, kind, severity, title, body, ref_kind, ref_id)
+       values ($1, 'budget_warning', 'warn', 't', 'b', 'ai_budget', $1)`,
+      [estourada.org],
+    );
+    const r = novaRodada();
+    await rodaTurno(estourada, deps(r, jevDuble(r, ALTA))).catch(() => undefined);
+    expect(r.pedidosAoJev).toEqual([]);
+    expect(await observacoes(estourada.org)).toEqual([]);
+
+    const folgada = await cenario("observando");
+    await pool.query(
+      `insert into ai_budgets (organization_id, monthly_limit_cents, enforcement_mode, enforcement_effective_at, alarm_threshold_pct)
+       values ($1, 100000, 'bloquear', now() - interval '10 days', 80)`,
+      [folgada.org],
+    );
+    const rf = novaRodada();
+    await rodaTurno(folgada, deps(rf, jevDuble(rf, ALTA)));
+    expect(rf.pedidosAoJev).toHaveLength(1);
+  });
+});

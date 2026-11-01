@@ -28,9 +28,12 @@ import { categoriasDaEmpresa, type CategoriaDaTriagem } from "@/lib/ai/decisao/c
 import { lerConfigDoJev } from "@/lib/ai/decisao/config";
 import { interruptorDaInstalacaoLigado } from "@/lib/ai/decisao/interruptores";
 import { avisarQueEPraEquipe } from "@/lib/ai/decisao/aviso-da-triagem";
+import { registrarFalhaQuePedeAcao } from "@/lib/ai/decisao/pool";
+import { avisarODonoDaPlataforma } from "@/lib/ai/decisao/queda";
+import { tetoEstouradoParaOAntes } from "@/lib/ai/decisao/teto";
 import { registrarTriagemDoJev } from "@/lib/ai/decisao/observacao-da-triagem";
 import type { DependenciasDoPonto } from "@/lib/ai/decisao/ponto";
-import { estadoEfetivoDaTarefa, TAREFA_DA_TRIAGEM } from "@/lib/ai/decisao/tarefas";
+import { estadoEfetivoDaTarefa, TAREFA_DA_TRIAGEM, TRIAGEM_DA_MENSAGEM } from "@/lib/ai/decisao/tarefas";
 import { perguntarATriagem, type VeredictoDaTriagem } from "@/lib/ai/decisao/triagem";
 import { CHAVE_DA_MARCA_URGENTE } from "@/lib/inbox/urgente-do-jev";
 import { logger } from "@/lib/logger";
@@ -100,6 +103,13 @@ export async function triarOTurno(
     const texto = textoDigitadoDaMensagem({ type: linha.type, body: linha.body });
     if (texto === "") return undefined;
 
+    // O teto mensal estourado em modo "bloquear" PULA o ANTES (só ele: o DEPOIS é isento). A IA
+    // principal já fica bloqueada por esse teto; aqui só se poupa a chamada.
+    if (await tetoEstouradoParaOAntes(e.pool, e.organizationId)) {
+      logger.info("triagem do Jev pulada: teto mensal de IA estourado", { organization_id: e.organizationId });
+      return undefined;
+    }
+
     const categorias = categoriasDaEmpresa(config);
     const r = await perguntarATriagem(
       e.organizationId,
@@ -111,6 +121,22 @@ export async function triarOTurno(
         organization_id: e.organizationId,
         motivo: r.motivo,
       });
+      if (r.falha !== undefined) {
+        // A queda fica em Execuções (é de onde o cartão tira "Jev fora do ar"), e chave recusada
+        // ou conta sem crédito avisa o DONO da plataforma — o MESMO incidente da conferência
+        // (um por tipo para a instalação inteira), então ANTES e DEPOIS falhando juntos não
+        // abrem dois.
+        await registrarFalhaQuePedeAcao(
+          e.pool,
+          { organizationId: e.organizationId, purpose: TRIAGEM_DA_MENSAGEM.purpose, contactId: e.contactId, jobId: e.jobId },
+          r.falha,
+        );
+        await avisarODonoDaPlataforma(e.pool, {
+          organizationId: e.organizationId,
+          tarefa: TAREFA_DA_TRIAGEM.id,
+          motivo: r.falha.motivo,
+        });
+      }
       return undefined;
     }
 

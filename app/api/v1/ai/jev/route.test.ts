@@ -1351,11 +1351,11 @@ describe("as tarefas triagem e conferência na rota (T02)", () => {
     expect((estado.settings.jev as Linha).tarefas).toMatchObject({ conferencia: { estado: "observando" } });
   });
 
-  it("PATCH: a triagem ainda só observa (T18 muda isso): decidir é recusado com a frase de leigo", async () => {
+  it("PATCH: a triagem pode decidir (T19), mas só depois do portão das duas semanas", async () => {
     estado.settings = { jev: { ligado: true, modo: "observacao", aceite: DE_MENSAGEM } };
-    const recusado = await mudar({ tarefa: "triagem", estado: "decidindo" });
-    expect(recusado.status).toBe(422);
-    expect(recusado.corpo.error.code).toBe("jev_tarefa_so_observa");
+    const cedo = await mudar({ tarefa: "triagem", estado: "decidindo" });
+    expect(cedo.status).toBe(422);
+    expect(cedo.corpo.error.code).toBe("jev_tarefa_ainda_observando");
   });
 
   it("PATCH: a recusa sai no idioma de quem pede", async () => {

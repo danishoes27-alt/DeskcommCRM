@@ -181,6 +181,12 @@
 - **T21:** o "cartão da Central" é o **cartão da conversa na lista da inbox** (`ConversationListItem`). A marca "Urgente" (`lib/inbox/urgente-do-jev.ts`) mora em `conversations.metadata.jev_urgente` — jsonb que a lista já carrega, sem migração. Só em `decidindo`; só marca (destino, status, dono e ordem da fila intactos); acompanha a mensagem mais recente (a seguinte, tranquila, tira a marca). Corte 0,80 em `CORTES_DO_ANTES.urgente`.
 - Testes: `dica-da-triagem.test.ts` (12), invariante de turno estendido (14 no total, contra Postgres real: dica presente × prompt intacto, aviso único e sem caso, marca e desmarca, isolamento).
 
+### T22 — queda do Jev e teto no ANTES
+
+- **Queda (spec 4.1, Opção 1):** `perguntarATriagem` ganhou o disjuntor da tarefa (3 falhas seguidas abrem 5 min; 429/529 abrem na hora; por loja). Com o Jev fora do ar o ANTES é **pulado** e a IA atende sem dica (nunca atrapalha o atendimento). Toda falha que chegou à rede grava UMA linha de erro `jev_antes` em Execuções — o "Jev fora do ar" do cartão (T12) a lê, de qualquer tarefa. Chave recusada ou conta sem crédito avisa o **dono da plataforma** pelo MESMO incidente da conferência (`incidents`, um por tipo para a instalação inteira): ANTES e DEPOIS falhando juntos **atualizam** o incidente aberto, sem duplicar (testado com duas lojas e com as duas tarefas). Falha que passa sozinha (500, 429, 529) não incomoda o dono.
+- **Teto (D12):** `teto.ts` (`tetoEstouradoParaOAntes`) usa a MESMA regra pura `decidirOrcamento` (modo bloquear + carência vencida + aviso dado no mês + chave de emergência) numa leitura SEM efeito colateral (não abre aviso nem registra bloqueio — isso é da IA principal), com falha aberta. Teto estourado em "bloquear" pula **só o ANTES** (`jev_antes` NÃO está na lista de isentos); o DEPOIS não consulta o teto (`jev_depois` isento; teste de fonte nos dois sentidos).
+- Testes: `teto.test.ts` (13), `triagem.test.ts` (com o disjuntor), invariante de turno contra Postgres real (19 casos no arquivo: 401 → ANTES pulado, linha de erro e incidente; 402 em duas lojas → um incidente com `ocorrencias: 2`; 500 sem incidente; 429 abre o disjuntor e a outra loja não é afetada; teto estourado pula o ANTES e teto folgado não).
+
 ## Pendências e coisas que só o dono pode fornecer
 
 | O quê | Quando faz falta | Tarefas |
