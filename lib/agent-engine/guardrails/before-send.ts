@@ -271,6 +271,29 @@ export interface GateContext {
    * site, que é quem monta as tools).
    */
   agenda?: { active: boolean; ferramentas: readonly string[]; toolCalledThisTurn: boolean };
+  /**
+   * O veredito da conferência do "depois" (Jev + regras locais L1 a L6), calculado ANTES
+   * de a cadeia tomar o lock do número — a chamada ao Jev é rede, e rede não pode esperar
+   * com o lock na mão (`lib/agent-engine/agent/conferencia-no-turno.ts`). Ausente =
+   * conferência desligada para esta tentativa (tarefa desligada, instalação desligada,
+   * prévia, ou um caminho que não é o do agente): `jevConferenciaGate` é no-op.
+   */
+  conferenciaJev?: ConferenciaJevNoGate;
+}
+
+/**
+ * O que o gate `jev_conferencia` lê. Estrutural de propósito: o gate é puro e síncrono
+ * como os demais, e quem sabe o que significa cada campo é `lib/ai/decisao/conferencia.ts`.
+ */
+export interface ConferenciaJevNoGate {
+  /** O estado da tarefa. `observando` NUNCA segura: só registra o que faria. */
+  estado: 'observando' | 'decidindo';
+  /** A conferência (regras da casa + Jev) mandaria segurar esta resposta. */
+  segurar: boolean;
+  /** Erro de ENSINO pt-br para o modelo, sem dado pessoal além do trecho da própria candidata. */
+  motivo: string;
+  /** Rótulos e números curtos para o trace — NUNCA o corpo nem a senha. */
+  detail: Record<string, string | number>;
 }
 
 /**
@@ -286,7 +309,16 @@ export type GateVerdict =
   // `skipped: 'not_applicable'` (invariante 4 de `docs/doctrine/restricao-de-canal.md`): a
   // restrição não existe NESTE canal. Passa, mas o trace registra que não se aplicava — um
   // `pass` silencioso apagaria a diferença entre "não regrediu" e "provo que não regrediu".
-  | { pass: true; waitMs?: number; amendBody?: string; skipped?: 'not_applicable' }
+  //
+  // `skipped: 'observando'` + `detail` (só a conferência do Jev, v8): a tarefa está em
+  // observação — NÃO segura nada — e o trace registra o que ela faria, em rótulos e números.
+  | {
+      pass: true;
+      waitMs?: number;
+      amendBody?: string;
+      skipped?: 'not_applicable' | 'observando';
+      detail?: Record<string, string | number>;
+    }
   | {
       pass: false;
       code: string;
@@ -786,6 +818,32 @@ const spinningGate: Gate = {
 };
 
 /**
+ * Gate da conferência do "depois" (Jev, r3 — `docs/14-spec-jev.md`, seção 3.3). Lê o
+ * veredito que `conferencia-no-turno.ts` calculou FORA do lock. Sem veredito = no-op
+ * (mesma direção segura de `internalVocabularyEnforced`: caller que não o conhece não
+ * arma nada). `observando` nunca veta: passa e deixa no trace o que faria. Só
+ * `decidindo` segura — e o motivo volta ao modelo como erro de ensino. Posição 6.95:
+ * depois de todas as conferências locais e ANTES do disclosure, que pode emendar o corpo (a
+ * conferência julga o texto do modelo, não o costurado pelo runtime).
+ */
+export const jevConferenciaGate: Gate = {
+  name: 'jev_conferencia',
+  evaluate: (ctx) => {
+    const c = ctx.conferenciaJev;
+    if (c === undefined) return { pass: true };
+    if (c.estado !== 'decidindo') {
+      return {
+        pass: true,
+        skipped: 'observando',
+        detail: { ...c.detail, faria: c.segurar ? 'segurar' : 'liberar' },
+      };
+    }
+    if (!c.segurar) return { pass: true };
+    return { pass: false, code: 'jev_conferencia', reason: c.motivo, detail: c.detail };
+  },
+};
+
+/**
  * VERSÃO da ordem da cadeia (F4-08, acceptance 2). Toda mudança na ordem/composição de
  * `BEFORE_SEND_GATES` EXIGE bumpar esta versão, porque a ordem é contrato e não detalhe
  * de implementação. Quem cobra isso é `tests/unit/before-send-chain-shape.test.ts`.
@@ -815,8 +873,14 @@ const spinningGate: Gate = {
  * `GateContext.agenda`): só o caminho do agente o arma quando o agente publicado tem
  * `crm_book_appointment` nas tools, então a v7 também não muda o destino de nenhum envio que
  * já existia fora desse caso — muda o TRACE e passa a medir/impedir a promessa vazia.
+ * v8 = insere `jevConferenciaGate` entre `agenda_stall` e `disclosure` — a conferência
+ * do "depois" (Jev + regras locais L1 a L6 da r3). Nasce DESARMADA por default (ver
+ * `GateContext.conferenciaJev`: só o caminho do agente a arma, e só com a tarefa
+ * `conferencia` ligada na empresa E o interruptor da instalação), e em `observando`
+ * ela nunca veta — então a v8 também não muda o destino de nenhum envio que já existia:
+ * muda o TRACE, e passa a medir o que ela faria.
  */
-export const BEFORE_SEND_CHAIN_VERSION = 7;
+export const BEFORE_SEND_CHAIN_VERSION = 8;
 
 /**
  * Ordem FINAL da cadeia (F4-08/F4-09; edge-contract §before_send / blueprint órgão 5) — DADO
@@ -833,6 +897,8 @@ export const BEFORE_SEND_CHAIN_VERSION = 7;
  *         `separacao-fala-e-operacao.md`); antes do disclosure porque ele pode emendar o corpo;
  *   (6.9) agenda_stall — "vou verificar/confirmar horário" sem ter chamado a ferramenta de
  *         agenda neste turno; antes do disclosure pelo mesmo motivo do internal_vocabulary;
+ *   (6.95) jev_conferencia — a conferência do "depois" (Jev + regras locais); em `observando` só
+ *         registra; antes do disclosure pelo mesmo motivo do internal_vocabulary;
  *   (8) disclosure — 1ª mensagem se apresenta como assistente virtual (F4-05).
  * (O anti-jailbreak F4-04 é INBOUND advisório, não gate de before_send — não entra aqui.)
  */
@@ -847,6 +913,7 @@ export const BEFORE_SEND_GATES: readonly Gate[] = [
   casePromiseGate,
   internalVocabularyGate,
   agendaStallGate,
+  jevConferenciaGate,
   disclosureGate,
 ];
 
@@ -975,6 +1042,12 @@ export interface RunBeforeSendArgs {
    */
   agenda?: GateContext['agenda'];
   /**
+   * O veredito da conferência do "depois", calculado ANTES de chamar `runBeforeSend` — a
+   * chamada ao Jev é rede e não pode esperar com o lock do número (spec 14, risco 4). Ausente =
+   * gate `jev_conferencia` no-op, retrocompatível com todo caller que não a conhece.
+   */
+  conferenciaJev?: ConferenciaJevNoGate;
+  /**
    * Pausa humana do turno, paga ANTES de o guardrail tomar conexão/transação
    * (issue #654) — o porquê está no corpo de `runBeforeSend`. Ausente (default)
    * = nenhuma pausa: todo caller que não é o turno de ENTRADA
@@ -1010,7 +1083,12 @@ export function evaluateBeforeSend(
       // porque um anterior vetou. Passar como 'pass' apagaria a distinção na auditoria.
       trace.push(
         verdict.skipped !== undefined
-          ? { gate: gate.name, verdict: 'skipped', code: verdict.skipped }
+          ? {
+              gate: gate.name,
+              verdict: 'skipped',
+              code: verdict.skipped,
+              ...(verdict.detail !== undefined ? { detail: verdict.detail } : {}),
+            }
           : { gate: gate.name, verdict: 'pass' },
       );
       if (verdict.waitMs !== undefined && verdict.waitMs > throttleWaitMs)
@@ -1248,6 +1326,7 @@ export async function runBeforeSend(args: RunBeforeSendArgs): Promise<BeforeSend
         : {}),
       internalVocabularyEnforced: args.enforceInternalVocabulary ?? false,
       ...(args.agenda !== undefined ? { agenda: args.agenda } : {}),
+      ...(args.conferenciaJev !== undefined ? { conferenciaJev: args.conferenciaJev } : {}),
     };
 
     const { body: evaluatedBody, trace: traceDaCadeia, veto, throttleWaitMs } = evaluateBeforeSend(ctx, gates);

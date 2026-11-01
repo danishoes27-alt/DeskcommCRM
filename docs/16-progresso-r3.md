@@ -23,7 +23,8 @@
 | T07 regras locais L1, L2, L3, L6 | `368174b94` | ver abaixo | feita |
 | T08 regras locais L4 (senha) e L5 (documento) | `d393b05db` | ver abaixo | feita |
 | T09 tarefa conferencia: perguntas, state e cortes | `bb91188d1` | ver abaixo | feita |
-| T10 custo e observação do DEPOIS | ver `git log` (`feat(jev): T10 ...`) | ver abaixo | feita |
+| T10 custo e observação do DEPOIS | `cf0a6ff89` | ver abaixo | feita |
+| T11 `jev_conferencia` na cadeia before_send (v8) | ver `git log` (`feat(jev): T11 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -91,6 +92,14 @@
 - **O teste que reprova "id sem preço":** `observacao-da-conferencia.test.ts` exige preço para `MODELO_DO_JEV` e prova que `jev-latest`/versão nova sem linha dá custo `null`.
 - **⚠️ Não verificado contra um Postgres de verdade:** o SQL do gravador foi conferido linha a linha contra o de `manipulacao.ts` (mesmas tabelas/colunas, casts explícitos), mas esta máquina não tem a imagem `pgvector/pgvector:pg15` e eu não baixo imagem sem a sua autorização. Prova-se em `pnpm test:db` (T26). **Preciso da sua licença para baixar essa imagem do Docker Hub (~400 MB) se quiser a prova local.**
 - **Testes:** `observacao-da-conferencia.test.ts` (12), `i18n-provedores-e-pontos`, rota de Execuções; `lib/ai/decisao` + `app/api/v1/ai` 680 verdes; typecheck e eslint limpos.
+
+### T11 — conferência `jev_conferencia` na cadeia `before_send` (versão 8)
+
+- **O que mudou:** `before-send.ts`: `BEFORE_SEND_CHAIN_VERSION` 7 → 8; `jevConferenciaGate` entre `agenda_stall` e `disclosure` (depois de todas as conferências locais, antes de o disclosure emendar o corpo); `GateContext.conferenciaJev` / `RunBeforeSendArgs.conferenciaJev` (`ConferenciaJevNoGate`: estado, segurar, motivo, detail); o veredito `pass` do gate passou a poder levar `skipped: 'observando'` e `detail` para o trace. Novo `conferencia-no-turno.ts` (`conferirOTurno`) e dois pontos no `inbound-turn.ts` (chama `conferirOTurno` ANTES de `runBeforeSend` e passa o veredito pronto).
+- **Garantias:** (1) **o Jev é chamado fora do lock** — `conferirOTurno` roda antes de a cadeia pedir conexão ao pool (teste: o pool do turno nunca recebe `connect`; teste de fonte: a chamada vem antes de `runBeforeSend`, e a cadeia não importa nada de `lib/ai/decisao` nem faz rede); (2) **`observando` nunca segura** — o gate passa e deixa no trace `faria: segurar|liberar` em rótulos; (3) tarefa desligada, instalação desligada, prévia ou turno que não é `inbound_turn` = `undefined` = gate no-op, nenhuma regra roda e nada sai; (4) o Jev só aperta (T09).
+- **Decisões minhas:** a conferência só roda em `inbound_turn` (o `case_reply_turn` responde a ação de um humano e o follow-up é texto de código); o interruptor da instalação vale também para as regras locais ("só roda com todas as condições juntas"); a conferência é calculada na CHAMADA do `send_message` sobre `body` (antes dos ajustes de estilo, que não mudam fatos).
+- **Estado efetivo:** a tarefa continua `soObserva` — um `decidindo` gravado vale `observando` no estado efetivo, então o gate nunca veta em produção ainda. **A T13 tira a marca `soObserva` da `conferencia`** quando o "segurar" ganhar a regra das 2 tentativas.
+- **Testes:** `tests/unit/before-send-chain-shape.test.ts` (12 gates, versão 8, ordem), `tests/unit/gate-jev-conferencia.test.ts` (gate, trace, cadeia completa, fora do lock), `conferencia-no-turno.test.ts` (16); `lib/agent-engine` + gates + cercas: 914 verdes; typecheck e eslint limpos.
 
 ## Pendências e coisas que só o dono pode fornecer
 

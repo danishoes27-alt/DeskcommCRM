@@ -52,6 +52,7 @@ import {
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
 import { criarEvidenciasDoTurno } from './evidencias-do-turno';
 import { guardarSegredosDoCliente } from './segredos-do-cliente-no-turno';
+import { conferirOTurno } from './conferencia-no-turno';
 import { comEvidenciaDoTurno, ORIGEM_DA_FERRAMENTA } from './evidencias-das-ferramentas';
 import type { CrmEdgeConfig } from '../edge/crm/mcp-client';
 import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
@@ -3138,6 +3139,27 @@ async function executarTurnoDoAgente(
             agentConfig?.casesEnabled === true
               ? await hasOpenCaseForContact(pool, tenantId, input.conversationId)
               : false;
+          // A conferência do "depois" (Jev + regras locais L1 a L6): o veredito é calculado AQUI,
+          // antes de a cadeia tomar o lock do número — a chamada ao Jev é rede e não espera com o
+          // lock na mão. `undefined` (tarefa desligada, instalação desligada, prévia, ou turno
+          // que não é o da mensagem nova) deixa o gate `jev_conferencia` no-op. Nunca lança.
+          const conferenciaJev = await conferirOTurno(
+            {
+              pool,
+              organizationId: tenantId,
+              tipoDoJob: liveJob().kind,
+              preview: Boolean(preview),
+              rascunho: body,
+              evidencias,
+              nomeDoContato: effectiveContext.contact.name,
+              conversationId: input.conversationId,
+              messageId: input.inboundMessageId ?? null,
+              jobId: liveJob().id,
+              contactId: leadId || null,
+              agentId: agentConfig?.agentId ?? null,
+            },
+            deps.jev,
+          );
           // Args reusados EXATAMENTE (mesmo objeto) no re-run do fail-safe abaixo — só
           // hasOpenCase/openedCaseThisTurn mudam depois do auto-abre-caso.
           const beforeSendArgs = {
@@ -3182,6 +3204,7 @@ async function executarTurnoDoAgente(
             // um agente que só CONSULTA promete "vou verificar" igual, e enquanto a
             // condição era só `crm_book_appointment` ele ficava sem o gate. Quem não tem
             // ferramenta de agenda nenhuma segue desarmado — vetá-lo não teria cura.
+            ...(conferenciaJev !== undefined ? { conferenciaJev } : {}),
             agenda: {
               active: agentConfig !== null && temFerramentaDeAgenda(agentConfig.toolIds),
               ferramentas: agentConfig === null ? [] : ferramentasDeAgendaDoAgente(agentConfig.toolIds),
