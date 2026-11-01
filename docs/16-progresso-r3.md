@@ -26,7 +26,8 @@
 | T10 custo e observação do DEPOIS | `cf0a6ff89` | ver abaixo | feita |
 | T11 `jev_conferencia` na cadeia before_send (v8) | `463af5ad6` + `2df7c59ed` | ver abaixo | feita |
 | T12 queda do Jev, teto e "Jev fora do ar" no DEPOIS | `4b6c90263` | ver abaixo | feita |
-| T13 segurar a resposta (regra das 2 tentativas) | ver `git log` (`feat(jev): T13 ...`) | ver abaixo | feita |
+| T13 segurar a resposta (regra das 2 tentativas) | `2641ad713` | ver abaixo | feita |
+| T14 abrir o caso para a equipe | ver `git log` (`feat(jev): T14 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -121,6 +122,14 @@
 - **A conferência passou a poder decidir:** saiu o `soObserva` da `TAREFA_DA_CONFERENCIA` (ganhou `aoDecidir`/`aoConfirmarDecidir` + espanhol). **Para o "decidindo" não ficar a um clique do primeiro dia, a rota exige o portão de D7 em código:** `PATCH` recusa `decidindo` (422 `jev_tarefa_ainda_observando`) se a tarefa não tem pelo menos 14 dias desde a PRIMEIRA observação em `jev_observacoes` (dias contados da primeira, filtro pela empresa da sessão e pela tarefa; voltar a observar e pausar nunca passam; quem já decide não é barrado de novo). **O outro portão — o corpus em português rotulado (D16) — é humano e continua sendo seu.** Vale também para a `triagem` (que segue `soObserva` até a T18).
 - **Testes:** `resposta-segurada.test.ts` (9: decisão pura e fiação de fonte), `route.test.ts` (portão: sem observação, 13×14 dias, desde a primeira, isolamento por empresa e tarefa, idioma), `tarefas.test.ts`, `conferencia-no-turno.test.ts` (decidindo × observando); `lib/ai` + `lib/agent-engine` + rotas + cartão + cercas: 1991 verdes; typecheck e eslint limpos.
 - **⚠️ Não executado:** o turno ponta a ponta (1ª reprova e 2ª aprova; as duas reprovam; `observando` nunca segura) é o invariante `tests/invariants/jev-conferencia-no-turno.test.ts`, que precisa do Postgres de teste (imagem `pgvector/pgvector:pg15`, que não está nesta máquina). Fica para a T25, com a sua licença para baixar a imagem.
+
+### T14 — abrir o caso para a equipe (sem migração)
+
+- **O que mudou:** `caso-da-conferencia.ts` (novo: `abrirOCasoDaRespostaSegurada`) e a chamada dele no bloco da 2ª reprovação do `send_message`. Abre o caso pelo `openCase` existente NA EMPRESA DO TURNO (`tenantId` do turno), com o rascunho segurado no resumo, as razões da reprovação no bloqueio e `context_snapshot.origem = 'jev_conferencia'`.
+- **Já havia caso aberto** (só pode haver um por conversa): NÃO abre outro; anota na linha do tempo do caso existente, como o AGENTE (`registrarNotaDoAgente`, kind `agent_noted`), que outra resposta ficou segurada. O desfecho (`caso_aberto` / `caso_ja_aberto` / `caso_falhou`) vai ao rastro numa linha própria de `before_send_traces` (`vetoed_gate = jev_conferencia`, `vetoed_code = resposta_segurada`), só em rótulos. O resultado é devolvido para a T15 decidir o aviso.
+- **Sem a migração opcional:** a origem do caso é `guardrail_autofallback` (a regra do banco só aceita essa e `agent`). Uma origem própria do Jev não valeu uma migração só pelo rótulo; quem precisar distinguir lê `context_snapshot.origem`. **Nenhuma migração criada.**
+- **Decisões minhas:** (1) a senha do cliente sai do rascunho antes de ir ao resumo do caso (a máscara troca por `[SENHA]`; telefone/CPF/e-mail/endereço também saem do resumo); (2) o caso é de tipo `duvida`; (3) a conversa NÃO é passada a humano nesta segunda reprovação (a spec só manda abrir o caso; só a promessa de humano sem caso faz o fail-safe irmão chamar `moverParaHandoffBestEffort`); (4) abre o caso mesmo se a empresa não habilitou `cases_enabled` — a tela de casos pode não estar ligada, mas o caso precisa existir para o aviso e a equipe.
+- **Testes:** `caso-da-conferencia.test.ts` (10: empresa certa, origem, razões sem a instrução ao modelo, já-havia-caso sem duplicar, banco que falha, senha fora do resumo, rastro sem rascunho, teto, fiação); suíte do agente verde; typecheck e eslint limpos. **Não executado contra Postgres de verdade** (o invariante "o caso nasce na empresa certa" é da T26).
 
 ## Pendências e coisas que só o dono pode fornecer
 

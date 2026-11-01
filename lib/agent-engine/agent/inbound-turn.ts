@@ -52,6 +52,7 @@ import {
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
 import { criarEvidenciasDoTurno } from './evidencias-do-turno';
 import { guardarSegredosDoCliente } from './segredos-do-cliente-no-turno';
+import { abrirOCasoDaRespostaSegurada } from './caso-da-conferencia';
 import { conferirOTurno } from './conferencia-no-turno';
 import {
   CODIGO_DA_CONFERENCIA,
@@ -3434,6 +3435,20 @@ async function executarTurnoDoAgente(
               job_id: liveJob().id,
               conversation_id: input.conversationId,
             });
+            // A equipe assume: abre o caso NA EMPRESA DO TURNO (`tenantId`, nunca do modelo) com o
+            // rascunho segurado e as razões — ou, se a conversa já tem caso aberto, não abre outro e
+            // anota nele. O desfecho vai ao rastro. Nunca lança, e a resposta segue segurada de
+            // qualquer jeito.
+            const casoDaResposta = await abrirOCasoDaRespostaSegurada(pool, {
+              ids: { tenantId, conversationId: input.conversationId, agentId: agentConfig?.agentId ?? null },
+              rascunho: body,
+              motivoDoVeto: chain.message,
+              senhasDoCliente: evidencias.senhasDoCliente(),
+              contextSnapshot: buildCaseContextSnapshot(),
+              rastro: { jobId: liveJob().id, contactId: leadId || null, channelSessionId: input.channelSessionId },
+              ...(conferenciaJev !== undefined ? { detalhe: conferenciaJev.detail } : {}),
+            });
+            runLog.info('caso da resposta segurada', { desfecho: casoDaResposta.desfecho });
             return erroDaRespostaSegurada();
           }
           if (chain.status === 'vetoed') {
