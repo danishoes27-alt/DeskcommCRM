@@ -19,7 +19,8 @@
 | T03 interruptores da instalação | `eb1101fa2` | ver abaixo | feita |
 | T04 evidências: base de conhecimento | `e77453be7` | ver abaixo | feita |
 | T05 evidências: catálogo e Bling | `9af3c5b34` | ver abaixo | feita |
-| T06 máscara de dados pessoais e senha | ver `git log` (`feat(jev): T06 ...`) | ver abaixo | feita |
+| T06 máscara de dados pessoais e senha | `a566ddf99` | ver abaixo | feita |
+| T07 regras locais L1, L2, L3, L6 | ver `git log` (`feat(jev): T07 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -52,6 +53,16 @@
 - **Decisões minhas:** apagar de MENOS é o risco, então erra-se para o lado de apagar demais ("a senha é importante" vira "a senha é [SENHA]"). "padrão" sozinho só é senha com dígito ou "em L" (é palavra comum de loja); "senhas" no plural e "esqueci a senha" não mascaram. O `!` de "Mari2024!" fica dentro da senha; o ponto final da frase não. Em erro interno a função devolve um marcador, nunca o texto cru.
 - **⚠️ A frase do aceite "nome, telefone e e-mail não são enviados" NÃO é estritamente verdadeira, mesmo com a máscara:** a máscara é por regras de texto (apelido que não está no cadastro, endereço sem "rua" ou telefone por extenso passam) e ainda não está ligada ao DEPOIS (é a T09 que a aplica). Por isso ajustei **só essa frase** do texto provisório (`ACEITE_DE_RESPOSTA.oQueNaoSai`, e o espanhol): agora diz que a mensagem do cliente não é enviada, que o sistema troca por uma marca o nome/telefone/e-mail/CPF/endereço/senha que aparecerem no rascunho, e que isso pode deixar passar algo escrito de um jeito fora do comum. A frase de retenção e o resto do texto ficaram como estavam. Ninguém aceitou ainda (nada ligado), então a versão do aceite continua 2. **Avisar o dono no relatório do Marco 1.**
 - **Testes:** `mascarar-segredos.test.ts` (59 casos: tabela de senhas em PT, os que NÃO podem ser mascarados, nomes com acento, partículas, endereço, CEP, idempotência, nada sobra no texto, nunca lança); `textos.test.ts`, cartão e i18n verdes; typecheck e eslint limpos.
+
+### T07 — regras locais L1, L2, L3 e L6
+
+- **O que mudou:** `lib/agent-engine/guardrails/conferencia-local.ts` (novo): `conferirLocalmente({ rascunho, evidencias })` → `{ achados, faixa }` (faixa `alta` com qualquer achado). Cada achado traz regra, código, trecho do rascunho e motivo em português para o MODELO. Funções puras, nunca lançam; reaproveita `extractPromises` (o leitor de R$ do gate de promessa).
+- **L1:** valor igual a um consultado, ou múltiplo inteiro (até 1000×) de um preço unitário consultado; soma de itens segura. "Consultado" = R$/reais nas evidências e colunas `preco/valor/total…: N` das linhas do banco externo.
+- **L2:** "em N dias/horas", "prazo de…", "hoje/amanhã" só ao lado de verbo de compromisso (fica pronto, entregamos, chega…), "garantia de N meses", "garantia de fábrica/vitalícia"; a evidência precisa ter a MESMA quantidade e unidade.
+- **L3:** "aprovado/liberado/sem consulta/sem análise/100%/garantido" em frase de crédito, boleto ou financiamento. **Sem fonte que salve.** Decisão minha: condicionais e negações antes da palavra ("se for aprovado", "depende", "não", "precisa ser") não contam, para não segurar "não posso garantir a aprovação".
+- **L6:** "temos / tem / chegou / em estoque" exige trecho consultado que fale do MESMO produto (palavras de identidade em comum com a frase); "não temos / acabou / sem estoque" passa se a fonte diz que não tem OU se o catálogo/Bling foi consultado e o produto nem apareceu; contradição da fonte segura. Pergunta não afirma nada.
+- **Falso alarme conhecido (medido em `observando`):** L1 com soma legítima e L6 com produto nomeado diferente nas duas pontas. "Com garantia" sem número nem tipo fica para o Jev.
+- **Testes:** `conferencia-local.test.ts` (66 casos positivos e negativos por regra, inclusive "5 folhas × R$ 2 passa" e "2 itens somados = R$ 80 segura"); typecheck e eslint limpos.
 
 ## Pendências e coisas que só o dono pode fornecer
 
