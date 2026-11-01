@@ -346,8 +346,8 @@ describe("a tarefa do follow-up", () => {
     expect(rotuloDaChamadaDoJev("followup_classify")).toBe(TAREFA_DO_FOLLOWUP.rotulo);
   });
 
-  it("tarefaPodeDecidir: só as que só observam não podem (follow-up, triagem e conferência)", () => {
-    expect(TAREFAS_DO_JEV.filter((t) => !tarefaPodeDecidir(t)).map((t) => t.id)).toEqual([TAREFA_DO_FOLLOWUP.id, "triagem", "conferencia"]);
+  it("tarefaPodeDecidir: só as que só observam não podem (follow-up e triagem; a conferência decide desde a T13)", () => {
+    expect(TAREFAS_DO_JEV.filter((t) => !tarefaPodeDecidir(t)).map((t) => t.id)).toEqual([TAREFA_DO_FOLLOWUP.id, "triagem"]);
   });
 
   it("nasce observando para quem já tem o Jev ligado (R7), com o selo Nova", () => {
@@ -433,14 +433,21 @@ describe("as tarefas novas da r3: triagem e conferência (T02)", () => {
     expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_RESPOSTA, gravada), conferencia)).toBe("observando");
   });
 
-  it("só observam: um `decidindo` gravado vale observando, e nenhuma das duas pode decidir ainda", () => {
+  it("a conferência PODE decidir (T13): um `decidindo` gravado, com o aceite de `resposta`, vale decidindo", () => {
     const conferencia = TAREFAS_DO_JEV.find((t) => t.id === "conferencia")!;
-    const triagem = TAREFAS_DO_JEV.find((t) => t.id === "triagem")!;
-    expect(tarefaPodeDecidir(conferencia)).toBe(false);
-    expect(tarefaPodeDecidir(triagem)).toBe(false);
+    expect(tarefaPodeDecidir(conferencia)).toBe(true);
     expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_RESPOSTA, { conferencia: { estado: "decidindo" } }), conferencia)).toBe(
-      "observando",
+      "decidindo",
     );
+    // E sem o aceite de `resposta`, nem decidindo gravado vale: falha fechada.
+    expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_MENSAGEM, { conferencia: { estado: "decidindo" } }), conferencia)).toBe(
+      "desligada",
+    );
+  });
+
+  it("a triagem ainda só observa (até a T18): um `decidindo` gravado vale observando", () => {
+    const triagem = TAREFAS_DO_JEV.find((t) => t.id === "triagem")!;
+    expect(tarefaPodeDecidir(triagem)).toBe(false);
     expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_MENSAGEM, { triagem: { estado: "decidindo" } }), triagem)).toBe(
       "observando",
     );

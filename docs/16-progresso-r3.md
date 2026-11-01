@@ -25,7 +25,8 @@
 | T09 tarefa conferencia: perguntas, state e cortes | `bb91188d1` | ver abaixo | feita |
 | T10 custo e observação do DEPOIS | `cf0a6ff89` | ver abaixo | feita |
 | T11 `jev_conferencia` na cadeia before_send (v8) | `463af5ad6` + `2df7c59ed` | ver abaixo | feita |
-| T12 queda do Jev, teto e "Jev fora do ar" no DEPOIS | ver `git log` (`feat(jev): T12 ...`) | ver abaixo | feita |
+| T12 queda do Jev, teto e "Jev fora do ar" no DEPOIS | `4b6c90263` | ver abaixo | feita |
+| T13 segurar a resposta (regra das 2 tentativas) | ver `git log` (`feat(jev): T13 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -112,6 +113,14 @@
 - **Ponto de atenção:** o incidente é fechado por quem resolve na tela do admin; não fecha sozinho quando o Jev volta.
 - **Testes:** `queda.test.ts` (17), `fora-do-ar.test.ts`, `conferencia-no-turno-queda.test.ts` (21: cada tipo de queda, disjuntor, isolamento entre lojas, incidente, teto), rota e cartão; `lib/ai` + `lib/agent-engine` + cercas 1675 verdes; typecheck limpo; eslint sem erro (1 aviso antigo de react-hooks em outro arquivo).
 - **⚠️ Não verificado contra Postgres de verdade:** o SQL do incidente (e o do gravador da T10) — mesma pendência da imagem `pgvector`.
+
+### T13 — segurar a resposta (regra das 2 tentativas)
+
+- **O que mudou:** `resposta-segurada.ts` (novo: `decidirOVetoDaConferencia`, `MAX_VETOS_DA_CONFERENCIA = 2`, o erro `resposta_segurada` ao modelo) e o `send_message` do `inbound-turn.ts`: veto `jev_conferencia` → 1ª vez devolve o motivo ao modelo (reescrever só com o que está nas fontes); 2ª vez SEGURA DE VEZ (`respostaSegurada`) e todo `send_message` seguinte do turno é recusado ANTES de qualquer conferência/Jev. O cliente não recebe nada da resposta segurada; o veto de cada tentativa já grava `before_send_traces` (faixa, origem, regras, em rótulos) e a atividade na timeline. Tudo só em `decidindo` — em `observando` o gate nunca veta (T11).
+- **Decisão minha — diferente dos fail-safes irmãos:** promessa de humano e vocabulário interno SOLTAM o envio na 2ª vez (o pior desfecho deles é cliente sem resposta). Este NÃO solta: o pior desfecho é a resposta errada que sai, então a 2ª reprovação chama uma pessoa (T14 abre o caso, T15 avisa o cliente). Um teste de fonte cobra que o bloco não chama `runBeforeSend` para liberar.
+- **A conferência passou a poder decidir:** saiu o `soObserva` da `TAREFA_DA_CONFERENCIA` (ganhou `aoDecidir`/`aoConfirmarDecidir` + espanhol). **Para o "decidindo" não ficar a um clique do primeiro dia, a rota exige o portão de D7 em código:** `PATCH` recusa `decidindo` (422 `jev_tarefa_ainda_observando`) se a tarefa não tem pelo menos 14 dias desde a PRIMEIRA observação em `jev_observacoes` (dias contados da primeira, filtro pela empresa da sessão e pela tarefa; voltar a observar e pausar nunca passam; quem já decide não é barrado de novo). **O outro portão — o corpus em português rotulado (D16) — é humano e continua sendo seu.** Vale também para a `triagem` (que segue `soObserva` até a T18).
+- **Testes:** `resposta-segurada.test.ts` (9: decisão pura e fiação de fonte), `route.test.ts` (portão: sem observação, 13×14 dias, desde a primeira, isolamento por empresa e tarefa, idioma), `tarefas.test.ts`, `conferencia-no-turno.test.ts` (decidindo × observando); `lib/ai` + `lib/agent-engine` + rotas + cartão + cercas: 1991 verdes; typecheck e eslint limpos.
+- **⚠️ Não executado:** o turno ponta a ponta (1ª reprova e 2ª aprova; as duas reprovam; `observando` nunca segura) é o invariante `tests/invariants/jev-conferencia-no-turno.test.ts`, que precisa do Postgres de teste (imagem `pgvector/pgvector:pg15`, que não está nesta máquina). Fica para a T25, com a sua licença para baixar a imagem.
 
 ## Pendências e coisas que só o dono pode fornecer
 

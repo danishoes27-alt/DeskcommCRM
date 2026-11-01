@@ -340,16 +340,21 @@ export const TAREFA_DA_TRIAGEM = {
  * (família `soma`). Pede mais do que o aceite da onda 1 cobre: nasce DESLIGADA
  * (item 5 do cabeçalho) e só liga depois do aceite do administrador.
  *
- * `soObserva` até a T11/T13 darem efeito à conferência (cadeia `before_send` e
- * segurar a resposta).
+ * Desde a T13 ela PODE DECIDIR: em `decidindo` a resposta reprovada não sai (a IA reescreve
+ * uma vez; na segunda, a resposta fica segurada, o cliente recebe o aviso fixo e a equipe
+ * recebe um caso). Sair de `observando` tem dois portões (D7 e D16): duas semanas
+ * observando — que a rota confere (`DIAS_DE_OBSERVACAO_ANTES_DE_DECIDIR`) — e o corpus em
+ * português rotulado, que é decisão humana e não se confere em código.
  */
 export const TAREFA_DA_CONFERENCIA = {
   id: "conferencia",
   primitiva: "noul",
   alcance: "resposta",
   familia: "soma",
-  soObserva:
-    "Nesta versão, o Jev só observa esta tarefa: ele anota o que acharia de cada resposta da IA, mas não segura nenhuma. Primeiro se mede, com respostas de verdade, o quanto ele acerta.",
+  aoDecidir:
+    "Quando o Jev ou as regras da casa acham que a resposta da IA afirma preço, prazo, garantia, aprovação ou estoque sem fonte, a resposta NÃO é enviada: a IA tenta reescrever uma vez e, se o problema continuar, a resposta fica segurada, o cliente recebe um aviso e a equipe recebe um caso para assumir.",
+  aoConfirmarDecidir:
+    "A partir de agora, a resposta da IA que o Jev ou as regras da casa reprovarem não sai para o cliente: a IA reescreve uma vez e, se insistir, o cliente recebe um aviso e a equipe assume pelo caso aberto.",
   concordancia: {
     antes: "dias, o Jev e as regras da casa chegaram ao mesmo veredito sobre a resposta da IA em",
     depois: "respostas.",
@@ -358,6 +363,15 @@ export const TAREFA_DA_CONFERENCIA = {
   oQueFaz:
     "Lê o rascunho da resposta da IA e os trechos que ela consultou — nunca a mensagem do cliente — e anota se a resposta traz preço, prazo, garantia ou aprovação sem fonte. Ele só pode ser mais rígido que as regras da casa, nunca liberar o que elas seguraram.",
 } as const satisfies TarefaDoJev;
+
+/**
+ * O PORTÃO DA OBSERVAÇÃO (spec 14, D7): as tarefas novas da r3 só podem ir de `observando` a
+ * `decidindo` depois de observarem por este tanto de dias — contado desde a PRIMEIRA
+ * observação gravada (`jev_observacoes`). A rota (`app/api/v1/ai/jev/route.ts`) recusa antes
+ * disso. O outro portão, o corpus em português rotulado (D16), é humano e não se mede aqui.
+ */
+export const TAREFAS_COM_PORTAO_DA_OBSERVACAO: readonly string[] = ["conferencia", "triagem"];
+export const DIAS_DE_OBSERVACAO_ANTES_DE_DECIDIR = 14;
 
 export const TAREFAS_DO_JEV: readonly TarefaDoJev[] = [
   TAREFA_DO_CLIMA,

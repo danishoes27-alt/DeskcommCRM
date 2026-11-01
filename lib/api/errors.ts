@@ -110,6 +110,9 @@ export const ApiErrorCodes = {
   // PATCH /api/v1/ai/jev ligando uma tarefa que manda ao fornecedor mais do que o
   // aceite da empresa cobre (a conferência pede `resposta`).
   jev_tarefa_pede_mais_aceite: "jev_tarefa_pede_mais_aceite",
+  // PATCH /api/v1/ai/jev deixando decidir uma tarefa nova da r3 que ainda não observou por duas
+  // semanas (o portão de D7 em docs/14-spec-jev.md).
+  jev_tarefa_ainda_observando: "jev_tarefa_ainda_observando",
 
   // 415 — tipo de mídia
   unsupported_media_type: "unsupported_media_type",

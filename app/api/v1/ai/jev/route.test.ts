@@ -1345,13 +1345,17 @@ describe("as tarefas triagem e conferência na rota (T02)", () => {
     });
   });
 
-  it("PATCH: com o aceite de `resposta`, a conferência liga observando e a rota grava; decidir continua recusado (só observa)", async () => {
+  it("PATCH: com o aceite de `resposta`, a conferência liga observando e a rota grava", async () => {
     estado.settings = { jev: { ligado: true, modo: "observacao", aceite: DE_RESPOSTA } };
     expect((await mudar({ tarefa: "conferencia", estado: "observando" })).status).toBe(200);
     expect((estado.settings.jev as Linha).tarefas).toMatchObject({ conferencia: { estado: "observando" } });
-    const decidir = await mudar({ tarefa: "conferencia", estado: "decidindo" });
-    expect(decidir.status).toBe(422);
-    expect(decidir.corpo.error.code).toBe("jev_tarefa_so_observa");
+  });
+
+  it("PATCH: a triagem ainda só observa (T18 muda isso): decidir é recusado com a frase de leigo", async () => {
+    estado.settings = { jev: { ligado: true, modo: "observacao", aceite: DE_MENSAGEM } };
+    const recusado = await mudar({ tarefa: "triagem", estado: "decidindo" });
+    expect(recusado.status).toBe(422);
+    expect(recusado.corpo.error.code).toBe("jev_tarefa_so_observa");
   });
 
   it("PATCH: a recusa sai no idioma de quem pede", async () => {
@@ -1398,5 +1402,93 @@ describe("GET: 'Jev fora do ar' (T12)", () => {
       chamada({ purpose: "jev_depois", status: "ok", created_at: depois }),
     ];
     expect((await ler()).corpo.data.fora_do_ar).toBeNull();
+  });
+});
+
+describe("PATCH: o portão das duas semanas antes de a conferência decidir (T13, D7)", () => {
+  const DE_RESPOSTA = { em: "2026-10-15T12:00:00.000Z", por: USUARIO, alcance: "resposta", versao: 2 };
+  const haDias = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+  const observacao = (dias: number, tarefa = "conferencia", org = ORG) => ({
+    organization_id: org,
+    tarefa,
+    estado: "observando",
+    created_at: haDias(dias),
+  });
+  const partir = () => {
+    estado.settings = {
+      jev: { ligado: true, modo: "observacao", aceite: DE_RESPOSTA, tarefas: { conferencia: { estado: "observando" } } },
+    };
+  };
+
+  it("sem nenhuma observação, deixar decidir é recusado (422), sem escrever nem auditar", async () => {
+    partir();
+    const r = await mudar({ tarefa: "conferencia", estado: "decidindo" });
+    expect(r.status).toBe(422);
+    expect(r.corpo.error.code).toBe("jev_tarefa_ainda_observando");
+    expect(r.corpo.error.message).toMatch(/ainda não observou nada/);
+    expect(escritas()).toEqual([]);
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it("observando há 13 dias: recusado; há 14: liberado", async () => {
+    partir();
+    estado.observacoes = [observacao(13), observacao(2)];
+    const cedo = await mudar({ tarefa: "conferencia", estado: "decidindo" });
+    expect(cedo.status).toBe(422);
+    expect(cedo.corpo.error.message).toMatch(/menos de duas semanas/);
+
+    estado.observacoes = [observacao(14.1), observacao(2)];
+    const ok = await mudar({ tarefa: "conferencia", estado: "decidindo" });
+    expect(ok.status).toBe(200);
+    expect((estado.settings.jev as Linha).tarefas).toMatchObject({ conferencia: { estado: "decidindo" } });
+  });
+
+  it("a idade conta desde a PRIMEIRA observação, não da última", async () => {
+    partir();
+    estado.observacoes = [observacao(1), observacao(30), observacao(5)];
+    expect((await mudar({ tarefa: "conferencia", estado: "decidindo" })).status).toBe(200);
+  });
+
+  it("ISOLAMENTO: as observações de OUTRA empresa e de OUTRA tarefa não contam", async () => {
+    partir();
+    estado.observacoes = [observacao(40, "conferencia", OUTRA_ORG), observacao(40, "triagem")];
+    const r = await mudar({ tarefa: "conferencia", estado: "decidindo" });
+    expect(r.status).toBe(422);
+    // A leitura é cercada pela organização da SESSÃO.
+    const leitura = estado.consultas.find((c) => c.tabela === "jev_observacoes");
+    expect(leitura?.eq).toContainEqual(["organization_id", ORG]);
+    expect(leitura?.eq).toContainEqual(["tarefa", "conferencia"]);
+    expect(estado.consultas.some((c) => c.eq.some(([, v]) => v === OUTRA_ORG))).toBe(false);
+  });
+
+  it("voltar a observar e pausar nunca passam pelo portão", async () => {
+    partir();
+    expect((await mudar({ tarefa: "conferencia", estado: "desligada" })).status).toBe(200);
+    expect((await mudar({ tarefa: "conferencia", estado: "observando" })).status).toBe(200);
+  });
+
+  it("quem JÁ decide não é barrado de novo (o pedido igual ao estado de hoje não é mutação)", async () => {
+    estado.settings = {
+      jev: { ligado: true, modo: "observacao", aceite: DE_RESPOSTA, tarefas: { conferencia: { estado: "decidindo" } } },
+    };
+    const r = await mudar({ tarefa: "conferencia", estado: "decidindo" });
+    expect(r.status).toBe(200);
+    expect(r.corpo.data.alterado).toBe(false);
+  });
+
+  it("as tarefas da onda 1 e 2 não têm o portão (seguem como estavam)", async () => {
+    estado.settings = { jev: { ligado: true, modo: "observacao", aceite: { ...DE_RESPOSTA, alcance: "mensagem" } } };
+    expect((await mudar({ tarefa: "roteador", estado: "decidindo" })).status).toBe(200);
+  });
+
+  it("a recusa sai no idioma de quem pede", async () => {
+    partir();
+    vi.mocked(requireRole).mockResolvedValueOnce({
+      ok: true,
+      user: { id: USUARIO, idioma: "es" },
+      org: { orgId: ORG, role: "admin" },
+    } as unknown as Awaited<ReturnType<typeof requireRole>>);
+    const { corpo } = await mudar({ tarefa: "conferencia", estado: "decidindo" });
+    expect(corpo.error.message).toMatch(/^Esta tarea aún no observó nada/);
   });
 });

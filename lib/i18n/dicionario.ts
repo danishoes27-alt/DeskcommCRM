@@ -4341,6 +4341,18 @@ export const DICIONARIO: Traducoes = {
   "O Jev não respondeu: a IA atendeu sem a anotação dele.": {
     es: "Jev no respondió: la IA atendió sin su anotación.",
   },
+  "Esta tarefa ainda não observou nada. Antes de deixar o Jev decidir, ela precisa observar por pelo menos duas semanas e ser conferida com exemplos reais em português.": {
+    es: "Esta tarea aún no observó nada. Antes de dejar que Jev decida, debe observar por al menos dos semanas y ser verificada con ejemplos reales en portugués.",
+  },
+  "Esta tarefa começou a observar há menos de duas semanas. Antes de deixar o Jev decidir, deixe-a observar por pelo menos duas semanas e confira o quanto ele acerta, com exemplos reais em português.": {
+    es: "Esta tarea empezó a observar hace menos de dos semanas. Antes de dejar que Jev decida, déjala observar por al menos dos semanas y verifica cuánto acierta, con ejemplos reales en portugués.",
+  },
+  "Quando o Jev ou as regras da casa acham que a resposta da IA afirma preço, prazo, garantia, aprovação ou estoque sem fonte, a resposta NÃO é enviada: a IA tenta reescrever uma vez e, se o problema continuar, a resposta fica segurada, o cliente recebe um aviso e a equipe recebe um caso para assumir.": {
+    es: "Cuando Jev o las reglas de la casa creen que la respuesta de la IA afirma precio, plazo, garantía, aprobación o stock sin fuente, la respuesta NO se envía: la IA intenta reescribirla una vez y, si el problema continúa, la respuesta queda retenida, el cliente recibe un aviso y el equipo recibe un caso para asumir.",
+  },
+  "A partir de agora, a resposta da IA que o Jev ou as regras da casa reprovarem não sai para o cliente: a IA reescreve uma vez e, se insistir, o cliente recebe um aviso e a equipe assume pelo caso aberto.": {
+    es: "A partir de ahora, la respuesta de la IA que Jev o las reglas de la casa rechacen no sale al cliente: la IA reescribe una vez y, si insiste, el cliente recibe un aviso y el equipo asume mediante el caso abierto.",
+  },
   "Jev fora do ar": {
     es: "Jev fuera de servicio",
   },

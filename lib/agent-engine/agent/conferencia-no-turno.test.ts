@@ -134,19 +134,26 @@ describe("quando confere", () => {
     expect(gravacao, "gravou custo e observação").toBeDefined();
   });
 
-  it("achado local: devolve segurar=true, mas NESTA versão a conferência só observa — mesmo gravada como 'decidindo' vale observando, e a cadeia não segura", async () => {
-    // `TAREFA_DA_CONFERENCIA.soObserva` (T02): quem tira a marca é a T13, quando o
-    // 'segurar' ganha efeito. Até lá, a trava é a do estado efetivo, não só a do gate.
+  it("DECIDINDO com achado local: segura, com o motivo ao modelo; o Jev dizendo 'tudo bem' não liberta", async () => {
     configDaEmpresa("decidindo");
     const fetchImpl = vi.fn().mockResolvedValue(ok(corpo(0.01, 0.01, 0.01)));
     const r = await conferirOTurno(
       entrada({ rascunho: "O crédito está aprovado, pode vir buscar!" }),
       { fetchImpl },
     );
-    expect(r).toMatchObject({ estado: "observando", segurar: true });
+    expect(r).toMatchObject({ estado: "decidindo", segurar: true });
     expect(r!.motivo).toContain("NÃO foi enviada");
     expect(r!.motivo).toMatch(/aprovação/);
     expect(r!.detail).toMatchObject({ origem: "local", regras: "L3" });
+  });
+
+  it("OBSERVANDO com o mesmo achado: o veredito diz segurar, mas o estado é observando — a cadeia não veta", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(ok(corpo(0.01, 0.01, 0.01)));
+    const r = await conferirOTurno(
+      entrada({ rascunho: "O crédito está aprovado, pode vir buscar!" }),
+      { fetchImpl },
+    );
+    expect(r).toMatchObject({ estado: "observando", segurar: true });
   });
 
   it("resposta limpa: libera, sem motivo", async () => {

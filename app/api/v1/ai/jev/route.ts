@@ -64,8 +64,10 @@ import { CHAVES_DO_CLIMA, type MotorDoClima } from "@/lib/ai/decisao/metadados-d
 import {
   estadoAoLigar,
   estadoEfetivoDaTarefa,
+  DIAS_DE_OBSERVACAO_ANTES_DE_DECIDIR,
   estadoGravadoDaTarefa,
   rotuloDaChamadaDoJev,
+  TAREFAS_COM_PORTAO_DA_OBSERVACAO,
   TAREFA_DO_CLIMA,
   TAREFAS_DO_JEV,
   tarefaEhNova,
@@ -660,6 +662,37 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   const soObserva = pedido ? TAREFAS_DO_JEV.find((x) => x.id === pedido.tarefa)?.soObserva : undefined;
   if (pedido?.estado === "decidindo" && soObserva !== undefined) {
     return fail("jev_tarefa_so_observa", t(soObserva), 422, { requestId });
+  }
+  // O portão da observação (spec 14, D7): as tarefas novas da r3 só decidem depois de duas semanas
+  // observando — contadas desde a PRIMEIRA observação gravada. Sem nenhuma, ela nem começou. O
+  // outro portão (o corpus em português rotulado, D16) é humano e fica com o administrador.
+  if (
+    pedido?.estado === "decidindo" &&
+    TAREFAS_COM_PORTAO_DA_OBSERVACAO.includes(pedido.tarefa) &&
+    estadoGravadoDaTarefa(atual, pedido.tarefa) !== "decidindo"
+  ) {
+    const { data: observadas, error: obsErr } = await admin
+      .from("jev_observacoes")
+      .select("created_at")
+      .eq("organization_id", org.orgId)
+      .eq("tarefa", pedido.tarefa)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (obsErr) return fail("query_failed", obsErr.message, 500, { requestId });
+    const primeira = (observadas ?? []).map((o) => Date.parse(o.created_at)).filter(Number.isFinite).sort((a, b) => a - b)[0];
+    const dias = primeira === undefined ? 0 : (Date.now() - primeira) / (24 * 60 * 60 * 1000);
+    if (dias < DIAS_DE_OBSERVACAO_ANTES_DE_DECIDIR) {
+      return fail(
+        "jev_tarefa_ainda_observando",
+        t(
+          primeira === undefined
+            ? "Esta tarefa ainda não observou nada. Antes de deixar o Jev decidir, ela precisa observar por pelo menos duas semanas e ser conferida com exemplos reais em português."
+            : "Esta tarefa começou a observar há menos de duas semanas. Antes de deixar o Jev decidir, deixe-a observar por pelo menos duas semanas e confira o quanto ele acerta, com exemplos reais em português.",
+        ),
+        422,
+        { requestId },
+      );
+    }
   }
   // A tarefa que manda ao fornecedor mais do que o aceite cobre não se liga: o
   // estado gravado seria letra morta (o estado efetivo segue desligada) e a

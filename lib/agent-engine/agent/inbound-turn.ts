@@ -53,6 +53,11 @@ import { citationsFromHits, searchKnowledge } from './search-knowledge';
 import { criarEvidenciasDoTurno } from './evidencias-do-turno';
 import { guardarSegredosDoCliente } from './segredos-do-cliente-no-turno';
 import { conferirOTurno } from './conferencia-no-turno';
+import {
+  CODIGO_DA_CONFERENCIA,
+  decidirOVetoDaConferencia,
+  erroDaRespostaSegurada,
+} from './resposta-segurada';
 import { comEvidenciaDoTurno, ORIGEM_DA_FERRAMENTA } from './evidencias-das-ferramentas';
 import type { CrmEdgeConfig } from '../edge/crm/mcp-client';
 import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
@@ -2637,6 +2642,11 @@ async function executarTurnoDoAgente(
   // (`internal_vocabulary_leak`): 1º veto no turno ensina o modelo a reescrever; persistir
   // solta o envio com registro. Por turno (closure), nunca cross-turno.
   let internalVocabularyVetoCount = 0;
+  // A conferência do "depois" (Jev, r3): a 1ª reprovação no turno ensina o modelo a reescrever;
+  // a 2ª SEGURA a resposta de vez (e, nas tarefas seguintes, abre o caso e avisa o cliente). Por
+  // turno (closure), nunca cross-turno. `respostaSegurada` fecha o resto do turno: nada mais sai.
+  let jevConferenciaVetoCount = 0;
+  let respostaSegurada = false;
   // Uma recusa deste tipo devolve o texto confirmado ao modelo para que ele
   // reescreva antes de falar com o cliente. Não gasta envio nem toca no canal.
   let falseEmptyInboundVetoCount = 0;
@@ -2847,6 +2857,9 @@ async function executarTurnoDoAgente(
     send_template: tool({
       ...AGENT_TOOL_DEFS.send_template,
       execute: async ({ template_name, language, values }) => {
+        // A resposta já foi segurada de vez pela conferência: este turno não envia mais nada, e
+        // não custa outra chamada ao Jev (o veredito já foi dado duas vezes).
+        if (respostaSegurada) return erroDaRespostaSegurada();
         if (seq >= maxSendsPerTurn) {
           return {
             ok: false,
@@ -3401,6 +3414,27 @@ async function executarTurnoDoAgente(
               hasOpenCase: hasOpenCase || openedCaseThisTurn,
               enforceInternalVocabulary: false,
             });
+          }
+          if (chain.status === 'vetoed' && chain.code === CODIGO_DA_CONFERENCIA) {
+            // Conferência do "depois" (só em `decidindo`: em `observando` o gate nunca veta).
+            // 1ª vez: o motivo volta ao modelo, que reescreve SÓ com o que está nas fontes
+            // consultadas — o cliente não recebe nada desta tentativa. 2ª vez: segurada de
+            // vez. Diferente dos fail-safes irmãos (promessa de humano, vocabulário), que
+            // SOLTAM o envio: o pior desfecho daqui é uma resposta errada que sai, e por isso
+            // a 2ª reprovação chama uma pessoa em vez de soltar o texto. O veto de cada
+            // tentativa já virou linha em `before_send_traces` (com a faixa, a origem e as
+            // regras, em rótulos) e atividade na timeline.
+            jevConferenciaVetoCount += 1;
+            if (decidirOVetoDaConferencia(jevConferenciaVetoCount).acao === 'reescrever') {
+              return { ok: false, error: { code: chain.code, message: chain.message } };
+            }
+            respostaSegurada = true;
+            runLog.warn('resposta segurada de vez pela conferência do Jev', {
+              vetos: jevConferenciaVetoCount,
+              job_id: liveJob().id,
+              conversation_id: input.conversationId,
+            });
+            return erroDaRespostaSegurada();
           }
           if (chain.status === 'vetoed') {
             // Cap de warm-up/diário: reescrever o texto não resolve (é rate limit, não
