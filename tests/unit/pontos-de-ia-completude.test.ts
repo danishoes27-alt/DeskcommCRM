@@ -26,7 +26,12 @@ import ts from "typescript";
 
 import { describe, expect, it } from "vitest";
 
-import { PEDIDOS_DO_CLIENTE, rotuloDaChamadaDoJev } from "@/lib/ai/decisao/tarefas";
+import {
+  CONFERENCIA_DA_RESPOSTA,
+  PEDIDOS_DO_CLIENTE,
+  rotuloDaChamadaDoJev,
+  TRIAGEM_DA_MENSAGEM,
+} from "@/lib/ai/decisao/tarefas";
 import {
   PONTOS_DE_IA,
   pontosPorPapel,
@@ -126,7 +131,12 @@ const FORA_DO_SEAM: Record<string, { arquivo: string; marcador: string }> = {
  * IA › Execuções e o cartão do Jev, por `rotuloDaChamadaDoJev` — e o caso
  * "a chamada do Jev sem ponto" confere que ela tem nome e é de fato emitida.
  */
-const CHAMADAS_DO_JEV_SEM_PONTO: ReadonlySet<string> = new Set([PEDIDOS_DO_CLIENTE.purpose]);
+const CHAMADAS_DO_JEV_SEM_PONTO: ReadonlySet<string> = new Set([
+  PEDIDOS_DO_CLIENTE.purpose,
+  // A conferência do "depois" (T10) e a triagem do "antes" (T18, r3): chamadas do Jev sem ponto.
+  CONFERENCIA_DA_RESPOSTA.purpose,
+  TRIAGEM_DA_MENSAGEM.purpose,
+]);
 
 describe("registro de pontos de IA × código", () => {
   const emitidos = purposesEmitidosNoCodigo();

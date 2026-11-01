@@ -72,6 +72,11 @@ const NAO_AVALIAVEIS_SEM_TURNO: ReadonlyArray<{ gate: string; porque: string }> 
     gate: "agenda_stall",
     porque: "depende de a ferramenta de agenda ter sido chamada neste turno — não há turno real no teste",
   },
+  {
+    gate: "jev_conferencia",
+    porque:
+      "depende do que a IA consultou neste turno (preço, estoque, base de conhecimento) e da chamada ao Jev — o teste não gasta nem manda nada para fora",
+  },
   { gate: "disclosure", porque: "depende de esta ser a primeira mensagem ao contato" },
 ];
 

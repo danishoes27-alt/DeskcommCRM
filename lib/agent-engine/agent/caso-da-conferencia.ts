@@ -28,10 +28,19 @@ import type pg from "pg";
 import { mascararSegredos } from "../guardrails/mascarar-segredos";
 import { openCase, registrarNotaDoAgente, type CaseIds } from "./human-cases";
 
+/**
+ * A nota que marca, na linha do tempo do caso, que o cliente JÁ recebeu o aviso fixo ("vou
+ * confirmar com a equipe…"). É o que faz o aviso sair UMA ÚNICA VEZ por conversa quando já havia
+ * caso aberto (spec 14, ambiguidade 4): sem uma marca durável, cada nova resposta segurada na
+ * mesma conversa mandaria o mesmo aviso de novo.
+ */
+export const NOTA_DO_AVISO_AO_CLIENTE =
+  "O cliente recebeu o aviso de que a equipe vai confirmar a informação. Respostas seguintes que ficarem seguradas nesta conversa não repetem o aviso.";
+
 export type DesfechoDoCaso =
   | { desfecho: "caso_aberto"; caseId: string }
   /** A conversa JÁ tinha caso aberto: nenhum novo, e a nota entrou no existente (`caseId` nulo se não foi achado). */
-  | { desfecho: "caso_ja_aberto"; caseId: string | null }
+  | { desfecho: "caso_ja_aberto"; caseId: string | null; avisoJaDado: boolean }
   | { desfecho: "caso_falhou" };
 
 export interface EntradaDoCasoDaConferencia {
@@ -119,7 +128,8 @@ export async function abrirOCasoDaRespostaSegurada(
     if (aberto.ok) {
       resultado = { desfecho: "caso_aberto", caseId: aberto.caseId };
     } else if (aberto.error.code === "case_already_open") {
-      resultado = { desfecho: "caso_ja_aberto", caseId: await anotarNoCasoExistente(pool, e) };
+      const existente = await anotarNoCasoExistente(pool, e);
+      resultado = { desfecho: "caso_ja_aberto", caseId: existente.caseId, avisoJaDado: existente.avisoJaDado };
     } else {
       resultado = { desfecho: "caso_falhou" };
     }
@@ -130,27 +140,58 @@ export async function abrirOCasoDaRespostaSegurada(
   return resultado;
 }
 
-/** A conversa já tem caso: a equipe vê, na linha do tempo dele, que outra resposta ficou segurada. */
-async function anotarNoCasoExistente(pool: pg.Pool, e: EntradaDoCasoDaConferencia): Promise<string | null> {
+/**
+ * A conversa já tem caso: a equipe vê, na linha do tempo dele, que outra resposta ficou segurada.
+ * Devolve também se o cliente JÁ tinha sido avisado neste caso (a marca de `NOTA_DO_AVISO_AO_CLIENTE`),
+ * lida ANTES de a nota nova entrar. Falha ao ler = "já avisado": na dúvida, o cliente não recebe o
+ * mesmo aviso duas vezes.
+ */
+async function anotarNoCasoExistente(
+  pool: pg.Pool,
+  e: EntradaDoCasoDaConferencia,
+): Promise<{ caseId: string | null; avisoJaDado: boolean }> {
   try {
-    const { rows } = await pool.query<{ id: string }>(
-      `select id from agent_cases
-        where organization_id = $1 and conversation_id = $2 and status = any($3::text[])
-        order by created_at desc
+    const { rows } = await pool.query<{ id: string; avisado: boolean }>(
+      `select c.id,
+              exists (
+                select 1 from agent_case_events ev
+                 where ev.organization_id = c.organization_id and ev.case_id = c.id
+                   and ev.kind = 'agent_noted' and ev.body = $4
+              ) as avisado
+         from agent_cases c
+        where c.organization_id = $1 and c.conversation_id = $2 and c.status = any($3::text[])
+        order by c.created_at desc
         limit 1`,
-      [e.ids.tenantId, e.ids.conversationId, ["awaiting_human", "awaiting_lead"]],
+      [e.ids.tenantId, e.ids.conversationId, ["awaiting_human", "awaiting_lead"], NOTA_DO_AVISO_AO_CLIENTE],
     );
-    const caseId = rows[0]?.id;
-    if (caseId === undefined) return null;
+    const caso = rows[0];
+    if (caso === undefined) return { caseId: null, avisoJaDado: false };
     await registrarNotaDoAgente(
       pool,
       e.ids.tenantId,
-      caseId,
+      caso.id,
       "Outra resposta da IA foi segurada pela conferência antes do envio e não foi mandada ao cliente. " +
         "Confirme a informação e responda a ele.",
     );
-    return caseId;
+    return { caseId: caso.id, avisoJaDado: caso.avisado === true };
   } catch {
-    return null;
+    return { caseId: null, avisoJaDado: true };
   }
+}
+
+/** Marca no caso que o cliente recebeu o aviso fixo. Nunca lança. */
+export async function marcarOAvisoNoCaso(pool: pg.Pool, tenantId: string, caseId: string): Promise<void> {
+  try {
+    await registrarNotaDoAgente(pool, tenantId, caseId, NOTA_DO_AVISO_AO_CLIENTE);
+  } catch {
+    // A marca é conveniência de deduplicação: sem ela, no pior caso o aviso sai uma vez a mais.
+  }
+}
+
+/**
+ * O cliente deve receber o aviso fixo agora? Sempre que o caso foi aberto AGORA (uma vez por
+ * resposta segurada) ou nem abriu; quando já havia caso, só se ele ainda não tinha sido avisado.
+ */
+export function devoAvisarOCliente(caso: DesfechoDoCaso): boolean {
+  return caso.desfecho !== "caso_ja_aberto" || !caso.avisoJaDado;
 }

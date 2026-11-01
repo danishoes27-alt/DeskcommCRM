@@ -43,6 +43,7 @@ const MOTIVOS: MotivoDoAviso[] = [
   "pediu_humano",
   "suspeita_de_opt_out",
   "orcamento_de_ia",
+  "resposta_segurada",
   "outro",
 ];
 const ESTADOS: Array<{ rotulo: string; quem: QuemPodeAssumir | null }> = [

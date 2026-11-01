@@ -248,7 +248,7 @@ export async function perguntarAoJev(
         tarefa: TAREFA_DA_CONFERENCIA.id,
         estado: { ...montarEstadoDaConferencia(entrada) },
         perguntas: PERGUNTAS,
-        ...(tetoMs !== undefined ? { tetoMs } : {}),
+        tetoMs,
       },
       dependencias,
     );

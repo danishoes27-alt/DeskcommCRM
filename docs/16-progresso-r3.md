@@ -27,7 +27,8 @@
 | T11 `jev_conferencia` na cadeia before_send (v8) | `463af5ad6` + `2df7c59ed` | ver abaixo | feita |
 | T12 queda do Jev, teto e "Jev fora do ar" no DEPOIS | `4b6c90263` | ver abaixo | feita |
 | T13 segurar a resposta (regra das 2 tentativas) | `2641ad713` | ver abaixo | feita |
-| T14 abrir o caso para a equipe | ver `git log` (`feat(jev): T14 ...`) | ver abaixo | feita |
+| T14 abrir o caso para a equipe | `320788731` | ver abaixo | feita |
+| T15 aviso fixo ao cliente | ver `git log` (`feat(jev): T15 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -130,6 +131,28 @@
 - **Sem a migração opcional:** a origem do caso é `guardrail_autofallback` (a regra do banco só aceita essa e `agent`). Uma origem própria do Jev não valeu uma migração só pelo rótulo; quem precisar distinguir lê `context_snapshot.origem`. **Nenhuma migração criada.**
 - **Decisões minhas:** (1) a senha do cliente sai do rascunho antes de ir ao resumo do caso (a máscara troca por `[SENHA]`; telefone/CPF/e-mail/endereço também saem do resumo); (2) o caso é de tipo `duvida`; (3) a conversa NÃO é passada a humano nesta segunda reprovação (a spec só manda abrir o caso; só a promessa de humano sem caso faz o fail-safe irmão chamar `moverParaHandoffBestEffort`); (4) abre o caso mesmo se a empresa não habilitou `cases_enabled` — a tela de casos pode não estar ligada, mas o caso precisa existir para o aviso e a equipe.
 - **Testes:** `caso-da-conferencia.test.ts` (10: empresa certa, origem, razões sem a instrução ao modelo, já-havia-caso sem duplicar, banco que falha, senha fora do resumo, rastro sem rascunho, teto, fiação); suíte do agente verde; typecheck e eslint limpos. **Não executado contra Postgres de verdade** (o invariante "o caso nasce na empresa certa" é da T26).
+
+### T15 — aviso fixo ao cliente
+
+- **O que mudou:** novo motivo `resposta_segurada` em `lib/escalacao/aviso-ao-lead.ts` (pt e es, mesmo mecanismo dos outros avisos de saída de campo); `caso-da-conferencia.ts` ganhou a marca do aviso no caso (`NOTA_DO_AVISO_AO_CLIENTE`), `devoAvisarOCliente` e `marcarOAvisoNoCaso`; o bloco da 2ª reprovação no `inbound-turn.ts` manda o aviso por `avisarLeadDaEscalacao` — a MESMA cadeia de guardrails (anti-ban, janela de resposta, bloqueio de contato, LGPD) — e marca o caso.
+- **Texto (PROVISÓRIO, a aprovar):** com a equipe disponível, uma das 3 variantes: **"Vou confirmar essa informação com a equipe e já te respondo."**; as outras duas: "Quero te passar a informação certa, então vou confirmar com a equipe antes de responder." e "Deixa eu confirmar isso com o time para não te passar nada errado." Sem equipe disponível (ou leitura que falhou) NÃO se promete "já": só as 2 variantes sem promessa + um fecho próprio ("Deixei sua pergunta anotada e a equipe responde assim que possível." e duas irmãs). Os fechos gerais da passagem foram evitados de propósito: falam de "atendente" e "conversa na fila", e aqui a IA não passou conversa nenhuma. Espanhol neutro nos mesmos moldes. Sorteio por hash do lead (determinístico por conversa), e o gate de spinning continua desarmado para este aviso, como para os irmãos.
+- **A regra:** caso aberto agora = avisa (uma vez por resposta segurada); caso falhou ao abrir = avisa mesmo assim; já havia caso aberto = avisa UMA única vez por conversa (a marca no caso diz se já avisou; leitura da marca que falha vale "já avisou"). Contato bloqueado não recebe (o `stop` da cadeia veta; teste).
+- **Decisão minha:** o aviso de código NÃO é conferido pelo Jev nem pelas regras (a chamada de `avisarLeadDaEscalacao` não leva `conferenciaJev`): é texto nosso, fixo e sem fato.
+- **Testes:** `tests/unit/aviso-da-resposta-segurada.test.ts` (frase, não fala em atendente/fila, espanhol sem português, cadeia, bloqueado, janela fechada, a regra das duas vezes, fiação), `aviso-ao-lead.test.ts` (o motivo entrou na lista de TODAS as propriedades dos avisos: ≥ 3 redações, não cabe na isenção do spinning, sem português em espanhol), `caso-da-conferencia.test.ts` (marca do aviso).
+
+- **Fechamento do Marco 1 — cercas que a cadeia v8 e as finalidades novas fizeram vermelhar (conserto no mesmo commit):** `lib/ai/guardrails/lista-de-conferencia.ts` ganhou a conferência do Jev (a lista da tela tem de casar com a cadeia, na mesma ordem; texto em linguagem de lojista, com espanhol); `avaliar-resposta-de-teste.ts` declara o gate novo como "não avaliável no teste"; `pontos-de-ia-completude` aceita `jev_depois` e `jev_antes` como chamadas do Jev sem ponto; `conferencia.ts` deixou de espalhar objeto na chamada a `decidirNoPonto` (a cerca de decisão rápida lê a entrada literal).
+
+## MARCO 1 (T01–T15) — DEPOIS completo, tudo em `observando` e desligado
+
+- Nada foi ligado: o interruptor da instalação (`JEV_CONFERENCIA_ENABLED`) nasce desligado; a tarefa `conferencia` nasce desligada e pede o aceite novo; e "decidir" exige duas semanas de observação (portão no PATCH).
+- Pronto para uso em `observando` quando houver: chave da TypeSafe colada na credencial `typesafe`, aceite de `resposta` dado pelo administrador na tela, tarefa religada e `JEV_CONFERENCIA_ENABLED=true`.
+
+### Bateria completa do Marco 1 (`pnpm test:unit`, sem caminho)
+
+- Rodapé: **24 arquivos / 59 testes falhando** na primeira rodada. Dos 59, **6 eram meus** (a cadeia v8 e as finalidades novas fizeram vermelhar 4 cercas: lista da tela × cadeia, não-avaliados do botão Testar, completude de purposes, decisão rápida) — **consertados no commit da T15**. Os outros **53 falham IGUAIS no commit-base `93b902658`** (conferido: criei um worktree temporário no commit-base, rodei os 20 arquivos — 35 + 18 testes vermelhos, os mesmos nomes —, e removi o worktree). São o ambiente Windows que você já tinha mapeado: `git`/`bash`/PDF, separador de caminho (`\`) e timeouts de 15 s. Na linha de base você falou em 51 + 3; aqui contei 53.
+- Não apareceu nenhuma falha nova depois do conserto: `lib/ai`, `lib/agent-engine`, rotas de IA, telas de IA e as cercas do Jev: **2048 testes verdes**.
+- `pnpm typecheck` limpo; ESLint sem erro nos arquivos tocados (avisos antigos de outros arquivos).
+- **Não rodei `pnpm test:db`** (precisa da imagem `pgvector/pgvector:pg15`, que não está nesta máquina — veja "O que preciso de você").
 
 ## Pendências e coisas que só o dono pode fornecer
 

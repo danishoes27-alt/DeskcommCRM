@@ -6,7 +6,13 @@
 import { describe, expect, it, vi } from "vitest";
 import type pg from "pg";
 
-import { abrirOCasoDaRespostaSegurada, razoesDoMotivo, type EntradaDoCasoDaConferencia } from "./caso-da-conferencia";
+import {
+  abrirOCasoDaRespostaSegurada,
+  marcarOAvisoNoCaso,
+  NOTA_DO_AVISO_AO_CLIENTE,
+  razoesDoMotivo,
+  type EntradaDoCasoDaConferencia,
+} from "./caso-da-conferencia";
 
 const ORG_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const ORG_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -20,14 +26,14 @@ const MOTIVO =
   "Reescreva usando SOMENTE o que está nas fontes que você consultou neste turno.";
 
 /** Um pool que responde por tipo de SQL: `caso` = o insert do openCase; `jaTem` = o select do caso aberto. */
-function poolDe(opcoes: { caso?: "novo" | "ja_tem" | "erro"; naoAcha?: boolean } = {}) {
+function poolDe(opcoes: { caso?: "novo" | "ja_tem" | "erro"; naoAcha?: boolean; avisado?: boolean } = {}) {
   const query = vi.fn(async (sql: string, _params?: unknown[]) => {
     if (sql.includes("insert into agent_cases")) {
       if (opcoes.caso === "erro") throw new Error("banco caiu");
       return { rows: opcoes.caso === "ja_tem" ? [] : [{ case_id: CASO }], rowCount: 1 };
     }
-    if (sql.includes("select id from agent_cases")) {
-      return { rows: opcoes.naoAcha ? [] : [{ id: CASO }], rowCount: 1 };
+    if (sql.includes("from agent_cases c")) {
+      return { rows: opcoes.naoAcha ? [] : [{ id: CASO, avisado: opcoes.avisado === true }], rowCount: 1 };
     }
     return { rows: [], rowCount: 1 };
   });
@@ -100,12 +106,12 @@ describe("abrir o caso da resposta segurada", () => {
   it("JÁ HAVIA caso aberto: nenhum caso novo; a nota entra no caso existente e o desfecho vai ao rastro", async () => {
     const { pool, query } = poolDe({ caso: "ja_tem" });
     const r = await abrirOCasoDaRespostaSegurada(pool, entrada());
-    expect(r).toEqual({ desfecho: "caso_ja_aberto", caseId: CASO });
+    expect(r).toEqual({ desfecho: "caso_ja_aberto", caseId: CASO, avisoJaDado: false });
     // Procurou o caso aberto DESTA conversa e DESTA empresa…
-    const busca = query.mock.calls.find(([sql]) => String(sql).includes("select id from agent_cases"))!;
-    expect(busca[1]).toEqual([ORG_A, CONVERSA, ["awaiting_human", "awaiting_lead"]]);
+    const busca = query.mock.calls.find(([sql]) => String(sql).includes("from agent_cases c"))!;
+    expect((busca[1] as unknown[]).slice(0, 3)).toEqual([ORG_A, CONVERSA, ["awaiting_human", "awaiting_lead"]]);
     // …e anotou nele, como o AGENTE (a timeline não mente sobre o autor).
-    const nota = query.mock.calls.find(([sql]) => String(sql).includes("'agent_noted'"))!;
+    const nota = query.mock.calls.find(([sql]) => String(sql).includes("'agent_noted', 'agent'"))!;
     expect((nota[1] as unknown[])[0]).toBe(ORG_A);
     expect((nota[1] as unknown[])[1]).toBe(CASO);
     expect(String((nota[1] as unknown[])[2])).toContain("Outra resposta da IA foi segurada");
@@ -117,8 +123,12 @@ describe("abrir o caso da resposta segurada", () => {
 
   it("já havia caso, mas ele não foi achado (fechou no meio): caso_ja_aberto sem id, sem nota, sem lançar", async () => {
     const { pool, query } = poolDe({ caso: "ja_tem", naoAcha: true });
-    expect(await abrirOCasoDaRespostaSegurada(pool, entrada())).toEqual({ desfecho: "caso_ja_aberto", caseId: null });
-    expect(sqls(query).some((s) => s.includes("'agent_noted'"))).toBe(false);
+    expect(await abrirOCasoDaRespostaSegurada(pool, entrada())).toEqual({
+      desfecho: "caso_ja_aberto",
+      caseId: null,
+      avisoJaDado: false,
+    });
+    expect(sqls(query).some((s) => s.includes("'agent_noted', 'agent'"))).toBe(false);
   });
 
   it("banco que falha: caso_falhou, o rastro ainda tenta, nunca lança", async () => {
@@ -159,5 +169,43 @@ describe("a fiação no turno", () => {
     expect(bloco).toContain("ids: { tenantId, conversationId: input.conversationId, agentId: agentConfig?.agentId ?? null }");
     expect(bloco).toContain("senhasDoCliente: evidencias.senhasDoCliente()");
     expect(bloco).toContain("rastro: { jobId: liveJob().id");
+  });
+});
+
+describe("a marca do aviso ao cliente no caso (T15)", () => {
+  it("já havia caso e a linha do tempo dele JÁ tem a marca: avisoJaDado = true", async () => {
+    const { pool } = poolDe({ caso: "ja_tem", avisado: true });
+    expect(await abrirOCasoDaRespostaSegurada(pool, entrada())).toEqual({
+      desfecho: "caso_ja_aberto",
+      caseId: CASO,
+      avisoJaDado: true,
+    });
+  });
+
+  it("a marca é procurada pelo texto fixo, na empresa e no caso certos", async () => {
+    const { pool, query } = poolDe({ caso: "ja_tem" });
+    await abrirOCasoDaRespostaSegurada(pool, entrada());
+    const busca = query.mock.calls.find(([sql]) => String(sql).includes("from agent_cases c"))!;
+    expect(String(busca[0])).toContain("ev.organization_id = c.organization_id");
+    expect(String(busca[0])).toContain("ev.kind = 'agent_noted'");
+    expect((busca[1] as unknown[])[3]).toBe(NOTA_DO_AVISO_AO_CLIENTE);
+  });
+
+  it("leitura da marca que falha vale 'já avisado': na dúvida, o cliente não recebe o aviso duas vezes", async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("insert into agent_cases")) return { rows: [], rowCount: 0 };
+      if (sql.includes("from agent_cases c")) throw new Error("banco caiu");
+      return { rows: [], rowCount: 1 };
+    });
+    const r = await abrirOCasoDaRespostaSegurada({ query } as unknown as pg.Pool, entrada());
+    expect(r).toEqual({ desfecho: "caso_ja_aberto", caseId: null, avisoJaDado: true });
+  });
+
+  it("marcarOAvisoNoCaso grava a nota fixa como o agente, na empresa certa; e nunca lança", async () => {
+    const { pool, query } = poolDe();
+    await marcarOAvisoNoCaso(pool, ORG_A, CASO);
+    const nota = query.mock.calls.find(([sql]) => String(sql).includes("'agent_noted', 'agent'"))!;
+    expect((nota[1] as unknown[]).slice(0, 3)).toEqual([ORG_A, CASO, NOTA_DO_AVISO_AO_CLIENTE]);
+    await expect(marcarOAvisoNoCaso({ query: vi.fn().mockRejectedValue(new Error("x")) } as unknown as pg.Pool, ORG_A, CASO)).resolves.toBeUndefined();
   });
 });

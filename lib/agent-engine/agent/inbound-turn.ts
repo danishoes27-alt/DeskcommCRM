@@ -52,7 +52,11 @@ import {
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
 import { criarEvidenciasDoTurno } from './evidencias-do-turno';
 import { guardarSegredosDoCliente } from './segredos-do-cliente-no-turno';
-import { abrirOCasoDaRespostaSegurada } from './caso-da-conferencia';
+import {
+  abrirOCasoDaRespostaSegurada,
+  devoAvisarOCliente,
+  marcarOAvisoNoCaso,
+} from './caso-da-conferencia';
 import { conferirOTurno } from './conferencia-no-turno';
 import {
   CODIGO_DA_CONFERENCIA,
@@ -3449,6 +3453,26 @@ async function executarTurnoDoAgente(
               ...(conferenciaJev !== undefined ? { detalhe: conferenciaJev.detail } : {}),
             });
             runLog.info('caso da resposta segurada', { desfecho: casoDaResposta.desfecho });
+            // O CLIENTE NÃO FICA MUDO: um aviso fixo, de código ("vou confirmar com a equipe e já
+            // te respondo"), UMA vez por resposta segurada — e, se a conversa já tinha caso aberto
+            // e o cliente já foi avisado nele, nenhuma de novo. Sai pela MESMA cadeia de guardrails
+            // das outras saídas de campo (anti-ban, janela de resposta, bloqueio de contato, LGPD):
+            // contato bloqueado, por exemplo, não recebe. A cadeia desta chamada NÃO leva a
+            // conferência (não há `conferenciaJev` nos args do aviso), então não confere a si mesma.
+            if (devoAvisarOCliente(casoDaResposta)) {
+              const avisoAoCliente = await avisarLeadDaEscalacao(pool, avisoDaEscalacao().ids, {
+                ...avisoDaEscalacao().base,
+                motivo: 'resposta_segurada',
+              });
+              runLog.info('aviso ao cliente da resposta segurada', {
+                avisado: avisoAoCliente.avisado,
+                ...(avisoAoCliente.avisado ? {} : { porque: avisoAoCliente.porque }),
+              });
+              const caseId = 'caseId' in casoDaResposta ? casoDaResposta.caseId : null;
+              if (avisoAoCliente.avisado && caseId !== null) {
+                await marcarOAvisoNoCaso(pool, tenantId, caseId);
+              }
+            }
             return erroDaRespostaSegurada();
           }
           if (chain.status === 'vetoed') {

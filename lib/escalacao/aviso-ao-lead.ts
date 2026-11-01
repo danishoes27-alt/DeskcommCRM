@@ -70,6 +70,13 @@ export type MotivoDoAviso =
   | "suspeita_de_opt_out"
   /** O teto de gasto com IA parou o atendimento automático. */
   | "orcamento_de_ia"
+  /**
+   * A conferência do "depois" segurou a resposta da IA (r3, `docs/14-spec-jev.md`, D6): o
+   * cliente não pediu pessoa nenhuma — a IA é que não pôde afirmar o que ia dizer. A frase NÃO
+   * fala em "atendente" nem em "passei sua conversa": a IA não saiu de campo, ela vai confirmar.
+   * TEXTO PROVISÓRIO até o dono aprovar a redação final.
+   */
+  | "resposta_segurada"
   /** O sistema decidiu escalar (sentimento, baixa confiança, etapa, termo jurídico…). */
   | "outro";
 
@@ -127,6 +134,11 @@ const ABERTURAS: Record<MotivoDoAviso, readonly string[]> = {
     "A partir daqui quem continua com você é alguém do time.",
     "Estou transferindo esta conversa para um atendente humano.",
   ],
+  resposta_segurada: [
+    "Vou confirmar essa informação com a equipe e já te respondo.",
+    "Quero te passar a informação certa, então vou confirmar com a equipe antes de responder.",
+    "Deixa eu confirmar isso com o time para não te passar nada errado.",
+  ],
   outro: [
     "Esse caso é melhor resolvido por uma pessoa. Já acionei o time.",
     "Prefiro não arriscar aqui: passei seu pedido para um atendente humano.",
@@ -157,6 +169,25 @@ const FECHOS = {
 } as const;
 
 /**
+ * Os fechos da RESPOSTA SEGURADA quando a equipe não pode assumir agora. Próprios deste aviso: os
+ * fechos gerais falam de "atendente" e de "conversa na fila", que é o vocabulário de uma passagem
+ * — e aqui a IA não passou nada, ela só vai CONFIRMAR uma informação. E sem equipe livre a
+ * abertura que promete "já te respondo" fica de fora (`ABERTURAS_SEM_PROMESSA_DE_PRAZO`).
+ */
+const FECHOS_DA_RESPOSTA_SEGURADA = [
+  "Deixei sua pergunta anotada e a equipe responde assim que possível.",
+  "Sua pergunta ficou registrada: assim que alguém do time puder, você recebe a resposta.",
+  "Fica anotado aqui; te respondemos assim que a equipe conseguir confirmar.",
+] as const;
+const FECHOS_DA_RESPOSTA_SEGURADA_ES = [
+  "Dejé tu pregunta anotada y el equipo responde apenas pueda.",
+  "Tu pregunta quedó registrada: apenas alguien del equipo pueda, recibes la respuesta.",
+  "Queda anotado aquí; te respondemos apenas el equipo logre confirmarlo.",
+] as const;
+/** As aberturas de `resposta_segurada` que NÃO prometem resposta imediata (a 0 promete "já te respondo"). */
+const ABERTURAS_SEM_PROMESSA_DE_PRAZO = [1, 2] as const;
+
+/**
  * OS MESMOS avisos em espanhol. O cliente lê a frase no idioma da ORGANIZAÇÃO
  * (`organizations.locale`) — a conversa com ele acontece nesse idioma, e um
  * aviso em português no meio de uma venda em espanhol é a própria prova de que
@@ -181,6 +212,11 @@ const ABERTURAS_ES: Record<MotivoDoAviso, readonly string[]> = {
     "Voy a pasar tu atención a una persona del equipo.",
     "A partir de aquí te atiende alguien del equipo.",
     "Estoy transfiriendo esta conversación a una persona del equipo.",
+  ],
+  resposta_segurada: [
+    "Voy a confirmar esa información con el equipo y enseguida te respondo.",
+    "Quiero darte la información correcta, así que voy a confirmarla con el equipo antes de responder.",
+    "Déjame confirmar esto con el equipo para no darte nada equivocado.",
   ],
   outro: [
     "Esto lo resuelve mejor una persona del equipo. Ya les avisé.",
@@ -209,6 +245,7 @@ const FECHOS_ES = {
 
 interface TextosDoAviso {
   aberturas: Record<MotivoDoAviso, readonly string[]>;
+  fechosDaRespostaSegurada: readonly string[];
   fechos: { sem_equipe: readonly string[]; fora_de_expediente: readonly string[]; com_equipe: readonly string[] };
   fechoDoOptOut: string;
 }
@@ -216,11 +253,13 @@ interface TextosDoAviso {
 const TEXTOS: Record<"pt" | "es", TextosDoAviso> = {
   pt: {
     aberturas: ABERTURAS,
+    fechosDaRespostaSegurada: FECHOS_DA_RESPOSTA_SEGURADA,
     fechos: FECHOS,
     fechoDoOptOut: "Encaminhei seu pedido para uma pessoa da equipe confirmar.",
   },
   es: {
     aberturas: ABERTURAS_ES,
+    fechosDaRespostaSegurada: FECHOS_DA_RESPOSTA_SEGURADA_ES,
     fechos: FECHOS_ES,
     fechoDoOptOut: "Le pasé tu pedido a una persona del equipo para que lo confirme.",
   },
@@ -268,6 +307,14 @@ export function textoDoAviso(
 ): string {
   const textos = textosDoIdioma(idioma);
   const abertura = variante(leadId, textos.aberturas[motivo]);
+
+  if (motivo === "resposta_segurada") {
+    // A equipe pode assumir agora: a abertura sozinha basta ("Vou confirmar … e já te respondo").
+    if (quem !== null && quem.disponiveis > 0) return abertura;
+    // Sem ninguém livre (ou leitura que falhou): nenhuma promessa de "já", e um fecho honesto.
+    const semPromessa = ABERTURAS_SEM_PROMESSA_DE_PRAZO.map((i) => textos.aberturas.resposta_segurada[i]!);
+    return `${variante(leadId, semPromessa)} ${variante(leadId, textos.fechosDaRespostaSegurada)}`;
+  }
 
   if (motivo === "suspeita_de_opt_out") {
     // Sem fecho de expediente: quem pediu para parar não está esperando

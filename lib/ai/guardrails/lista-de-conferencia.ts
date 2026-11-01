@@ -167,6 +167,18 @@ export const CONFERENCIAS_DE_SAIDA: readonly ConferenciaDeSaida[] = [
     camada: null,
   },
   {
+    nome: "jev_conferencia",
+    rotulo: "Conferir a resposta da IA antes de enviar",
+    oQueProtege:
+      "Relê a resposta pronta e segura a que traz preço, prazo, garantia, aprovação de crédito ou estoque " +
+      "que a IA não leu em nenhuma fonte. Segurada duas vezes, a equipe recebe um caso e o cliente um aviso.",
+    escolha: null,
+    porQueNaoSeDesliga:
+      "Não é uma chave deste agente: ela se liga e se desliga no cartão do Jev, em Provedores de IA, " +
+      "tarefa “Conferir a resposta da IA antes de enviar”. Enquanto só observa, não segura nenhuma resposta.",
+    camada: null,
+  },
+  {
     nome: "disclosure",
     rotulo: "Dizer que é um assistente quando perguntam",
     oQueProtege: "Se o cliente pergunta se está falando com um robô, a resposta não pode enganar.",
