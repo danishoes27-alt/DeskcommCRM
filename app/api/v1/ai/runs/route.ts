@@ -14,7 +14,7 @@ import type { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { PROVEDOR_DO_JEV } from "@/lib/ai/decisao/credencial";
-import { PEDIDOS_DO_CLIENTE, rotuloDaChamadaDoJev } from "@/lib/ai/decisao/tarefas";
+import { chamadaDoJevSemPonto, rotuloDaChamadaDoJev } from "@/lib/ai/decisao/tarefas";
 import {
   JEV_FALHOU_AO_LADO,
   JEV_FALHOU_E_A_IA_COBRIU,
@@ -162,10 +162,10 @@ export async function GET(req: NextRequest): Promise<Response> {
       // observou…") seria falsa — ele não respondeu. A chamada dos pedidos do
       // cliente tem as dela: ali ele não decide nem compara, e sem ele vale a regra.
       porQueEsteModelo:
-        l.purpose === PEDIDOS_DO_CLIENTE.purpose
+        chamadaDoJevSemPonto(l.purpose) !== null
           ? l.status === "erro"
-            ? PEDIDOS_DO_CLIENTE.porQueNaFalha
-            : PEDIDOS_DO_CLIENTE.porQue
+            ? chamadaDoJevSemPonto(l.purpose)!.porQueNaFalha
+            : chamadaDoJevSemPonto(l.purpose)!.porQue
           : l.status === "erro" && l.origem_da_escolha === "jev"
           ? JEV_FALHOU_SEM_RESERVA
           : l.status === "erro" && l.origem_da_escolha === "jev_observacao"

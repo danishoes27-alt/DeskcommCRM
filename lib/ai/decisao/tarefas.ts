@@ -403,11 +403,48 @@ export const PEDIDOS_DO_CLIENTE = {
 } as const;
 
 /**
+ * A chamada do DEPOIS (`jev_depois`, T10): uma linha em `llm_calls` por chamada à
+ * conferência, a segunda da reescrita incluída (D13). Mesma forma de
+ * `PEDIDOS_DO_CLIENTE`: não é ponto do registro, e o nome de gente e o "por quê" da
+ * linha em Execuções são dela. O `porQue` é o que a conferência FAZ — não afirma
+ * que a resposta foi segurada, porque em `observando` nada é.
+ */
+export const CONFERENCIA_DA_RESPOSTA = {
+  purpose: "jev_depois",
+  rotulo: "Conferir a resposta da IA antes de enviar",
+  porQue:
+    "O Jev leu o rascunho da resposta da IA e os trechos que ela consultou, e disse se há algo afirmado sem fonte. Ele só pode ser mais rígido que as regras da casa.",
+  porQueNaFalha: "O Jev não respondeu: valeram só as regras da casa.",
+} as const;
+
+/**
+ * A chamada do ANTES (`jev_antes`, T18): uma linha por chamada à triagem, que tem
+ * três perguntas e é UMA linha (D13).
+ */
+export const TRIAGEM_DA_MENSAGEM = {
+  purpose: "jev_antes",
+  rotulo: "Entender o pedido do cliente",
+  porQue:
+    "O Jev leu a mensagem do cliente, sozinha, e anotou o assunto e o destino. Ele não responde ao cliente nem passa a conversa.",
+  porQueNaFalha: "O Jev não respondeu: a IA atendeu sem a anotação dele.",
+} as const;
+
+/** As chamadas do Jev que não são de um ponto do registro — nome e "por quê" na linha de Execuções. */
+const CHAMADAS_DO_JEV_SEM_PONTO = [PEDIDOS_DO_CLIENTE, CONFERENCIA_DA_RESPOSTA, TRIAGEM_DA_MENSAGEM] as const;
+
+/** A chamada sem ponto com este `purpose`, ou `null`. */
+export function chamadaDoJevSemPonto(purpose: string) {
+  return CHAMADAS_DO_JEV_SEM_PONTO.find((c) => c.purpose === purpose) ?? null;
+}
+
+/**
  * O nome de gente da chamada do Jev com este `purpose`: o da tarefa daquele
- * ponto, ou o dos pedidos. `null` quando não é chamada do Jev.
+ * ponto, ou o das chamadas sem ponto (pedidos, conferência, triagem). `null` quando
+ * não é chamada do Jev.
  */
 export function rotuloDaChamadaDoJev(purpose: string): string | null {
-  if (purpose === PEDIDOS_DO_CLIENTE.purpose) return PEDIDOS_DO_CLIENTE.rotulo;
+  const semPonto = chamadaDoJevSemPonto(purpose);
+  if (semPonto !== null) return semPonto.rotulo;
   return TAREFAS_DO_JEV.find((t) => t.ponto === purpose)?.rotulo ?? null;
 }
 

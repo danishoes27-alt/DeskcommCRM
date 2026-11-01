@@ -13,7 +13,12 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { PEDIDOS_DO_CLIENTE, TAREFAS_DO_JEV } from "@/lib/ai/decisao/tarefas";
+import {
+  CONFERENCIA_DA_RESPOSTA,
+  PEDIDOS_DO_CLIENTE,
+  TAREFAS_DO_JEV,
+  TRIAGEM_DA_MENSAGEM,
+} from "@/lib/ai/decisao/tarefas";
 import { PROVEDORES_COM_CHAVE } from "@/lib/ai/pontos/provedores";
 import { PAPEIS, PONTOS_DE_IA } from "@/lib/ai/pontos/registro";
 import { EXPLICACAO_DA_ORIGEM } from "@/lib/ai/pontos/resolver";
@@ -64,6 +69,14 @@ describe("espanhol dos textos que vêm de lista, não de literal", () => {
 
   it("o nome e o porquê da chamada do Jev que não é de ponto nenhum, em IA › Execuções", () => {
     expect(semEspanhol([PEDIDOS_DO_CLIENTE.rotulo, PEDIDOS_DO_CLIENTE.porQue, PEDIDOS_DO_CLIENTE.porQueNaFalha])).toEqual([]);
+  });
+
+  it("o nome e o porquê das chamadas do Jev DEPOIS e ANTES da IA, em IA › Execuções", () => {
+    expect(
+      semEspanhol(
+        [CONFERENCIA_DA_RESPOSTA, TRIAGEM_DA_MENSAGEM].flatMap((c) => [c.rotulo, c.porQue, c.porQueNaFalha]),
+      ),
+    ).toEqual([]);
   });
 
   it("toda explicação de origem — o \"por que este modelo\" de IA › Execuções", () => {

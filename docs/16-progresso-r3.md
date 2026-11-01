@@ -22,7 +22,8 @@
 | T06 máscara de dados pessoais e senha | `a566ddf99` | ver abaixo | feita |
 | T07 regras locais L1, L2, L3, L6 | `368174b94` | ver abaixo | feita |
 | T08 regras locais L4 (senha) e L5 (documento) | `d393b05db` | ver abaixo | feita |
-| T09 tarefa conferencia: perguntas, state e cortes | ver `git log` (`feat(jev): T09 ...`) | ver abaixo | feita |
+| T09 tarefa conferencia: perguntas, state e cortes | `bb91188d1` | ver abaixo | feita |
+| T10 custo e observação do DEPOIS | ver `git log` (`feat(jev): T10 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -81,6 +82,15 @@
 - **Decisões minhas:** (1) com achado L4/L5 no rascunho o Jev **nem é chamado** (`segredo_no_rascunho`): ele já está segurado, e mandar para fora um rascunho que repete um segredo é o que a regra evita; (2) Jev ausente + achado local = segura; Jev ausente sem achado = passa e fica "não conferida" (`conferidaPeloJev: false`); (3) média do Jev sem achado local = libera e marca `duvida`.
 - **Ainda não feito (de propósito):** gravar custo/observação (T10), pôr na cadeia (T11), queda/teto/aviso ao dono (T12). O disjuntor ainda não é consultado aqui.
 - **Testes:** `conferencia.test.ts` (39 casos: perguntas, state sem nenhum campo proibido — nome, sobrenome, telefone, e-mail, senha, endereço, documento, mensagem do cliente —, cortes, junção incluindo a propriedade "toda probabilidade do Jev, a faixa final nunca é menor que a local", chamada com `fetchImpl` simulado, interruptor da instalação, aceite só de `mensagem`, 401/429/529/500, resposta ilegível, rede); `lib/ai/decisao` + guardrails + cerca `jev-nunca-cala-bloqueia-nem-responde` 754 verdes; typecheck e eslint limpos.
+
+### T10 — custo e observação do DEPOIS [DESENHO fechado]
+
+- **O que mudou:** `observacao-da-conferencia.ts` (novo): `registrarConferenciaDoJev(pool, …)` grava, num comando só (CTE, no molde de `registrarManipulacaoDoJev`), a observação em `jev_observacoes` e UMA linha em `llm_calls` com finalidade `jev_depois`; `custoDaChamada`; `rotuloDoJev`; `rotuloDasRegrasLocais`. `tarefas.ts` ganhou `CONFERENCIA_DA_RESPOSTA` (`jev_depois`) e `TRIAGEM_DA_MENSAGEM` (`jev_antes`, já para a T18) e `chamadaDoJevSemPonto`; a rota de Execuções passou a usar isso para dar nome e "por quê" a elas (com espanhol).
+- **Desenho fechado (o que a spec deixou aberto):** `rotulo_jev` = a pergunta mais provável quando o Jev chega a 0,50, senão `ok`; `rotulo_atual` = a pergunta da família do 1º achado local (preço/prazo/garantia → `sem_fonte`; aprovação → `promete_aprovacao`; disponibilidade → `inventa_dado`), senão `ok`; `probabilidade_jev` = a MAIOR das três (o número que o corte ajusta); só a 1ª chamada da mensagem entra em `jev_observacoes` (a da reescrita cai no `on conflict do nothing`, mas o custo dela entra em `llm_calls`). **Um rótulo por linha bastou: nenhuma migração.** Se a medição precisar das 3 probabilidades por pergunta, vira migração aditiva (seção 5 do plano) — pare e pergunte.
+- **Sem veredito do Jev** (queda/ilegível): não grava observação (sem rótulo do Jev não há par); a linha de custo da falha fica para a T12. Senha/documento no rascunho (L4/L5) não têm pergunta do Jev e viram `ok` no rótulo.
+- **O teste que reprova "id sem preço":** `observacao-da-conferencia.test.ts` exige preço para `MODELO_DO_JEV` e prova que `jev-latest`/versão nova sem linha dá custo `null`.
+- **⚠️ Não verificado contra um Postgres de verdade:** o SQL do gravador foi conferido linha a linha contra o de `manipulacao.ts` (mesmas tabelas/colunas, casts explícitos), mas esta máquina não tem a imagem `pgvector/pgvector:pg15` e eu não baixo imagem sem a sua autorização. Prova-se em `pnpm test:db` (T26). **Preciso da sua licença para baixar essa imagem do Docker Hub (~400 MB) se quiser a prova local.**
+- **Testes:** `observacao-da-conferencia.test.ts` (12), `i18n-provedores-e-pontos`, rota de Execuções; `lib/ai/decisao` + `app/api/v1/ai` 680 verdes; typecheck e eslint limpos.
 
 ## Pendências e coisas que só o dono pode fornecer
 

@@ -4329,6 +4329,18 @@ export const DICIONARIO: Traducoes = {
   "O Jev não respondeu: valeu só a regra de hoje.": {
     es: "Jev no respondió: valió solo la regla de hoy.",
   },
+  "O Jev leu o rascunho da resposta da IA e os trechos que ela consultou, e disse se há algo afirmado sem fonte. Ele só pode ser mais rígido que as regras da casa.": {
+    es: "Jev leyó el borrador de la respuesta de la IA y los fragmentos que consultó, y dijo si hay algo afirmado sin fuente. Solo puede ser más estricto que las reglas de la casa.",
+  },
+  "O Jev não respondeu: valeram só as regras da casa.": {
+    es: "Jev no respondió: valieron solo las reglas de la casa.",
+  },
+  "O Jev leu a mensagem do cliente, sozinha, e anotou o assunto e o destino. Ele não responde ao cliente nem passa a conversa.": {
+    es: "Jev leyó el mensaje del cliente, solo, y anotó el asunto y el destino. No le responde al cliente ni transfiere la conversación.",
+  },
+  "O Jev não respondeu: a IA atendeu sem a anotação dele.": {
+    es: "Jev no respondió: la IA atendió sin su anotación.",
+  },
   "Ver as conversas:": {
     es: "Ver las conversaciones:",
   },
