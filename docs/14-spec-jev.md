@@ -1,8 +1,8 @@
 # Spec 14 — Jev antes e depois da IA
 
-> **Status:** decisões D3 a D16 **fechadas em 01/11/2026** (fase 2 de 4: spec). Nada aqui foi implementado, ligado, comprado ou enviado a algum fornecedor. D1 e D2 seguem como recomendação nesta spec.
+> **Status:** decisões D1 a D16 **fechadas em 01/11/2026** (fase 2 de 4: spec). Nada aqui foi implementado, ligado, comprado ou enviado a algum fornecedor.
 > **Base de código:** tag `celuzap-1.69.0-r2` (commit `7d976ea83`). **Branch de trabalho:** `celuzap-jev`.
-> **Data:** 31/10/2026; atualizada em 01/11/2026 (decisões D3 a D16, regra L6 e ambiguidades fechadas, seção 11). **Fonte externa:** documentação oficial da TypeSafe, consultada em 31/10/2026 (Anexo A).
+> **Data:** 31/10/2026; atualizada em 01/11/2026 (decisões D1 a D16, regra L6 e ambiguidades fechadas, seção 11). **Fonte externa:** documentação oficial da TypeSafe, consultada em 31/10/2026 (Anexo A).
 
 Como ler as marcas:
 
@@ -28,8 +28,8 @@ Todo custo está em reais (R$). O código guarda e mostra dólar; a conversão p
 6. **A trava de teto mensal não alcança o Jev** [CÓDIGO]. O custo dele **já entra** na soma do mês, mas nenhuma chamada dele passa pela trava. Não existe teto definido pela plataforma por cliente.
 7. **A tela "Plano e cobrança" não cobra nada** [CÓDIGO]: é um aviso "Em breve — Fase 2" (a tela chama-se "Billing" no código e o menu diz "Plano e cobrança"). Não há integração de pagamento no código. A criação de empresa depois de um pagamento confirmado é manual hoje.
 8. **Jurídico:** a TypeSafe está nos EUA, **não treina** com o que você envia, mas **não informa prazo de retenção**, e "retenção zero" só existe para clientes enterprise, sob pedido [OFICIAL]. Não há SLA e o contrato diz que a saída "pode ser inexata" [OFICIAL]. Pela decisão D10 (01/11/2026), nenhuma pergunta será enviada à TypeSafe e o Jev roda normalmente, com dado real: isso é **risco aceito por você**. A cláusula de contrato com a loja e o aviso de privacidade seguem como **pendência do advogado (LGPD)**.
-9. **Recomendação:** **(b)** fazer o Bloco D com a r2 agora, com controles de compensação nas primeiras semanas, e lançar o Jev como r3 logo depois, começando em modo **observando** (mede, não age). Justificativa na seção 9.
-10. **As decisões D3 a D16 (seção 10) estão fechadas desde 01/11/2026**; D1 e D2 seguem como recomendação. As ambiguidades da primeira versão estão resolvidas na seção 11.
+9. **Decisão (D1, 01/11/2026):** **(b)** fazer o Bloco D com a r2 agora, com controles de compensação até o Jev entrar, e lançar o Jev como r3 logo depois, começando em modo **observando** (mede, não age). Justificativa na seção 9.
+10. **As decisões D1 a D16 (seção 10) estão fechadas desde 01/11/2026.** As ambiguidades da primeira versão estão resolvidas na seção 11.
 
 ---
 
@@ -288,7 +288,7 @@ A cláusula de contrato, o aviso de privacidade e a base legal da transferência
 - **LGPD, transferência internacional** (art. 33): a base precisa estar escolhida e documentada. O acordo da TypeSafe usa cláusulas europeias; se isso basta para o Brasil, **não verifiquei** — é pergunta para o advogado.
 - **Aceite do administrador** dentro do sistema (já existe: `config.ts:90-98`, com `versao`). O novo alcance `resposta` pede novo aceite.
 - **DECIDIDO (D10, 01/11/2026):** nenhuma pergunta será enviada à TypeSafe e o Jev roda normalmente, com dado real. Ficam como **RISCO ACEITO por você**: prazo de retenção da entrada e da saída, região de processamento além dos EUA, retenção zero (ZDR) e exclusão a pedido, **não confirmados pelo fornecedor**. Seguem também sem resposta os subcontratados, os limites de taxa e a política de descontinuação de versões. A acurácia em português não depende do fornecedor: é medida por nós, com o corpus da D16.
-- **Pendência do advogado (LGPD):** a cláusula de contrato com a loja, o aviso de privacidade aos clientes finais e a base legal da transferência internacional (itens acima). A spec registra a pendência; o prazo dela não foi definido.
+- **Pendência do advogado (LGPD):** a cláusula de contrato com a loja, o aviso de privacidade aos clientes finais e a base legal da transferência internacional (itens acima). A spec registra a pendência; ela **não bloqueia nenhuma tarefa** (esclarecido em 01/11/2026) e o prazo dela não foi definido.
 
 ---
 
@@ -354,7 +354,14 @@ O código foi escrito para **cada empresa ter a própria chave** do Jev (`ponto.
 - **A. Chave da própria loja (como o código faz hoje).** Custo zero para você; atrito alto para a loja; cada loja assina o contrato da TypeSafe.
 - **B. Chave única da plataforma.** Você tem uma conta; o custo por loja sai de `llm_calls` e é repassado. Para o piloto funciona **sem mudar código**, colando a mesma chave na credencial `typesafe` de cada empresa (tela de Credenciais). Para muitas lojas, vale criar "credencial da plataforma" com busca própria. Contras: um segredo repetido em várias linhas; rodízio de chave exige atualizar todas; o administrador da loja pode apagar a credencial (isso desliga o Jev).
 
-**Recomendo B para o piloto** (D2, ainda como recomendação).
+**DECIDIDO (D2, 01/11/2026): B no piloto.** Uma conta da plataforma na TypeSafe; você paga em dólar e cola a mesma chave na credencial `typesafe` de cada empresa. Para colar a chave não é preciso mudar código. A "credencial da plataforma" nativa só entra quando houver várias lojas, junto da D14 (outra spec).
+
+Riscos registrados (D2 = B):
+
+1. **Conta sem crédito derruba o Jev de todas as lojas ao mesmo tempo.**
+2. O aviso "chave recusada" hoje vai ao **administrador da loja**, que não consegue resolver (quem compra o crédito é você). O plano da r3 acrescenta, nas tarefas T12 e T22, um aviso ao **dono da plataforma** (`docs/15-plano-r3-jev.md`): é um acréscimo pequeno de código nessas duas tarefas, e não muda a decisão de que a chave em si se cola sem código.
+3. O administrador da loja pode **apagar a credencial** e desligar o Jev daquela loja.
+4. O **mesmo segredo fica repetido em várias linhas**, e trocar a chave exige atualizar todas.
 
 ---
 
@@ -395,7 +402,7 @@ O código foi escrito para **cada empresa ter a própria chave** do Jev (`ponto.
 
 Cerca de **26 tarefas pequenas** em **8 grupos** (as 24 da primeira versão, que somavam 3+5+2+3+4+3+2+2, mais 2 tarefas novas): base de configuração (3), evidências do turno (2), conferência local (3, com a L6 dentro), conferência com Jev e cadeia (4), segurar, caso e aviso (3), triagem (5 + 2 novas = 7), custo em reais e telas (2), testes de isolamento e dublê (2). **As 2 tarefas novas entram no grupo da triagem:** o aviso na Central quando o destino é equipe com certeza alta (D5) e a dica de uma linha no prompt da IA. A L6 não tem tarefa própria: entra junto das regras locais. O plano da r3 está em `docs/15-plano-r3-jev.md`; a ordem é o DEPOIS primeiro (D15).
 
-Dependências fora do código: crédito e chave na TypeSafe, cotação do dólar, aceite do administrador (novo, alcance `resposta`), corpus de teste em português (D16) e a pendência do advogado (cláusula e aviso de privacidade). Respostas da TypeSafe deixaram de ser dependência (D10).
+Dependências fora do código: uma conta e uma chave da plataforma na TypeSafe (D2 = B), cotação do dólar, aceite do administrador (novo, alcance `resposta`), corpus de teste em português (D16) e a pendência do advogado (cláusula e aviso de privacidade). Respostas da TypeSafe deixaram de ser dependência (D10).
 
 ### 8.4 Riscos
 
@@ -410,6 +417,7 @@ Dependências fora do código: crédito e chave na TypeSafe, cotação do dólar
 9. **Cliente mudo:** segurar sem avisar parece abandono. Resolvido pela D6: aviso fixo, uma vez por resposta segurada.
 10. **Proibição de "distillation"** no contrato da TypeSafe: nada de treinar modelo nosso com saídas do Jev.
 11. **Dado real sem confirmação do fornecedor** (retenção, região, ZDR e exclusão): **risco aceito por você** (D10, 01/11/2026), com a cláusula de contrato e o aviso de privacidade como pendência do advogado (LGPD).
+12. **Conta única da plataforma (D2 = B):** sem crédito, o Jev cai em todas as lojas; o aviso de chave recusada precisa chegar ao dono da plataforma e não só ao administrador da loja (seção 7.5 e tarefas T12 e T22 do plano).
 
 ### 8.5 Plano de teste
 
@@ -429,9 +437,9 @@ Dependências fora do código: crédito e chave na TypeSafe, cotação do dólar
 
 ---
 
-## 9. Recomendação: segurar o Bloco D ou fazer com a r2?
+## 9. Decisão (D1): segurar o Bloco D ou fazer com a r2?
 
-**Recomendo (b): fazer o Bloco D com a r2 agora e lançar o Jev como r3 logo depois.**
+**DECIDIDO (D1, 01/11/2026): (b). Fazer o Bloco D com a r2 agora e lançar o Jev como r3 logo depois.**
 
 Por quê:
 
@@ -441,14 +449,14 @@ Por quê:
 4. **O "antes" tem pouco valor imediato:** hoje ninguém lê a categoria. O valor está no "depois".
 5. **Entrar em `observando` precisa de tráfego real.** Os primeiros dias do piloto geram o corpus de que a medição depende.
 
-Controles de compensação para as primeiras semanas do Bloco D (sem código novo):
+Controles de compensação do Bloco D, que **valem até o Jev entrar** (sem código novo):
 
 - manter o agente em **modo assistido** nos assuntos de preço e financiamento, ou **revisão por amostra** diária das conversas;
 - cadastrar a **tabela de preços** da loja, para o gate determinístico de promessa funcionar;
 - ligar a camada semântica de promessa (`PROMISE_SEMANTIC_ENABLED`), que vem desligada (`.env.example:328`), depois de medir custo e acerto;
 - limitar a IA a citar preço só do catálogo e orientar "a vendedora confirma" para o resto.
 
-**Quando eu mudaria para (a):** se a loja não aceitar nenhuma chance de resposta com preço, prazo ou aprovação errados na primeira semana, **nem com revisão por amostra**. Aí o Bloco D espera a r3 (semanas, não dias), e só entra em `decidindo` depois do corpus em português. Essa é uma escolha de apetite a risco do negócio e não posso decidir por você.
+**Alternativa descartada (a):** só valeria se a loja não aceitasse nenhuma chance de resposta com preço, prazo ou aprovação errados na primeira semana, **nem com revisão por amostra**. Aí o Bloco D esperaria a r3 (semanas, não dias). Você escolheu (b) em 01/11/2026. A entrada em `decidindo` continua só depois do corpus em português.
 
 **Ordem dentro da r3 (DECIDIDO, D15, 01/11/2026):** primeiro **DEPOIS + conferência local** em `observando`; depois o **ANTES**.
 
@@ -456,12 +464,12 @@ Controles de compensação para as primeiras semanas do Bloco D (sem código nov
 
 ## 10. Decisões (fechadas em 01/11/2026)
 
-D3 a D16 foram **decididas por você em 01/11/2026** e viraram regra desta spec. D1 e D2 não constam do pedido de atualização e seguem como recomendação.
+D1 a D16 foram **decididas por você em 01/11/2026** e viraram regra desta spec (D3 a D16 na primeira atualização do dia; D1 e D2 numa segunda).
 
 | # | Pergunta | Situação |
 |---|---|---|
-| 1 | Fazer o Bloco D com a r2 agora e o Jev como r3 **(b)**, ou segurar o Bloco D até o Jev entrar **(a)**? | **Recomendação (em aberto nesta spec):** **(b)**, com os controles da seção 9. |
-| 2 | Quem tem a conta da TypeSafe: uma **conta da plataforma** (você paga em dólar e repassa) ou **uma por loja** (como o código faz hoje)? | **Recomendação (em aberto nesta spec):** conta da plataforma no piloto, colando a chave na credencial `typesafe` de cada empresa; "credencial da plataforma" nativa só depois. |
+| 1 | Fazer o Bloco D com a r2 agora e o Jev como r3 **(b)**, ou segurar o Bloco D até o Jev entrar **(a)**? | **DECIDIDO:** (b). Bloco D com a r2 agora e o Jev como r3. Os controles de compensação das primeiras semanas (seção 9) valem até o Jev entrar: agente em modo assistido nos assuntos de preço e financiamento ou revisão por amostra diária, tabela de preços da loja cadastrada, IA citando preço só do catálogo, conferência semântica ligada só depois de medir. |
+| 2 | Quem tem a conta da TypeSafe: uma **conta da plataforma** (você paga em dólar e repassa) ou **uma por loja** (como o código faz hoje)? | **DECIDIDO:** B no piloto. Uma conta da plataforma na TypeSafe; você paga e cola a mesma chave na credencial `typesafe` de cada empresa, sem mudar código para isso. A "credencial da plataforma" nativa só entra quando houver várias lojas, junto da D14 (outra spec). **Riscos registrados:** (1) conta sem crédito derruba o Jev de todas as lojas ao mesmo tempo; (2) o aviso "chave recusada" hoje vai ao administrador da loja, que não consegue resolver; (3) o administrador da loja pode apagar a credencial e desligar o Jev; (4) o mesmo segredo fica repetido em várias linhas, e trocar a chave exige atualizar todas. |
 | 3 | Categorias: as **quatro** (Conserto, Venda, Impressão, Outro), com boleto e parcelamento dentro de Venda; ou manter cinco com Financeiro; ou lista livre por empresa? | **DECIDIDO:** 4 categorias (Conserto, Venda, Impressão, Outro), definidas num lugar só por empresa; boleto e parcelamento ficam dentro de Venda. |
 | 4 | O destino "pedir dado que falta" fica só para a **primeira mensagem** da conversa (o Jev vê uma mensagem isolada), ou mando as últimas mensagens (exige aceite mais largo)? | **DECIDIDO:** "pedir dado que falta" vale só na primeira mensagem. |
 | 5 | Quando o Jev tem confiança **alta** de que o cliente precisa da equipe: **só abre aviso na Central** ou **abre caso e passa a conversa**? (A regra de 24/09/2026 diz que dúvida vai para a IA; isto é certeza.) | **DECIDIDO:** certeza alta de "equipe" no ANTES só abre aviso na Central (não abre caso, não passa a conversa). |

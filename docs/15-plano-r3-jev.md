@@ -1,10 +1,14 @@
 # Plano 15 — r3: Jev antes e depois da IA
 
 > **Status:** plano para aprovação (fase 3 de 4: plano). Nada aqui foi implementado, ligado, comprado ou enviado a algum fornecedor.
-> **Base:** spec `docs/14-spec-jev.md` (decisões D3 a D16 fechadas em 01/11/2026). **Branch de trabalho:** `celuzap-jev`.
+> **Base:** spec `docs/14-spec-jev.md` (decisões D1 a D16 fechadas em 01/11/2026). **Branch de trabalho:** `celuzap-jev`.
 > **Data:** 01/11/2026. Todo custo está em reais (R$).
 
 Este plano quebra a spec em **26 tarefas pequenas**, na ordem em que devem ser feitas. A ordem é a decidida na D15: **primeiro o DEPOIS** (regras locais L1 a L6, depois o Jev do DEPOIS), **depois o ANTES**. A base de configuração (T01 a T03) vem antes dos dois porque os dois a usam.
+
+> **Decisões que moldam este plano (01/11/2026)**
+> - **D1 = (b):** o Bloco D vai primeiro, com a r2. O **Marco 1 (T01 a T15) sai depois do Bloco D, em `observando`**. Até o Jev entrar, valem os controles de compensação da seção 9 da spec (modo assistido ou revisão por amostra nos assuntos de preço e financiamento, tabela de preços cadastrada, IA citando preço só do catálogo, conferência semântica ligada só depois de medir).
+> - **D2 = B no piloto:** uma conta e uma chave da plataforma, coladas na credencial `typesafe` de cada empresa. Isso muda as tarefas T01, T12, T22, T23, T24 e T26 (notas em cada uma).
 
 ---
 
@@ -58,7 +62,7 @@ Toda tarefa passa pelas mesmas cinco etapas, sem pular nenhuma:
 
 **Marcos de entrega** (cada marco é publicável sozinho, com os interruptores da instalação desligados):
 
-- **Marco 1 — DEPOIS completo:** T01 a T15.
+- **Marco 1 — DEPOIS completo:** T01 a T15. Sai **depois do Bloco D** (D1 = b), em `observando`.
 - **Marco 2 — ANTES:** T16 a T22.
 - **Marco 3 — Reais e fechamento dos testes:** T23 a T26.
 
@@ -73,7 +77,7 @@ As 26 tarefas são as 24 da seção 8.3 da spec mais 2 novas (T20 e T19). A regr
 #### T01 — Alcance de consentimento `resposta`  [ACEITE]
 - **Spec:** seção 5.1 e D9.
 - **Arquivos prováveis:** `lib/ai/decisao/config.ts` (+ teste), `app/api/v1/ai/jev/route.ts` (+ teste), `lib/ai/decisao/textos.ts`.
-- **Pronto quando:** existe o alcance `resposta` (rascunho da IA + trechos consultados, sem a mensagem do cliente), entre `mensagem` e `conversa`; o aceite do administrador tem versão nova; empresa com aceite só de `mensagem` não habilita tarefa que pede `resposta`; o texto jurídico do aceite está no lugar, com a redação a ser fornecida pelo advogado.
+- **Pronto quando:** existe o alcance `resposta` (rascunho da IA + trechos consultados, sem a mensagem do cliente), entre `mensagem` e `conversa`; o aceite do administrador tem versão nova; empresa com aceite só de `mensagem` não habilita tarefa que pede `resposta`; o texto jurídico do aceite parte do cenário B da D2 (a plataforma contrata a TypeSafe e a TypeSafe é operadora subcontratada). A revisão do advogado é pendência e **não bloqueia nada**: a tarefa entra com um texto provisório, marcado como tal, até a versão do advogado chegar.
 - **Como testar:** unitários de `config.test.ts` (ordem dos alcances, tarefa que pede `resposta` não roda com aceite de `mensagem`); `route.test.ts` (só administrador liga; gerente só lê).
 
 #### T02 — Registrar as tarefas `triagem` e `conferencia`
@@ -150,9 +154,9 @@ As 26 tarefas são as 24 da seção 8.3 da spec mais 2 novas (T20 e T19). A regr
 
 #### T12 — Queda do Jev, teto e "Jev fora do ar" no DEPOIS
 - **Spec:** seções 4.2 e 7.3; D12; ambiguidade 1 (seção 11).
-- **Arquivos prováveis:** `conferencia.ts`, `lib/ai/decisao/disjuntor.ts` (reaproveita), `lib/ai/decisao/textos.ts` (já existe `jev_provedor_indisponivel`), `app/app/ai/providers/_components/CartaoDoJev.tsx` e `app/api/v1/ai/jev/route.ts` (aba Status; **localizar na construção** o lugar exato do texto "Jev fora do ar").
-- **Pronto quando:** com o Jev indisponível (chave recusada, sem crédito, tempo esgotado, erro do servidor), o DEPOIS usa só as regras L1 a L6 com a regra das 2 tentativas; se nenhuma regra segurar, a resposta sai e fica registrada como "não conferida"; **a conferência nunca é bloqueada por teto estourado** (ela continua contando no teto); a aba Status mostra "Jev fora do ar".
-- **Como testar:** dublê do e2e com falha de rede, tempo esgotado e erro do servidor; teto estourado não bloqueia o DEPOIS.
+- **Arquivos prováveis:** `conferencia.ts`, `lib/ai/decisao/disjuntor.ts` (reaproveita), `lib/ai/decisao/textos.ts` (já existe `jev_provedor_indisponivel`), `app/app/ai/providers/_components/CartaoDoJev.tsx` e `app/api/v1/ai/jev/route.ts` (aba Status; **localizar na construção** o lugar exato do texto "Jev fora do ar"). **Aviso ao dono da plataforma (D2 = B):** usar um mecanismo de aviso que já exista; **localizar na construção** qual. Nesta leitura (01/11/2026) não achei um aviso de plataforma pronto: o aviso da Central (`agent_inbox_items`, usado em `lib/ai/decisao/aviso.ts`) é por empresa, e a área de administração da plataforma fica em `app/app/admin`. Se nenhum mecanismo servir sem migração, a tarefa para e pergunta antes de decidir.
+- **Pronto quando:** com o Jev indisponível (chave recusada, sem crédito, tempo esgotado, erro do servidor), o DEPOIS usa só as regras L1 a L6 com a regra das 2 tentativas; se nenhuma regra segurar, a resposta sai e fica registrada como "não conferida"; **a conferência nunca é bloqueada por teto estourado** (ela continua contando no teto); a aba Status mostra "Jev fora do ar"; **chave recusada ou conta sem crédito gera um aviso visível ao dono da plataforma** (D2 = B), além do aviso que já vai ao administrador da loja.
+- **Como testar:** dublê do e2e com falha de rede, tempo esgotado e erro do servidor; teto estourado não bloqueia o DEPOIS; chave recusada e conta sem crédito geram o aviso ao dono da plataforma (e não só ao administrador da loja).
 
 ### Grupo E — Segurar, caso e aviso
 
@@ -215,8 +219,8 @@ As 26 tarefas são as 24 da seção 8.3 da spec mais 2 novas (T20 e T19). A regr
 
 #### T22 — Queda do Jev e teto no ANTES
 - **Spec:** seções 4.1 e 7.3; D12; ambiguidade 1 (seção 11).
-- **Arquivos prováveis:** `triagem.ts`, `lib/ai/decisao/disjuntor.ts`, o mesmo lugar da aba Status da T12.
-- **Pronto quando:** com o Jev indisponível, o ANTES é **pulado** e a IA atende sem dica; com o teto mensal estourado em modo "bloquear", o ANTES é pulado (só ele); a aba Status mostra "Jev fora do ar".
+- **Arquivos prováveis:** `triagem.ts`, `lib/ai/decisao/disjuntor.ts`, o mesmo lugar da aba Status e o mesmo mecanismo de aviso ao dono da plataforma da T12.
+- **Pronto quando:** com o Jev indisponível, o ANTES é **pulado** e a IA atende sem dica; com o teto mensal estourado em modo "bloquear", o ANTES é pulado (só ele); a aba Status mostra "Jev fora do ar"; chave recusada ou conta sem crédito gera o mesmo aviso ao dono da plataforma da T12 (D2 = B), sem duplicar o aviso quando o ANTES e o DEPOIS falham juntos.
 - **Como testar:** dublê com falhas; teto estourado pula o ANTES e **não** pula o DEPOIS.
 
 ### Grupo G — Custo em reais e telas
@@ -226,12 +230,14 @@ As 26 tarefas são as 24 da seção 8.3 da spec mais 2 novas (T20 e T19). A regr
 - **Arquivos prováveis:** `platform_config` (a chave é o nome da variável de ambiente, por exemplo `COTACAO_USD_BRL`; **sem migração**), `app/actions/admin/salvarConfiguracaoDaInstalacao.ts`, `lib/env.ts`.
 - **Pronto quando:** a cotação fica numa configuração da plataforma, com valor inicial **pesquisado na construção** e atualização manual mensal pelo administrador da plataforma, com auditoria; sem valor, as telas mostram o dólar como hoje.
 - **Como testar:** unitários da leitura e da gravação; teste de que o administrador da loja não altera a cotação.
+- **Nota (D2 = B):** o custo em R$ de cada loja é a base do repasse da conta da plataforma, então a cotação precisa ser a mesma em todas as telas. O repasse em si (cobrança) não é tarefa da r3.
 
 #### T24 — Telas em reais com a cotação visível
 - **Spec:** seção 7.4 e D11.
 - **Arquivos prováveis:** `app/app/ai/usage/_client.tsx` (perto de `:94`), `BudgetCard.tsx` (perto de `:66`), `lib/i18n/dicionario.ts` (espanhol).
 - **Pronto quando:** as telas mostram "R$ X (cotação R$ Y)"; o campo do teto mensal aceita reais, converte pela cotação do dia e **grava a cotação usada** na auditoria; a fonte de verdade continua em dólar.
 - **Como testar:** testes de tela (jsdom) e os testes de i18n; teto em reais convertido corretamente.
+- **Nota (D2 = B):** o custo em R$ por loja que a tela de uso mostra é a base do repasse da conta da plataforma; o valor mostrado a cada loja é só o dela.
 
 ### Grupo H — Testes de fechamento
 
@@ -244,7 +250,7 @@ As 26 tarefas são as 24 da seção 8.3 da spec mais 2 novas (T20 e T19). A regr
 #### T26 — Isolamento entre empresas e e2e com o dublê
 - **Spec:** seção 8.5 (itens 1 a 7).
 - **Arquivos prováveis:** `tests/invariants/jev-isolamento-entre-empresas.test.ts` (novo), `scripts/duble-jev-e2e.mjs`, `tests/e2e/helpers/jev.ts`, varredura de RLS existente (`tests/invariants/rls-completude-varredura.test.ts`).
-- **Pronto quando:** a chave da empresa A nunca é usada para a B; toda linha de `llm_calls` e `jev_observacoes` carrega a empresa certa; o caso nasce na empresa certa; o custo soma no teto da empresa certa; as evidências vêm só da base da empresa do turno; o e2e com duas empresas ao mesmo tempo (credenciais, aceites e estados diferentes) passa; a varredura de RLS passa sem exceção nova.
+- **Pronto quando:** a credencial da empresa A nunca é usada para a B (a checagem olha a **linha** da credencial, isto é, o identificador da credencial e o `organization_id`, e não o valor da chave, porque em D2 = B o valor é o mesmo em todas as empresas); toda linha de `llm_calls` e `jev_observacoes` carrega a empresa certa; o caso nasce na empresa certa; o custo soma no teto da empresa certa; as evidências vêm só da base da empresa do turno; o e2e com duas empresas ao mesmo tempo (credenciais, aceites e estados diferentes) passa; a varredura de RLS passa sem exceção nova.
 - **Como testar:** o próprio e2e com o dublê. Fecha a r3 com o auditor do projeto.
 
 ---
@@ -276,9 +282,9 @@ Qualquer migração nova entra em `supabase/migrations/` com o `MANIFEST.md` e o
 
 | O quê | Quando faz falta | Tarefas |
 |---|---|---|
-| **Crédito em dólar na TypeSafe** e a **chave** (credencial `typesafe` de cada empresa; a recomendação da D2 é uma conta da plataforma) | só para ligar de verdade em `observando`, depois do Marco 1 | nenhuma de código; bloqueia o uso real |
+| **Crédito em dólar na TypeSafe** e a **chave**: uma conta e uma chave da plataforma (D2 = B), coladas na credencial `typesafe` de cada empresa | só para ligar de verdade em `observando`, depois do Marco 1 | nenhuma de código; bloqueia o uso real |
 | **Cotação do dólar**: valor inicial e atualização mensal | para as telas em reais | T23, T24 |
-| **Texto jurídico do aceite** (e a pendência do advogado: cláusula de contrato e aviso de privacidade, LGPD) | antes do aceite novo ser mostrado ao administrador | T01 |
+| **Texto jurídico do aceite** (parte do cenário B) e a pendência do advogado (cláusula de contrato e aviso de privacidade, LGPD), que **não bloqueia nada** | o texto provisório basta para a T01; a versão do advogado entra quando chegar | T01 |
 | **Texto final do aviso ao cliente** ("Vou confirmar essa informação com a equipe…") | antes de publicar o Marco 1 | T15 |
 | **Corpus em português rotulado** (D16): 200 mensagens e 100 rascunhos, rotulados por você ou por quem você indicar | para sair de `observando` | nenhuma de código; é o portão da seção 8 |
 | **Aceite do administrador** da loja piloto | para a `conferencia` começar a ser consultada | T01 |
