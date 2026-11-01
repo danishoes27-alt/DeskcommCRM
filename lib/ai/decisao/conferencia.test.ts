@@ -33,6 +33,7 @@ vi.mock("@/lib/logger", () => ({ logger: { warn: () => undefined, info: () => un
 import { env } from "@/lib/env";
 
 import { MODELO_DO_JEV, type Resposta } from "./cliente";
+import { registrarSucesso } from "./disjuntor";
 import {
   conferirOMeuRascunho,
   CORTES_DO_DEPOIS,
@@ -76,6 +77,9 @@ function ligarTudo() {
 }
 
 beforeEach(() => {
+  // O disjuntor mora em memória do processo: um teste que derruba o Jev não pode abri-lo para o seguinte.
+  registrarSucesso({ organizationId: ORG, tarefa: "conferencia" });
+  registrarSucesso(ORG);
   banco.settings = null;
   banco.chamadas.length = 0;
   escrevivel.JEV_CONFERENCIA_ENABLED = false;

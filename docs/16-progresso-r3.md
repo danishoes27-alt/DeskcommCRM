@@ -24,7 +24,8 @@
 | T08 regras locais L4 (senha) e L5 (documento) | `d393b05db` | ver abaixo | feita |
 | T09 tarefa conferencia: perguntas, state e cortes | `bb91188d1` | ver abaixo | feita |
 | T10 custo e observação do DEPOIS | `cf0a6ff89` | ver abaixo | feita |
-| T11 `jev_conferencia` na cadeia before_send (v8) | `463af5ad6` + correção de tipo no teste | ver abaixo | feita |
+| T11 `jev_conferencia` na cadeia before_send (v8) | `463af5ad6` + `2df7c59ed` | ver abaixo | feita |
+| T12 queda do Jev, teto e "Jev fora do ar" no DEPOIS | ver `git log` (`feat(jev): T12 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -100,6 +101,17 @@
 - **Decisões minhas:** a conferência só roda em `inbound_turn` (o `case_reply_turn` responde a ação de um humano e o follow-up é texto de código); o interruptor da instalação vale também para as regras locais ("só roda com todas as condições juntas"); a conferência é calculada na CHAMADA do `send_message` sobre `body` (antes dos ajustes de estilo, que não mudam fatos).
 - **Estado efetivo:** a tarefa continua `soObserva` — um `decidindo` gravado vale `observando` no estado efetivo, então o gate nunca veta em produção ainda. **A T13 tira a marca `soObserva` da `conferencia`** quando o "segurar" ganhar a regra das 2 tentativas.
 - **Testes:** `tests/unit/before-send-chain-shape.test.ts` (12 gates, versão 8, ordem), `tests/unit/gate-jev-conferencia.test.ts` (gate, trace, cadeia completa, fora do lock), `conferencia-no-turno.test.ts` (16); `lib/agent-engine` + gates + cercas: 914 verdes; typecheck e eslint limpos.
+
+### T12 — queda do Jev, teto e "Jev fora do ar" no DEPOIS
+
+- **Queda (spec 4.2, Opção 2):** com o Jev indisponível (rede, tempo esgotado, 500, 529, 429, chave recusada, sem crédito) o DEPOIS usa só as regras L1 a L6 — achado local segura (faixa alta, sem Jev); sem achado a resposta sai e o veredito diz `conferida_pelo_jev: 0` ("não conferida"). **Disjuntor** da tarefa no `perguntarAoJev`: 3 falhas seguidas abrem por 5 min, 429/529 abrem na hora, e aberto = nenhuma chamada de rede (a conferência local segue). Disjuntor é por loja: a queda de uma não segura outra (teste).
+- **Registro da queda:** toda falha que chegou à rede grava UMA linha de erro em `llm_calls` (`jev_depois`, origem `jev_observacao`) — é de onde saem a "Última falha" e o "Jev fora do ar".
+- **"Jev fora do ar" na tela:** não existe uma "aba Status" no código; a superfície de status do Jev é o **cartão do Jev** (Provedores). A rota `GET /api/v1/ai/jev` ganhou `fora_do_ar` (falha de conta/fornecedor, de qualquer tarefa, nos últimos 30 min, ainda não superada — derivada de `llm_calls` porque o disjuntor mora no agent-worker e o cartão no Next; `lib/ai/decisao/fora-do-ar.ts`), e o cartão troca "Última falha" por **"Jev fora do ar"** (com espanhol). Defeito nosso (`contrato_invalido`, `resposta_ilegivel`) segue "Última falha".
+- **Aviso ao DONO DA PLATAFORMA (D2 = B) — mecanismo existente, sem migração:** a tabela `incidents` (RLS só de administrador da plataforma, tela `/admin/incidents` com abrir/reconhecer/resolver já prontos; `type` é vocabulário aberto e `organization_id` pode ser nulo). `lib/ai/decisao/queda.ts`: chave recusada → `jev_chave_recusada`, conta sem crédito → `jev_sem_credito`, severidade crítica, **um incidente por tipo para a instalação inteira** (a chave é a mesma em todas as lojas; ANTES e DEPOIS falhando juntos atualizam o mesmo incidente com a tarefa, a loja e a contagem, em vez de abrir outro; reconhecido também conta como "já sabe"). Queda que passa sozinha (taxa, sobrecarga, demora) não incomoda o dono. O aviso que já ia ao administrador da loja continua sendo a "Última falha" do cartão e o aviso da Central do clima — as tarefas do turno não abrem aviso próprio na Central (decisão da onda 2, mantida). **Não achei necessidade de parar e perguntar**: o mecanismo serve sem alterar o banco.
+- **Teto (D12):** a conferência NUNCA é bloqueada por teto estourado — nenhum arquivo dela consulta o orçamento (teste de varredura), o custo continua somando no teto (`llm_calls`), e `jev_depois` entrou em `PURPOSES_ISENTOS` como a isenção escrita para o dia em que passar por lá. (`jev_antes` fica FORA da lista: o ANTES é pulado com o teto estourado — T22.)
+- **Ponto de atenção:** o incidente é fechado por quem resolve na tela do admin; não fecha sozinho quando o Jev volta.
+- **Testes:** `queda.test.ts` (17), `fora-do-ar.test.ts`, `conferencia-no-turno-queda.test.ts` (21: cada tipo de queda, disjuntor, isolamento entre lojas, incidente, teto), rota e cartão; `lib/ai` + `lib/agent-engine` + cercas 1675 verdes; typecheck limpo; eslint sem erro (1 aviso antigo de react-hooks em outro arquivo).
+- **⚠️ Não verificado contra Postgres de verdade:** o SQL do incidente (e o do gravador da T10) — mesma pendência da imagem `pgvector`.
 
 ## Pendências e coisas que só o dono pode fornecer
 

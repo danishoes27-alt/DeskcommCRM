@@ -93,6 +93,11 @@ export interface DadosDoJev {
   };
   /** `tarefa`: o rótulo da tarefa que falhou. Ausente na imagem anterior. */
   ultima_falha: { motivo: string | null; em: string; tarefa?: string | null } | null;
+  /**
+   * O Jev está fora do ar AGORA: a falha mais recente (de qualquer tarefa) é de conta ou de
+   * fornecedor e é de há pouco. Ausente na imagem anterior.
+   */
+  fora_do_ar?: { desde: string; motivo: string } | null;
   pode_editar: boolean;
 }
 
@@ -1136,7 +1141,7 @@ function Ligado({
       {falha && (
         <p className="rounded-md bg-warning-bg p-2 text-xs text-warning-fg" data-testid="jev-ultima-falha">
           <span className="font-medium">
-            {t("Última falha")}
+            {dados.fora_do_ar ? t("Jev fora do ar") : t("Última falha")}
             {falha.tarefa ? <> — {t(falha.tarefa)}</> : null} ({new Date(falha.em).toLocaleString(tagDoIdioma)}):
           </span>{" "}
           {oQueFazer ? t(oQueFazer) : t("O Jev não conseguiu medir.")}

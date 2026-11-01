@@ -1365,3 +1365,38 @@ describe("as tarefas triagem e conferência na rota (T02)", () => {
     expect(corpo.error.message).toMatch(/^Esta tarea necesita que aceptes el envío/);
   });
 });
+
+describe("GET: 'Jev fora do ar' (T12)", () => {
+  it("falha recente de fornecedor, de qualquer tarefa: fora_do_ar com o motivo e a hora", async () => {
+    const agora = new Date().toISOString();
+    estado.llmCalls = [
+      chamada({ purpose: "jev_depois", status: "erro", error_code: "jev_provedor_indisponivel", origem_da_escolha: "jev_observacao", created_at: agora }),
+    ];
+    const { corpo } = await ler();
+    expect(corpo.data.fora_do_ar).toEqual({ desde: agora, motivo: "jev_provedor_indisponivel" });
+    // E a tarefa que falhou aparece com o nome de gente, mesmo sem ponto.
+    expect(corpo.data.ultima_falha).toMatchObject({ tarefa: "Conferir a resposta da IA antes de enviar" });
+  });
+
+  it("falha antiga ou defeito nosso: não é queda", async () => {
+    estado.llmCalls = [chamada({ status: "erro", error_code: "jev_provedor_indisponivel", created_at: "2026-09-22T13:00:00.000Z" })];
+    expect((await ler()).corpo.data.fora_do_ar).toBeNull();
+    estado.llmCalls = [chamada({ status: "erro", error_code: "jev_contrato_invalido", created_at: new Date().toISOString() })];
+    expect((await ler()).corpo.data.fora_do_ar).toBeNull();
+  });
+
+  it("sem falha nenhuma: fora_do_ar nulo", async () => {
+    estado.llmCalls = [chamada({})];
+    expect((await ler()).corpo.data.fora_do_ar).toBeNull();
+  });
+
+  it("a medida bem-sucedida DEPOIS da falha da mesma tarefa supera a queda (o Jev voltou)", async () => {
+    const antes = new Date(Date.now() - 5 * 60_000).toISOString();
+    const depois = new Date().toISOString();
+    estado.llmCalls = [
+      chamada({ purpose: "jev_depois", status: "erro", error_code: "jev_provedor_indisponivel", created_at: antes }),
+      chamada({ purpose: "jev_depois", status: "ok", created_at: depois }),
+    ];
+    expect((await ler()).corpo.data.fora_do_ar).toBeNull();
+  });
+});

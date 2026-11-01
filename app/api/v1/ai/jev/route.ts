@@ -80,6 +80,7 @@ import {
   tarefaSemRoteador,
   type SemAtendente,
 } from "@/lib/ai/decisao/tarefas";
+import { foraDoAr } from "@/lib/ai/decisao/fora-do-ar";
 import { CODIGOS_SEM_REDE } from "@/lib/ai/decisao/textos";
 import { DEFAULT_CLASSIFIER_MODEL } from "@/lib/ai/gateway";
 import { resolverModeloDoPonto } from "@/lib/ai/gateway-binding";
@@ -577,6 +578,7 @@ export async function GET(): Promise<Response> {
         observacao: doClima,
       },
       ultima_falha,
+      fora_do_ar: foraDoAr(ultima_falha),
       pode_editar: roleAtLeast(org.role, "admin"),
     },
     { requestId },

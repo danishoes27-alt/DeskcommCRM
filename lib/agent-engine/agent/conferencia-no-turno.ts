@@ -35,8 +35,9 @@ import { conferirOMeuRascunho, type VeredictoDoDepois } from "@/lib/ai/decisao/c
 import type { DependenciasDoPonto } from "@/lib/ai/decisao/ponto";
 import { interruptorDaInstalacaoLigado } from "@/lib/ai/decisao/interruptores";
 import { registrarConferenciaDoJev } from "@/lib/ai/decisao/observacao-da-conferencia";
-import { estadoDaTarefaNoPool } from "@/lib/ai/decisao/pool";
-import { TAREFA_DA_CONFERENCIA } from "@/lib/ai/decisao/tarefas";
+import { estadoDaTarefaNoPool, registrarFalhaQuePedeAcao } from "@/lib/ai/decisao/pool";
+import { avisarODonoDaPlataforma } from "@/lib/ai/decisao/queda";
+import { CONFERENCIA_DA_RESPOSTA, TAREFA_DA_CONFERENCIA } from "@/lib/ai/decisao/tarefas";
 import { logger } from "@/lib/logger";
 
 import type { ConferenciaJevNoGate } from "../guardrails/before-send";
@@ -115,6 +116,32 @@ export async function conferirOTurno(
       { rascunho: e.rascunho, evidencias: e.evidencias, nomeDoContato: e.nomeDoContato ?? null },
       deps,
     );
+
+    if (!pergunta.ok && pergunta.falha !== undefined) {
+      // A pergunta chegou à rede e falhou: a queda fica registrada em Execuções (é de onde o
+      // cartão tira "Jev fora do ar" e a "Última falha"). A conferência NUNCA é bloqueada por isso
+      // (spec 14, seção 4.2): valeram as regras L1 a L6, com o veredito de `veredito` abaixo.
+      logger.warn("Jev não respondeu à conferência; valeram só as regras da casa", {
+        organization_id: e.organizationId,
+        motivo: pergunta.motivo,
+      });
+      await registrarFalhaQuePedeAcao(
+        e.pool,
+        {
+          organizationId: e.organizationId,
+          purpose: CONFERENCIA_DA_RESPOSTA.purpose,
+          contactId: e.contactId,
+          jobId: e.jobId,
+        },
+        pergunta.falha,
+      );
+      // Chave recusada ou conta sem crédito: o dono da plataforma é quem resolve (D2 = B).
+      await avisarODonoDaPlataforma(e.pool, {
+        organizationId: e.organizationId,
+        tarefa: TAREFA_DA_CONFERENCIA.id,
+        motivo: pergunta.falha.motivo,
+      });
+    }
 
     if (pergunta.ok) {
       await registrarConferenciaDoJev(e.pool, {

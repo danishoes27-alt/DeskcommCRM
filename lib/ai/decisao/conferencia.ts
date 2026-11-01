@@ -35,8 +35,9 @@ import {
 } from "@/lib/agent-engine/guardrails/conferencia-local";
 import { mascararSegredos } from "@/lib/agent-engine/guardrails/mascarar-segredos";
 
-import type { Pergunta, Resposta, UsoDeTokens } from "./cliente";
+import type { FalhaDaDecisao, Pergunta, Resposta, UsoDeTokens } from "./cliente";
 import { MODELO_DO_JEV, type MotivoDaAusencia } from "./cliente";
+import { podeTentar, registrarFalha, registrarSucesso } from "./disjuntor";
 import { decidirNoPonto, type DependenciasDoPonto } from "./ponto";
 import { TAREFA_DA_CONFERENCIA } from "./tarefas";
 
@@ -211,6 +212,8 @@ export type ResultadoDaPerguntaAoJev =
       motivo: MotivoDaAusencia | "sem_rascunho" | "segredo_no_rascunho";
       exigeAcao: boolean;
       retryAfterMs?: number;
+      /** A falha crua da API, quando a pergunta chegou a sair para a rede — para a linha de erro e o aviso. */
+      falha?: FalhaDaDecisao;
     };
 
 /**
@@ -234,6 +237,10 @@ export async function perguntarAoJev(
     if (local.achados.some((a) => a.regra === "L4" || a.regra === "L5")) {
       return { ok: false, motivo: "segredo_no_rascunho", exigeAcao: false };
     }
+    // O disjuntor da tarefa: com o Jev fora do ar, o DEPOIS não paga o teto de 1,5 s em toda
+    // resposta. Nada sai para a rede, e valem só as regras L1 a L6 (queda, spec 14 seção 4.2).
+    const alvo = { organizationId, tarefa: TAREFA_DA_CONFERENCIA.id };
+    if (!podeTentar(alvo)) return { ok: false, motivo: "disjuntor_aberto", exigeAcao: false };
     const { tetoMs, ...dependencias } = deps;
     const r = await decidirNoPonto(
       {
@@ -246,15 +253,21 @@ export async function perguntarAoJev(
       dependencias,
     );
     if (!r.ok) {
+      registrarFalha(alvo, r.motivo, Date.now(), r.retryAfterMs);
       return {
         ok: false,
         motivo: r.motivo,
         exigeAcao: r.exigeAcao,
         ...(r.retryAfterMs !== undefined ? { retryAfterMs: r.retryAfterMs } : {}),
+        falha: r,
       };
     }
     const veredito = veredictoDasRespostas(r.respostas);
-    if (veredito === null) return { ok: false, motivo: "resposta_ilegivel", exigeAcao: false };
+    if (veredito === null) {
+      registrarFalha(alvo, "resposta_ilegivel", Date.now());
+      return { ok: false, motivo: "resposta_ilegivel", exigeAcao: false };
+    }
+    registrarSucesso(alvo);
     return { ok: true, veredito, uso: r.uso, modelo: r.modelo, latenciaMs: r.latenciaMs };
   } catch {
     return { ok: false, motivo: "provedor_indisponivel", exigeAcao: false };

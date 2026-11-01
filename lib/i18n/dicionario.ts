@@ -4341,6 +4341,9 @@ export const DICIONARIO: Traducoes = {
   "O Jev não respondeu: a IA atendeu sem a anotação dele.": {
     es: "Jev no respondió: la IA atendió sin su anotación.",
   },
+  "Jev fora do ar": {
+    es: "Jev fuera de servicio",
+  },
   "Ver as conversas:": {
     es: "Ver las conversaciones:",
   },

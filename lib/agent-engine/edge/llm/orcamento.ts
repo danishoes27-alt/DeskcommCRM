@@ -46,11 +46,17 @@ export const PISO_DE_TETO_CENTS = 100;
  *   são guardrails. Estouro de orçamento não pode virar desligamento de
  *   proteção. (NÃO MEDIDO se algum chamador desses dois trata a exceção como
  *   "sem veto" — a isenção mata a pergunta em vez de deixá-la aberta.)
+ * - `jev_depois` (`lib/ai/decisao/conferencia.ts`, r3, D12) é a conferência da resposta
+ *   da IA antes do envio: mais um guardrail. O custo SOMA no teto, mas a conferência não
+ *   desliga por teto estourado. (Hoje a chamada do Jev nem passa por esta trava — vai
+ *   direto à TypeSafe —, e esta linha é a isenção escrita para o dia em que passar.)
+ *   O `jev_antes` (a triagem) NÃO está aqui de propósito: ele é pulado com o teto estourado.
  */
 export const PURPOSES_ISENTOS = [
   'connection_test',
   'jailbreak_detect',
   'promise_semantic',
+  'jev_depois',
 ] as const;
 
 /** `ai_budgets.enforcement_mode`. Nasce `'off'` por DEFAULT do ALTER. */

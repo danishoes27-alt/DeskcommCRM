@@ -1635,3 +1635,32 @@ describe("o aceite de `resposta` e as tarefas novas no cartão (T02)", () => {
     expect(within(caixa).getByRole("button", { name: "Aceptar" })).toBeDefined();
   });
 });
+
+describe("'Jev fora do ar' no cartão (T12)", () => {
+  const ligado = { ligado: true, modo: "observacao" as const, aceite: { em: "2026-10-15T12:00:00.000Z", por: "u1" } };
+  const falha = { motivo: "jev_provedor_indisponivel", em: new Date().toISOString(), tarefa: "Conferir a resposta da IA antes de enviar" };
+
+  it("com a queda, a linha da falha se chama 'Jev fora do ar' e diz o que fazer", () => {
+    montar(dados({ config: ligado, ultima_falha: falha, fora_do_ar: { desde: falha.em, motivo: falha.motivo } }));
+    const linha = screen.getByTestId("jev-ultima-falha");
+    expect(linha.textContent).toContain("Jev fora do ar");
+    expect(linha.textContent).not.toContain("Última falha");
+    expect(linha.textContent).toContain("Conferir a resposta da IA antes de enviar");
+    expect(linha.textContent).toContain("Costuma se resolver sozinho");
+  });
+
+  it("sem a queda (falha antiga ou defeito nosso), segue 'Última falha'", () => {
+    montar(dados({ config: ligado, ultima_falha: falha, fora_do_ar: null }));
+    expect(screen.getByTestId("jev-ultima-falha").textContent).toContain("Última falha");
+  });
+
+  it("na imagem anterior (sem o campo), segue 'Última falha'", () => {
+    montar(dados({ config: ligado, ultima_falha: falha }));
+    expect(screen.getByTestId("jev-ultima-falha").textContent).toContain("Última falha");
+  });
+
+  it("em espanhol: 'Jev fuera de servicio'", () => {
+    montar(dados({ config: ligado, ultima_falha: falha, fora_do_ar: { desde: falha.em, motivo: falha.motivo } }), { idioma: "es" });
+    expect(screen.getByTestId("jev-ultima-falha").textContent).toContain("Jev fuera de servicio");
+  });
+});
