@@ -9581,8 +9581,8 @@ export const DICIONARIO: Traducoes = {
   "Para isso, o rascunho da resposta e os trechos da base de conhecimento e do catálogo que a IA consultou são enviados à TypeSafe AI, nos Estados Unidos.": {
     es: "Para eso, el borrador de la respuesta y los fragmentos de la base de conocimiento y del catálogo que la IA consultó se envían a TypeSafe AI, en Estados Unidos.",
   },
-  "A mensagem do cliente não é enviada, nem o nome, o telefone ou o e-mail dele.": {
-    es: "El mensaje del cliente no se envía, ni su nombre, su teléfono ni su correo electrónico.",
+  "A mensagem do cliente não é enviada. Antes de sair, o sistema troca por uma marca (como [NOME]) o nome, o telefone, o e-mail, o CPF e o endereço do cliente que aparecerem no rascunho, e qualquer senha de aparelho; essa troca segue regras de texto e pode deixar passar algo escrito de um jeito fora do comum.": {
+    es: "El mensaje del cliente no se envía. Antes de salir, el sistema reemplaza por una marca (como [NOME]) el nombre, el teléfono, el correo electrónico, el CPF y la dirección del cliente que aparezcan en el borrador, y cualquier contraseña de dispositivo; ese reemplazo sigue reglas de texto y puede dejar pasar algo escrito de una forma fuera de lo común.",
   },
   "Quem contrata a TypeSafe AI é a plataforma, e a TypeSafe AI atua como operadora subcontratada, em nome dela.": {
     es: "Quien contrata a TypeSafe AI es la plataforma, y TypeSafe AI actúa como operadora subcontratada, en nombre de ella.",

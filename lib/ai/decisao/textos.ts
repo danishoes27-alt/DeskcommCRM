@@ -173,7 +173,7 @@ export const ACEITE_DE_RESPOSTA = {
   oQueFaz: "Ao aceitar, o Jev passa a conferir a resposta da IA antes de ela ser enviada ao cliente.",
   oQueSai:
     "Para isso, o rascunho da resposta e os trechos da base de conhecimento e do catálogo que a IA consultou são enviados à TypeSafe AI, nos Estados Unidos.",
-  oQueNaoSai: "A mensagem do cliente não é enviada, nem o nome, o telefone ou o e-mail dele.",
+  oQueNaoSai: "A mensagem do cliente não é enviada. Antes de sair, o sistema troca por uma marca (como [NOME]) o nome, o telefone, o e-mail, o CPF e o endereço do cliente que aparecerem no rascunho, e qualquer senha de aparelho; essa troca segue regras de texto e pode deixar passar algo escrito de um jeito fora do comum.",
   quemContrata:
     "Quem contrata a TypeSafe AI é a plataforma, e a TypeSafe AI atua como operadora subcontratada, em nome dela.",
   retencao: "A TypeSafe AI não informa por quanto tempo guarda esse conteúdo.",

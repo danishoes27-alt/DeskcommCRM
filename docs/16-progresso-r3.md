@@ -17,8 +17,9 @@
 | T01 alcance `resposta` | `93b902658` | (rodada anterior) | feita |
 | T02 registrar `triagem` e `conferencia` | `7fec303be` | ver abaixo | feita |
 | T03 interruptores da instalação | `eb1101fa2` | ver abaixo | feita |
-| T04 evidências: base de conhecimento | ver `git log` (`feat(jev): T04 ...`) | ver abaixo | feita |
-| T05 evidências: catálogo e Bling | ver `git log` (`feat(jev): T05 ...`) | ver abaixo | feita |
+| T04 evidências: base de conhecimento | `e77453be7` | ver abaixo | feita |
+| T05 evidências: catálogo e Bling | `9af3c5b34` | ver abaixo | feita |
+| T06 máscara de dados pessoais e senha | ver `git log` (`feat(jev): T06 ...`) | ver abaixo | feita |
 
 ### T02 — registrar as tarefas `triagem` e `conferencia`
 
@@ -44,6 +45,13 @@
 - **Decisão minha:** ferramenta com `erro`, recusa de escopo ou formato desconhecido NÃO marca consulta feita (a L6 precisa saber "nem procurou"). Resultado vazio com motivo `sem_estoque` vira evidência de quem diz "sem estoque".
 - **Nada novo em banco.** As evidências ainda não são lidas por ninguém: quem as consome é a T07/T08 (regras locais) e a T09 (Jev).
 - **Testes:** `evidencias-do-turno.test.ts` e `evidencias-das-ferramentas.test.ts` (30 casos, inclusive isolamento entre duas empresas e o wrapper); `lib/agent-engine/agent` 268 verdes; typecheck e eslint limpos.
+
+### T06 — máscara de dados pessoais e senha
+
+- **O que mudou:** `lib/agent-engine/guardrails/mascarar-segredos.ts` (novo): `mascararSegredos(texto, { nomeDoContato })`, `encontrarSenhas` (devolve o valor e a posição, para a L4) e `pedacosDoNome`. Senha → `[SENHA]`; nome do cadastro (primeiro nome e sobrenome, sem distinguir caixa nem acento) e quem se apresenta ("meu nome é Maria Souza") → `[NOME]`; endereço → `[ENDERECO]`; CEP → `[CEP]`; e-mail, CPF, telefone e chave do Jev pelo `scrubMessage` que já existia.
+- **Decisões minhas:** apagar de MENOS é o risco, então erra-se para o lado de apagar demais ("a senha é importante" vira "a senha é [SENHA]"). "padrão" sozinho só é senha com dígito ou "em L" (é palavra comum de loja); "senhas" no plural e "esqueci a senha" não mascaram. O `!` de "Mari2024!" fica dentro da senha; o ponto final da frase não. Em erro interno a função devolve um marcador, nunca o texto cru.
+- **⚠️ A frase do aceite "nome, telefone e e-mail não são enviados" NÃO é estritamente verdadeira, mesmo com a máscara:** a máscara é por regras de texto (apelido que não está no cadastro, endereço sem "rua" ou telefone por extenso passam) e ainda não está ligada ao DEPOIS (é a T09 que a aplica). Por isso ajustei **só essa frase** do texto provisório (`ACEITE_DE_RESPOSTA.oQueNaoSai`, e o espanhol): agora diz que a mensagem do cliente não é enviada, que o sistema troca por uma marca o nome/telefone/e-mail/CPF/endereço/senha que aparecerem no rascunho, e que isso pode deixar passar algo escrito de um jeito fora do comum. A frase de retenção e o resto do texto ficaram como estavam. Ninguém aceitou ainda (nada ligado), então a versão do aceite continua 2. **Avisar o dono no relatório do Marco 1.**
+- **Testes:** `mascarar-segredos.test.ts` (59 casos: tabela de senhas em PT, os que NÃO podem ser mascarados, nomes com acento, partículas, endereço, CEP, idempotência, nada sobra no texto, nunca lança); `textos.test.ts`, cartão e i18n verdes; typecheck e eslint limpos.
 
 ## Pendências e coisas que só o dono pode fornecer
 
