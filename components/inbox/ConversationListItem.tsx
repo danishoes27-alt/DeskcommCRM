@@ -15,6 +15,7 @@ import { comandoDaConversa, esperaDaConversa } from "@/lib/inbox/comando-da-conv
 import { cn } from "@/lib/utils";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { conversaMarcadaComoUrgente } from "@/lib/inbox/urgente-do-jev";
 import { phoneForDisplay } from "@/lib/channels/phone-variants";
 
 interface Props {
@@ -334,6 +335,17 @@ export function ConversationListItem({
                 title={`${t("Entrou por")} ${rotuloCanal}`}
               >
                 {rotuloCanal}
+              </Badge>
+            )}
+            {/* A marca do Jev: só marca o cartão, nunca muda o destino nem a ordem da fila. */}
+            {conversaMarcadaComoUrgente(conversation.metadata) && (
+              <Badge
+                variant="warning"
+                className="h-4 px-1.5 text-[10px]"
+                title={t("O Jev percebeu pressa ou insatisfação forte na última mensagem")}
+                data-testid="marca-urgente-do-jev"
+              >
+                {t("Urgente")}
               </Badge>
             )}
             {c?.is_blocked && (

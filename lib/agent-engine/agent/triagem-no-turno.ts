@@ -24,19 +24,23 @@
  */
 import type pg from "pg";
 
-import { categoriasDaEmpresa } from "@/lib/ai/decisao/categorias";
+import { categoriasDaEmpresa, type CategoriaDaTriagem } from "@/lib/ai/decisao/categorias";
 import { lerConfigDoJev } from "@/lib/ai/decisao/config";
 import { interruptorDaInstalacaoLigado } from "@/lib/ai/decisao/interruptores";
+import { avisarQueEPraEquipe } from "@/lib/ai/decisao/aviso-da-triagem";
 import { registrarTriagemDoJev } from "@/lib/ai/decisao/observacao-da-triagem";
 import type { DependenciasDoPonto } from "@/lib/ai/decisao/ponto";
 import { estadoEfetivoDaTarefa, TAREFA_DA_TRIAGEM } from "@/lib/ai/decisao/tarefas";
 import { perguntarATriagem, type VeredictoDaTriagem } from "@/lib/ai/decisao/triagem";
+import { CHAVE_DA_MARCA_URGENTE } from "@/lib/inbox/urgente-do-jev";
 import { logger } from "@/lib/logger";
 import { textoDigitadoDaMensagem } from "@/lib/ai/triagem/aplicar";
 
 export interface TriagemDoTurno {
   estado: "observando" | "decidindo";
   veredito: VeredictoDaTriagem;
+  /** A lista de categorias da empresa — para a dica dizer o rótulo dela. */
+  categorias: readonly CategoriaDaTriagem[];
 }
 
 export interface EntradaDaTriagemNoTurno {
@@ -96,14 +100,10 @@ export async function triarOTurno(
     const texto = textoDigitadoDaMensagem({ type: linha.type, body: linha.body });
     if (texto === "") return undefined;
 
+    const categorias = categoriasDaEmpresa(config);
     const r = await perguntarATriagem(
       e.organizationId,
-      {
-        texto,
-        nomeDoContato: e.nomeDoContato ?? null,
-        primeiraMensagem: !linha.antes,
-        categorias: categoriasDaEmpresa(config),
-      },
+      { texto, nomeDoContato: e.nomeDoContato ?? null, primeiraMensagem: !linha.antes, categorias },
       deps,
     );
     if (!r.ok) {
@@ -127,12 +127,57 @@ export async function triarOTurno(
       modelo: r.modelo,
       latenciaMs: r.latenciaMs,
     });
-    return { estado, veredito: r.veredito };
+    // Certeza ALTA de "equipe", decidindo: abre UM aviso na Central. Não abre caso e não passa
+    // a conversa (D5); a IA segue atendendo.
+    if (estado === "decidindo" && r.veredito.destinoEfetivo === "equipe") {
+      await avisarQueEPraEquipe(e.pool, { organizationId: e.organizationId, conversationId: e.conversationId });
+    }
+    // A marca "Urgente" do cartão da conversa: só decidindo, e só marca (não muda o destino).
+    if (estado === "decidindo") {
+      await marcarOuDesmarcarUrgente(e.pool, e.organizationId, e.conversationId, e.messageId, r.veredito.urgente.marcar);
+    }
+    return { estado, veredito: r.veredito, categorias };
   } catch (erro) {
     logger.warn("triagem do Jev falhou; a IA atende sem a dica dele", {
       organization_id: e.organizationId,
       erro: erro instanceof Error ? erro.name : typeof erro,
     });
     return undefined;
+  }
+}
+
+/**
+ * A marca acompanha a mensagem mais recente: urgente grava `{ em, message_id }`; não urgente tira
+ * a marca se ela existia (e não escreve nada se não existia). Sempre na organização do turno.
+ */
+export async function marcarOuDesmarcarUrgente(
+  pool: pg.Pool,
+  organizationId: string,
+  conversationId: string,
+  messageId: string,
+  urgente: boolean,
+): Promise<void> {
+  try {
+    if (urgente) {
+      await pool.query(
+        `update public.conversations
+            set metadata = coalesce(metadata, '{}'::jsonb)
+                           || jsonb_build_object('${CHAVE_DA_MARCA_URGENTE}', jsonb_build_object('em', now(), 'message_id', $3::text))
+          where organization_id = $1 and id = $2`,
+        [organizationId, conversationId, messageId],
+      );
+    } else {
+      await pool.query(
+        `update public.conversations
+            set metadata = metadata - '${CHAVE_DA_MARCA_URGENTE}'
+          where organization_id = $1 and id = $2 and metadata ? '${CHAVE_DA_MARCA_URGENTE}'`,
+        [organizationId, conversationId],
+      );
+    }
+  } catch (erro) {
+    logger.warn("marca de urgente do Jev não foi gravada", {
+      organization_id: organizationId,
+      erro: erro instanceof Error ? erro.name : typeof erro,
+    });
   }
 }

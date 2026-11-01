@@ -126,7 +126,7 @@ export const POLITICAS_DE_AVISO = {
   },
   // `agent_case`: o caso que a IA abriu, na Central no instante da abertura
   // (`lib/escalacao/caso-na-central.handler.ts`).
-  other: { refs: ["lead", "channel_session", "appointment", "ai_agent", "ai_provider_credential", "agent_case"], orientacao: "Confira a situação descrita neste aviso com a pessoa responsável." },
+  other: { refs: ["lead", "channel_session", "appointment", "ai_agent", "ai_provider_credential", "agent_case", "conversation"], orientacao: "Confira a situação descrita neste aviso com a pessoa responsável." },
 } satisfies Record<InboxKind, Politica>;
 
 /**

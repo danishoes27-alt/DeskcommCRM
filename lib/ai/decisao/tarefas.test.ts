@@ -346,8 +346,8 @@ describe("a tarefa do follow-up", () => {
     expect(rotuloDaChamadaDoJev("followup_classify")).toBe(TAREFA_DO_FOLLOWUP.rotulo);
   });
 
-  it("tarefaPodeDecidir: só as que só observam não podem (follow-up e triagem; a conferência decide desde a T13)", () => {
-    expect(TAREFAS_DO_JEV.filter((t) => !tarefaPodeDecidir(t)).map((t) => t.id)).toEqual([TAREFA_DO_FOLLOWUP.id, "triagem"]);
+  it("tarefaPodeDecidir: só a do follow-up não pode (a conferência decide desde a T13 e a triagem desde a T19)", () => {
+    expect(TAREFAS_DO_JEV.filter((t) => !tarefaPodeDecidir(t)).map((t) => t.id)).toEqual([TAREFA_DO_FOLLOWUP.id]);
   });
 
   it("nasce observando para quem já tem o Jev ligado (R7), com o selo Nova", () => {
@@ -445,12 +445,10 @@ describe("as tarefas novas da r3: triagem e conferência (T02)", () => {
     );
   });
 
-  it("a triagem ainda só observa (até a T18): um `decidindo` gravado vale observando", () => {
+  it("a triagem PODE decidir (T19): um `decidindo` gravado, com o aceite de `mensagem`, vale decidindo", () => {
     const triagem = TAREFAS_DO_JEV.find((t) => t.id === "triagem")!;
-    expect(tarefaPodeDecidir(triagem)).toBe(false);
-    expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_MENSAGEM, { triagem: { estado: "decidindo" } }), triagem)).toBe(
-      "observando",
-    );
+    expect(tarefaPodeDecidir(triagem)).toBe(true);
+    expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_MENSAGEM, { triagem: { estado: "decidindo" } }), triagem)).toBe("decidindo");
   });
 
   it("a triagem, no alcance `mensagem`, começa observando sozinha (a trava é o interruptor da instalação, T03)", () => {

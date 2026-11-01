@@ -164,6 +164,23 @@
 
 - `lib/ai/decisao/categorias.ts` + schema em `config.ts` (`settings.jev.categorias`, sem migração): padrão Conserto, Venda (com boleto e parcelamento), Impressão, Outro; `outro` sempre por último, ordem gravada preservada, lista ruim vale o padrão sem derrubar o resto da configuração. A triagem antiga (`lib/ai/triagem/`) ficou como está (legado, desligada). Testes: `categorias.test.ts` (8).
 
+### T17 — tarefa `triagem`: perguntas, `state` e cortes
+
+- `lib/ai/decisao/triagem.ts`: UMA chamada, três perguntas (`categoria` e `destino` em escolha, `urgente` sim/não), opções em ordem fixa (`outro` por último; `atender` primeiro), `state` = só o texto digitado, MASCARADO e depois cortado em 2.000 caracteres, modelo `jev-1.13.0`. Cortes do ANTES: alta ≥ 0,80/0,70 (age), média 0,70–0,80/0,60–0,70 (só registra), baixa (ignora); `urgente` marca a partir de 0,80 e nunca muda o destino; `pedir_dado` só vale na 1ª mensagem. Usa a variante `{ tarefa, perguntas }` do `decidirNoPonto` criada na T09 (a guarda de chave não foi enfraquecida). Resposta ilegível, categoria fora da lista ou destino inventado derrubam o veredito inteiro. Testes: `triagem.test.ts` (29).
+
+### T18 — ponto de chamada no turno e gravação do resultado [DESENHO fechado]
+
+- `triagem-no-turno.ts` (`triarOTurno`) + 1 chamada no `inbound-turn.ts`, **depois** das saídas antecipadas e **depois** dos avisos de código de pedido de atendente e de opt-out (que encerram o turno antes): o opt-out vem sempre antes. Não faz nada em prévia, em turno que não é `inbound_turn`, com contato bloqueado, sem o interruptor da instalação, com a tarefa desligada ou sem texto digitado (áudio, figurinha, marcador). Lê o texto da PRÓPRIA mensagem (`textoDigitadoDaMensagem`): nunca transcrição, descrição de foto ou texto de documento. `primeiraMensagem` = não há inbound anterior do cliente na conversa.
+- **Gravação (`observacao-da-triagem.ts`), num comando só:** UMA linha em `llm_calls` (`jev_antes`, com preço), UMA em `jev_observacoes` com `rotulo_jev` = o `destino`, `rotulo_atual` VAZIO (sem par: não há mecanismo de hoje) e a probabilidade/confiança do destino, e `messages.metadata.triagem_jev` com categoria, destino (e o `efetivo`), urgente e faixas — chave PRÓPRIA, separada da `triagem` do legado. **Um rótulo por linha bastou; nenhuma migração.** A triagem antiga (`lib/ai/triagem/`) ficou marcada como legado no turno e não foi alterada.
+- Invariante de turno **`tests/invariants/jev-triagem-no-turno.test.ts`** (contra Postgres real): texto exato e três perguntas ao Jev, mascaramento, `pedir_dado` só na 1ª, nada sai com tarefa/instalação desligada, contato bloqueado, áudio ou marcador; opt-out e pedido de atendente vêm antes (o Jev nem é perguntado); legado intocado; isolamento entre empresas.
+
+### T19, T20, T21 — dica no prompt, aviso na Central, marca do `urgente` (um commit só: compartilham o ponto de chamada)
+
+- **T19:** `dica-da-triagem.ts`. Só em `decidindo` com confiança ALTA: "Dica da triagem: categoria: conserto; destino: atender." ou "…peça primeiro o dado que falta…", numa linha, no sufixo por-lead do prompt. Em `observando`, confiança média/baixa, `equipe`, `pedir_dado` fora da 1ª mensagem ou Jev fora do ar: nada é acrescentado — **o prompt fica exatamente como hoje** (teste de banco compara). A tarefa `triagem` saiu de `soObserva` e ganhou `aoDecidir` (com espanhol); a rota exige as duas semanas de observação antes de decidir.
+- **T20:** `aviso-da-triagem.ts`. Certeza ALTA de `equipe` (e `decidindo`) abre UM aviso em `agent_inbox_items` (`kind = other`, título fixo como chave, `ref = conversation`), no idioma da organização e sem repetir o texto do cliente. **Não abre caso, não passa a conversa, não muda de dono; a IA segue atendendo.** Um aviso ABERTO por conversa (resolvido, uma nova certeza abre outro). Mudança mínima em `lib/ai/inbox-destino.ts`: `other` agora aceita `conversation` como referência (para o botão "Abrir conversa"). Sem migração. `aviso-de-escalacao.ts` NÃO foi tocado.
+- **T21:** o "cartão da Central" é o **cartão da conversa na lista da inbox** (`ConversationListItem`). A marca "Urgente" (`lib/inbox/urgente-do-jev.ts`) mora em `conversations.metadata.jev_urgente` — jsonb que a lista já carrega, sem migração. Só em `decidindo`; só marca (destino, status, dono e ordem da fila intactos); acompanha a mensagem mais recente (a seguinte, tranquila, tira a marca). Corte 0,80 em `CORTES_DO_ANTES.urgente`.
+- Testes: `dica-da-triagem.test.ts` (12), invariante de turno estendido (14 no total, contra Postgres real: dica presente × prompt intacto, aviso único e sem caso, marca e desmarca, isolamento).
+
 ## Pendências e coisas que só o dono pode fornecer
 
 | O quê | Quando faz falta | Tarefas |

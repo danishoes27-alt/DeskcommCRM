@@ -308,3 +308,103 @@ describe("isolamento entre empresas", () => {
     expect(cruzado[0].n).toBe(0);
   });
 });
+
+describe("DECIDINDO: o efeito da triagem no atendimento (T19, T20, T21)", () => {
+  const dicaNoPrompt = (r: Rodada) => r.prompts.some((p) => p.includes("Dica da triagem"));
+  const avisosDaCentral = (org: string) =>
+    q(`select kind, ref_kind, ref_id, status, organization_id from agent_inbox_items where organization_id = $1 and title like 'O Jev acha%'`, [org]);
+  const marcaUrgente = async (c: Cenario) =>
+    (await q(`select metadata->'jev_urgente' as m, status, assigned_to_user_id from conversations where id = $1`, [c.conversa]))[0];
+
+  it("alta + atender: a IA recebe a dica de uma linha; OBSERVANDO com a mesma resposta recebe o prompt INTACTO", async () => {
+    const decidindo = await cenario("decidindo");
+    const rd = novaRodada();
+    await rodaTurno(decidindo, deps(rd, jevDuble(rd, ALTA)));
+    expect(dicaNoPrompt(rd)).toBe(true);
+    expect(rd.prompts.join("")).toContain("categoria: conserto; destino: atender.");
+
+    const observando = await cenario("observando");
+    const ro = novaRodada();
+    await rodaTurno(observando, deps(ro, jevDuble(ro, ALTA)));
+    expect(dicaNoPrompt(ro)).toBe(false);
+  });
+
+  it("confiança média: nenhuma dica, nem em decidindo", async () => {
+    const c = await cenario("decidindo");
+    const r = novaRodada();
+    await rodaTurno(c, deps(r, jevDuble(r, { categoria: ["conserto", 0.75, 0.65], destino: ["atender", 0.75, 0.65], urgente: 0.1 })));
+    expect(dicaNoPrompt(r)).toBe(false);
+    expect((await metadado(c)).t).toMatchObject({ estado: "decidindo", destino: { efetivo: null } });
+  });
+
+  it("alta + equipe: UM aviso na Central ligado à conversa; sem caso, sem mudar de dono; a IA segue atendendo", async () => {
+    const c = await cenario("decidindo");
+    const r = novaRodada();
+    await rodaTurno(c, deps(r, jevDuble(r, { categoria: ["venda", 0.95, 0.9], destino: ["equipe", 0.95, 0.9], urgente: 0.1 })));
+    expect(await avisosDaCentral(c.org)).toEqual([{ kind: "other", ref_kind: "conversation", ref_id: c.conversa, status: "open", organization_id: c.org }]);
+    expect((await q(`select count(*)::int as n from agent_cases where organization_id = $1`, [c.org]))[0].n).toBe(0);
+    const conv = await marcaUrgente(c);
+    expect(conv.assigned_to_user_id).toBeNull();
+    expect(r.enviadas).toEqual(["Posso ajudar com o seu pedido."]);
+    expect(dicaNoPrompt(r)).toBe(false);
+
+    // Uma segunda mensagem na mesma conversa, com o aviso ainda aberto: não abre outro.
+    const segunda = { ...c, mensagem: randomUUID() };
+    await novaMensagem(segunda, "Alô? Ninguém me responde", "text");
+    const r2 = novaRodada();
+    registrarSucesso({ organizationId: c.org, tarefa: "triagem" });
+    await rodaTurno(segunda, deps(r2, jevDuble(r2, { categoria: ["venda", 0.95, 0.9], destino: ["equipe", 0.95, 0.9], urgente: 0.1 })));
+    expect((await avisosDaCentral(c.org)).length).toBe(1);
+  });
+
+  it("equipe em OBSERVANDO ou com confiança média: nenhum aviso", async () => {
+    const o = await cenario("observando");
+    const ro = novaRodada();
+    await rodaTurno(o, deps(ro, jevDuble(ro, { categoria: ["venda", 0.95, 0.9], destino: ["equipe", 0.95, 0.9], urgente: 0.1 })));
+    expect(await avisosDaCentral(o.org)).toEqual([]);
+    const m = await cenario("decidindo");
+    const rm = novaRodada();
+    await rodaTurno(m, deps(rm, jevDuble(rm, { categoria: ["venda", 0.75, 0.65], destino: ["equipe", 0.75, 0.65], urgente: 0.1 })));
+    expect(await avisosDaCentral(m.org)).toEqual([]);
+  });
+
+  it("urgente ≥ 0,80 marca o cartão e NÃO muda o destino; o aviso 'equipe' não aparece por causa dele", async () => {
+    const c = await cenario("decidindo");
+    const r = novaRodada();
+    await rodaTurno(c, deps(r, jevDuble(r, { categoria: ["conserto", 0.95, 0.9], destino: ["atender", 0.95, 0.9], urgente: 0.85 })));
+    const conv = await marcaUrgente(c);
+    expect(conv.m).toMatchObject({ message_id: c.mensagem });
+    expect(conv.status).toBe("ai_handling");
+    expect(dicaNoPrompt(r)).toBe(true); // continua "atender"
+    expect(await avisosDaCentral(c.org)).toEqual([]);
+
+    // A mensagem seguinte, tranquila, tira a marca.
+    const segunda = { ...c, mensagem: randomUUID() };
+    await novaMensagem(segunda, "Obrigado, deu certo!", "text");
+    registrarSucesso({ organizationId: c.org, tarefa: "triagem" });
+    const r2 = novaRodada();
+    await rodaTurno(segunda, deps(r2, jevDuble(r2, ALTA)));
+    expect((await marcaUrgente(c)).m).toBeNull();
+  });
+
+  it("em OBSERVANDO a marca de urgente não é gravada (observar não muda nada para ninguém)", async () => {
+    const c = await cenario("observando");
+    const r = novaRodada();
+    await rodaTurno(c, deps(r, jevDuble(r, { ...(ALTA as Exclude<Resp, number>), urgente: 0.95 })));
+    expect((await marcaUrgente(c)).m).toBeNull();
+    expect((await metadado(c)).t).toMatchObject({ urgente: { marcar: true } });
+  });
+
+  it("ISOLAMENTO: o aviso e a marca de uma empresa nunca aparecem na outra", async () => {
+    const a = await cenario("decidindo");
+    const b = await cenario("decidindo");
+    const ra = novaRodada();
+    const rb = novaRodada();
+    await rodaTurno(a, deps(ra, jevDuble(ra, { categoria: ["venda", 0.95, 0.9], destino: ["equipe", 0.95, 0.9], urgente: 0.9 })));
+    await rodaTurno(b, deps(rb, jevDuble(rb, ALTA)));
+    expect((await avisosDaCentral(a.org)).length).toBe(1);
+    expect(await avisosDaCentral(b.org)).toEqual([]);
+    expect((await marcaUrgente(a)).m).not.toBeNull();
+    expect((await marcaUrgente(b)).m).toBeNull();
+  });
+});

@@ -232,6 +232,7 @@ import {
   ultimaInboundJaRespondida,
 } from './turno-ja-respondido';
 import { triarEGravarMensagemRecebida } from '@/lib/ai/triagem/aplicar';
+import { dicaDaTriagem } from './dica-da-triagem';
 import { triarOTurno } from './triagem-no-turno';
 
 /**
@@ -2519,7 +2520,6 @@ async function executarTurnoDoAgente(
     },
     deps.jev,
   );
-  void triagemDoTurno; // consumido pela dica do prompt (T19), pelo aviso (T20) e pela marca do cartão (T21)
 
   let effectivePrevious = previous;
   let effectiveContext = openingContext.context;
@@ -4339,6 +4339,9 @@ async function executarTurnoDoAgente(
       agoraBlock,
       matchedSkillsBlock,
       stageHintBlock,
+      // A dica de UMA linha da triagem do Jev: só em `decidindo` e com confiança alta; vazia
+      // (omitida) em `observando`, com confiança média/baixa ou com o Jev fora do ar.
+      dicaDaTriagem(triagemDoTurno),
       splitHint,
       caseAwaitingLeadBlock,
       roteiro?.bloco ?? '',

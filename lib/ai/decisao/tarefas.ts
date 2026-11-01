@@ -313,17 +313,20 @@ export const TAREFA_DO_FOLLOWUP = {
  * hoje para comparar (a triagem antiga só grava e ninguém a lê), por isso é
  * `novo`. Sem ponto: as perguntas dela são feitas por `./triagem.ts` (T17).
  *
- * `soObserva` até a T18 ligar o resultado ao turno. Quem tira a marca é a tarefa
- * que dá efeito a ela, e a saída de `observando` ainda exige as duas semanas e o
- * corpus em português (D7 e D16).
+ * Desde a T19 ela PODE DECIDIR: com confiança alta, o prompt da IA recebe uma dica de uma
+ * linha (categoria e destino, ou "peça primeiro o dado que falta"), e o destino `equipe`
+ * abre um aviso na Central (T20). A saída de `observando` tem os mesmos dois portões da
+ * conferência (D7 e D16).
  */
 export const TAREFA_DA_TRIAGEM = {
   id: "triagem",
   primitiva: "choice",
   alcance: "mensagem",
   familia: "novo",
-  soObserva:
-    "Nesta versão, o Jev só observa esta tarefa: ele anota o que entendeu de cada mensagem do cliente, mas não muda nada no atendimento. Primeiro se mede, com mensagens de verdade, o quanto ele acerta.",
+  aoDecidir:
+    "Quando o Jev tem certeza do que o cliente quer, a IA recebe uma dica de uma linha (o assunto, ou pedir primeiro o dado que falta), e, se ele tem certeza de que é caso para a equipe, abre um aviso na Central. Ele nunca responde ao cliente nem passa a conversa sozinho.",
+  aoConfirmarDecidir:
+    "A partir de agora a IA passa a receber a dica do Jev sobre cada mensagem, e um aviso na Central abre quando ele tiver certeza de que é caso para a equipe. A conversa continua com a IA.",
   concordancia: {
     antes: "dias, o Jev anotou o que entendeu da mensagem do cliente em",
     depois: "mensagens.",

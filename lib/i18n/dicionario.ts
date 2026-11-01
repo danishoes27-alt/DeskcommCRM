@@ -4353,6 +4353,21 @@ export const DICIONARIO: Traducoes = {
   "A partir de agora, a resposta da IA que o Jev ou as regras da casa reprovarem não sai para o cliente: a IA reescreve uma vez e, se insistir, o cliente recebe um aviso e a equipe assume pelo caso aberto.": {
     es: "A partir de ahora, la respuesta de la IA que Jev o las reglas de la casa rechacen no sale al cliente: la IA reescribe una vez y, si insiste, el cliente recibe un aviso y el equipo asume mediante el caso abierto.",
   },
+  "O Jev acha que esta conversa precisa da equipe": {
+    es: "Jev cree que esta conversación necesita al equipo",
+  },
+  "O Jev leu a mensagem do cliente e tem certeza de que ela precisa de uma pessoa da equipe. A IA continua atendendo e o Jev não passou a conversa: abra a conversa e decida se alguém assume.": {
+    es: "Jev leyó el mensaje del cliente y está seguro de que necesita a una persona del equipo. La IA sigue atendiendo y Jev no transfirió la conversación: abre la conversación y decide si alguien la asume.",
+  },
+  "Quando o Jev tem certeza do que o cliente quer, a IA recebe uma dica de uma linha (o assunto, ou pedir primeiro o dado que falta), e, se ele tem certeza de que é caso para a equipe, abre um aviso na Central. Ele nunca responde ao cliente nem passa a conversa sozinho.": {
+    es: "Cuando Jev está seguro de lo que quiere el cliente, la IA recibe una pista de una línea (el asunto, o pedir primero el dato que falta) y, si está seguro de que es caso para el equipo, abre un aviso en la Central. Nunca le responde al cliente ni transfiere la conversación solo.",
+  },
+  "A partir de agora a IA passa a receber a dica do Jev sobre cada mensagem, e um aviso na Central abre quando ele tiver certeza de que é caso para a equipe. A conversa continua com a IA.": {
+    es: "A partir de ahora la IA recibe la pista de Jev sobre cada mensaje, y se abre un aviso en la Central cuando está seguro de que es caso para el equipo. La conversación sigue con la IA.",
+  },
+  "O Jev percebeu pressa ou insatisfação forte na última mensagem": {
+    es: "Jev percibió prisa o insatisfacción fuerte en el último mensaje",
+  },
   "Jev fora do ar": {
     es: "Jev fuera de servicio",
   },
