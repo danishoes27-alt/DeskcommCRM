@@ -51,6 +51,7 @@ import {
 } from '../edge/crm/get-lead-context';
 import { citationsFromHits, searchKnowledge } from './search-knowledge';
 import { criarEvidenciasDoTurno } from './evidencias-do-turno';
+import { comEvidenciaDoTurno, ORIGEM_DA_FERRAMENTA } from './evidencias-das-ferramentas';
 import type { CrmEdgeConfig } from '../edge/crm/mcp-client';
 import { WahaChannelAdapter } from '../edge/channel/waha-adapter';
 // applySendOutcome é disposição de FILA (cancel/reschedule + cache de opt-out), não
@@ -3929,6 +3930,10 @@ async function executarTurnoDoAgente(
                   return executeOriginal(...args);
                 }) as typeof mcpTool.execute,
               };
+            } else if (name in ORIGEM_DA_FERRAMENTA) {
+              // Catálogo e banco externo: o que a ferramenta devolveu é evidência do turno
+              // (preço, estoque) para a conferência do 'depois'. O resultado segue intacto.
+              rawTools[name] = comEvidenciaDoTurno(mcpTool, name, evidencias, tenantId);
             } else {
               rawTools[name] = mcpTool;
             }
