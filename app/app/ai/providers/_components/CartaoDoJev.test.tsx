@@ -1545,3 +1545,93 @@ describe("CartaoDoJev — a tarefa do follow-up, que só observa", () => {
     expect(screen.getByTestId("jev-concordancia-followup")).toHaveTextContent(/pusieron la respuesta del cliente en la misma salida del flujo en 3 de 4 mensajes\./);
   });
 });
+
+describe("o aceite de `resposta` e as tarefas novas no cartão (T02)", () => {
+  const ACEITE_MENSAGEM = { em: "2026-10-15T12:00:00.000Z", por: "u1", alcance: "mensagem" as const };
+  const ACEITE_RESPOSTA = { em: "2026-10-20T12:00:00.000Z", por: "u1", alcance: "resposta" as const, versao: 2 };
+  const base = (extra: Parcial = {}) =>
+    dados({
+      config: { ligado: true, modo: "observacao", aceite: ACEITE_MENSAGEM },
+      por_tarefa: [
+        {
+          id: "triagem",
+          ponto: null,
+          rotulo: "Entender o pedido do cliente",
+          oQueFaz: "x",
+          estado: "observando",
+          novo: true,
+          alcance: "mensagem",
+          pede_mais_que_o_aceite: false,
+        },
+        {
+          id: "conferencia",
+          ponto: null,
+          rotulo: "Conferir a resposta da IA antes de enviar",
+          oQueFaz: "y",
+          estado: "desligada",
+          novo: false,
+          alcance: "resposta",
+          pede_mais_que_o_aceite: true,
+        },
+      ],
+      ...extra,
+    });
+
+  it("mostra o texto provisório inteiro, com a marca, e a caixa desmarcada: o botão Aceitar começa desabilitado", () => {
+    montar(base());
+    const caixa = screen.getByTestId("jev-aceite-resposta");
+    expect(within(caixa).getByTestId("jev-aceite-resposta-texto").textContent).toContain("[TEXTO PROVISÓRIO");
+    expect(within(caixa).getByTestId("jev-aceite-resposta-texto").textContent).toContain("A mensagem do cliente não é enviada");
+    expect(within(caixa).getByRole("button", { name: "Aceitar" })).toBeDisabled();
+  });
+
+  it("marcar a caixa e aceitar envia SÓ `aceite_resposta: true`", async () => {
+    montar(base());
+    const caixa = screen.getByTestId("jev-aceite-resposta");
+    fireEvent.click(within(caixa).getByRole("checkbox"));
+    const botao = within(caixa).getByRole("button", { name: "Aceitar" });
+    expect(botao).toBeEnabled();
+    fireEvent.click(botao);
+    await waitFor(() => expect(chamadas).toHaveLength(1));
+    expect(chamadas[0]).toMatchObject({ url: "/api/v1/ai/jev", metodo: "PATCH", corpo: { aceite_resposta: true } });
+  });
+
+  it("a conferência sem aceite diz que aguarda o aceite e NÃO oferece Religar; a triagem segue normal (controle)", () => {
+    montar(base());
+    const conferencia = screen.getByTestId("jev-tarefa-conferencia");
+    expect(within(conferencia).getByText("Aguarda o seu aceite")).toBeDefined();
+    expect(within(conferencia).queryByRole("button", { name: "Religar" })).toBeNull();
+    expect(screen.getByTestId("jev-aguarda-aceite-conferencia")).toBeDefined();
+    const triagem = screen.getByTestId("jev-tarefa-triagem");
+    expect(within(triagem).queryByText("Aguarda o seu aceite")).toBeNull();
+    expect(within(triagem).getByRole("button", { name: "Pausar esta tarefa" })).toBeDefined();
+  });
+
+  it("com o aceite dado, mostra a data em vez da caixa, e a conferência volta a poder ser religada", () => {
+    montar(
+      base({
+        config: { ligado: true, modo: "observacao", aceite: ACEITE_RESPOSTA },
+        por_tarefa: base().por_tarefa!.map((t) => ({ ...t, pede_mais_que_o_aceite: false })),
+      }),
+    );
+    expect(screen.queryByTestId("jev-aceite-resposta-texto")).toBeNull();
+    expect(screen.getByTestId("jev-aceite-resposta-dado").textContent).toContain("aceito pela empresa em");
+    const conferencia = screen.getByTestId("jev-tarefa-conferencia");
+    expect(within(conferencia).getByRole("button", { name: "Religar" })).toBeDefined();
+  });
+
+  it("quem não é administrador lê o texto, mas não vê caixa nem botão", () => {
+    montar(base({ pode_editar: false }));
+    const caixa = screen.getByTestId("jev-aceite-resposta");
+    expect(within(caixa).queryByRole("checkbox")).toBeNull();
+    expect(within(caixa).queryByRole("button")).toBeNull();
+    expect(caixa.textContent).toContain("Só o administrador pode dar este aceite.");
+  });
+
+  it("em espanhol, a caixa e a marca de provisório saem em espanhol", () => {
+    montar(base(), { idioma: "es" });
+    const caixa = screen.getByTestId("jev-aceite-resposta");
+    expect(caixa.textContent).toContain("[TEXTO PROVISIONAL");
+    expect(within(caixa).getByRole("button", { name: "Aceptar" })).toBeDefined();
+  });
+});

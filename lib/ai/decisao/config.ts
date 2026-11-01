@@ -88,6 +88,8 @@ const tarefasSchema = z.object({
   humano: tarefaGravadaSchema.optional().catch(tarefaIlegivel),
   opt_out: tarefaGravadaSchema.optional().catch(tarefaIlegivel),
   followup: tarefaGravadaSchema.optional().catch(tarefaIlegivel),
+  triagem: tarefaGravadaSchema.optional().catch(tarefaIlegivel),
+  conferencia: tarefaGravadaSchema.optional().catch(tarefaIlegivel),
 });
 
 export const idDaTarefaSchema = tarefasSchema.keyof();

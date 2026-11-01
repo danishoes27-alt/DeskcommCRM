@@ -9591,6 +9591,57 @@ export const DICIONARIO: Traducoes = {
     es: "TypeSafe AI no informa por cuánto tiempo guarda ese contenido.",
   },
   "Para aceitar, confirme que você está de acordo.": { es: "Para aceptar, confirma que estás de acuerdo." },
+  "Aguarda o seu aceite": {
+    es: "Espera tu aceptación",
+  },
+  "Esta tarefa lê a resposta da IA, e você ainda não aceitou esse envio. Marque o aceite logo abaixo para poder ligá-la.": {
+    es: "Esta tarea lee la respuesta de la IA y aún no aceptaste ese envío. Marca la aceptación aquí abajo para poder activarla.",
+  },
+  "Conferir a resposta da IA antes de enviar": {
+    es: "Revisar la respuesta de la IA antes de enviarla",
+  },
+  "Envio das respostas da IA aceito pela empresa em": {
+    es: "Envío de las respuestas de la IA aceptado por la empresa el",
+  },
+  "Concordo com o envio do rascunho das respostas da IA e dos trechos que ela consultou, sem a mensagem do cliente, para a TypeSafe AI, nos Estados Unidos.": {
+    es: "Estoy de acuerdo con el envío del borrador de las respuestas de la IA y de los fragmentos que consultó, sin el mensaje del cliente, a TypeSafe AI, en Estados Unidos.",
+  },
+  "Aceitar": {
+    es: "Aceptar",
+  },
+  "O envio das respostas da IA foi aceito.": {
+    es: "El envío de las respuestas de la IA fue aceptado.",
+  },
+  "Só o administrador pode dar este aceite.": {
+    es: "Solo el administrador puede dar esta aceptación.",
+  },
+  "Esta tarefa precisa que você aceite o envio das respostas da IA para a TypeSafe AI. Marque o aceite no cartão do Jev antes de ligá-la.": {
+    es: "Esta tarea necesita que aceptes el envío de las respuestas de la IA a TypeSafe AI. Marca la aceptación en la tarjeta de Jev antes de activarla.",
+  },
+  "Entender o pedido do cliente": {
+    es: "Entender el pedido del cliente",
+  },
+  "Lê a mensagem do cliente, sozinha, e anota se é conserto, venda, impressão ou outro assunto, e se a IA pode atender, pedir um dado que falta ou avisar a equipe. Ele nunca responde ao cliente.": {
+    es: "Lee el mensaje del cliente, solo, y anota si es reparación, venta, impresión u otro asunto, y si la IA puede atender, pedir un dato que falta o avisar al equipo. Nunca le responde al cliente.",
+  },
+  "Nesta versão, o Jev só observa esta tarefa: ele anota o que entendeu de cada mensagem do cliente, mas não muda nada no atendimento. Primeiro se mede, com mensagens de verdade, o quanto ele acerta.": {
+    es: "En esta versión, Jev solo observa esta tarea: anota lo que entendió de cada mensaje del cliente, pero no cambia nada en la atención. Primero se mide, con mensajes reales, cuánto acierta.",
+  },
+  "dias, o Jev anotou o que entendeu da mensagem do cliente em": {
+    es: "días, Jev anotó lo que entendió del mensaje del cliente en",
+  },
+  "Lê o rascunho da resposta da IA e os trechos que ela consultou — nunca a mensagem do cliente — e anota se a resposta traz preço, prazo, garantia ou aprovação sem fonte. Ele só pode ser mais rígido que as regras da casa, nunca liberar o que elas seguraram.": {
+    es: "Lee el borrador de la respuesta de la IA y los fragmentos que consultó — nunca el mensaje del cliente — y anota si la respuesta trae precio, plazo, garantía o aprobación sin fuente. Solo puede ser más estricto que las reglas de la casa, nunca liberar lo que ellas retuvieron.",
+  },
+  "Nesta versão, o Jev só observa esta tarefa: ele anota o que acharia de cada resposta da IA, mas não segura nenhuma. Primeiro se mede, com respostas de verdade, o quanto ele acerta.": {
+    es: "En esta versión, Jev solo observa esta tarea: anota lo que opinaría de cada respuesta de la IA, pero no retiene ninguna. Primero se mide, con respuestas reales, cuánto acierta.",
+  },
+  "dias, o Jev e as regras da casa chegaram ao mesmo veredito sobre a resposta da IA em": {
+    es: "días, Jev y las reglas de la casa llegaron al mismo veredicto sobre la respuesta de la IA en",
+  },
+  "respostas.": {
+    es: "respuestas.",
+  },
   "Para ligar o Jev, cole a chave dele em Credenciais e espere o teste da chave passar.": {
     es: "Para activar Jev, pega su clave en Credenciales y espera a que pase la prueba de la clave.",
   },

@@ -41,7 +41,7 @@ import { descreverErroDeValidacao } from "@/lib/ai/credenciais/erro-de-validacao
 import type { EstadoDaTarefa } from "@/lib/ai/decisao/config";
 import { PROVEDOR_DO_JEV } from "@/lib/ai/decisao/credencial";
 import { TAREFA_DO_CLIMA, TAREFAS_DO_JEV, tarefaPodeDecidir } from "@/lib/ai/decisao/tarefas";
-import { O_QUE_FAZER_DO_JEV } from "@/lib/ai/decisao/textos";
+import { O_QUE_FAZER_DO_JEV, textoDoAceiteDeResposta } from "@/lib/ai/decisao/textos";
 
 /** O corpo de `GET /api/v1/ai/jev` (`app/api/v1/ai/jev/route.ts`). */
 export interface DadosDoJev {
@@ -56,7 +56,11 @@ export interface DadosDoJev {
   config: {
     ligado: boolean;
     modo: "observacao" | "decide";
-    aceite: { em: string; por: string } | null;
+    /**
+     * `alcance` ausente é o aceite da onda 1 (cada mensagem, sozinha); `resposta`
+     * cobre também o rascunho da IA e os trechos consultados (T01).
+     */
+    aceite: { em: string; por: string; alcance?: "mensagem" | "resposta" | "conversa"; versao?: number } | null;
   };
   tarefas: Array<{ id: string; rotulo: string; oQueOJevFaz: string }>;
   /**
@@ -102,6 +106,14 @@ export interface TarefaNoCartao {
   ao_ligar?: EstadoDaTarefa;
   /** Começou sozinha e ninguém escolheu nada ainda. */
   novo: boolean;
+  /** O que ela manda ao fornecedor. Ausente na imagem anterior. */
+  alcance?: "mensagem" | "resposta" | "conversa";
+  /**
+   * Ela manda mais ao fornecedor do que o aceite da empresa cobre: a rota recusa
+   * ligá-la, e o cartão mostra a caixa do aceite em vez do botão. Ausente na
+   * imagem anterior.
+   */
+  pede_mais_que_o_aceite?: boolean;
   /**
    * A concordância dela com a IA de sempre nos últimos dias. Ausente na
    * resposta da imagem anterior: lá só o clima a tinha, em `numeros.observacao`.
@@ -865,7 +877,9 @@ function Ligado({
                 >
                   {/* "Pausada", o verbo do botão: "Desligada" ao lado de "Pausar
                       esta tarefa" e do "Desligar" do Jev inteiro confundia os dois. */}
-                  {tarefa.estado === "desligada"
+                  {tarefa.pede_mais_que_o_aceite === true
+                    ? t("Aguarda o seu aceite")
+                    : tarefa.estado === "desligada"
                     ? t("Pausada")
                     : parada(tarefa)
                       ? t("Não roda")
@@ -1046,7 +1060,7 @@ function Ligado({
                     A exceção é o clima sem a IA de sempre: não há com quem
                     comparar, e o worker o deixa decidir sozinho (DEC-012 #5). O
                     aviso vem ANTES do clique. */}
-                {tarefa.estado === "desligada" && (
+                {tarefa.estado === "desligada" && tarefa.pede_mais_que_o_aceite !== true && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -1057,6 +1071,13 @@ function Ligado({
                   </Button>
                 )}
               </div>
+            )}
+            {rodando && tarefa.pede_mais_que_o_aceite === true && (
+              <p className="text-sm text-muted-foreground" data-testid={`jev-aguarda-aceite-${tarefa.id}`}>
+                {t(
+                  "Esta tarefa lê a resposta da IA, e você ainda não aceitou esse envio. Marque o aceite logo abaixo para poder ligá-la.",
+                )}
+              </p>
             )}
             {dados.pode_editar && rodando && tarefa.estado === "desligada" && climaSemIa && (
               <p className="text-xs text-muted-foreground" data-testid="jev-religar-clima-sozinho">
@@ -1069,6 +1090,8 @@ function Ligado({
           );
         })}
       </ul>
+
+      <AceiteDeResposta dados={dados} enviando={enviando} mudar={mudar} />
 
       <div>
         <p className="text-xs text-muted-foreground">
@@ -1305,6 +1328,70 @@ function PercebidosDaTarefa({
             );
           })}
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * O aceite de `resposta` (T01/T02): o administrador concorda em mandar o
+ * rascunho da resposta da IA e os trechos que ela consultou — nunca a mensagem
+ * do cliente — para a TypeSafe AI. Mostra o texto inteiro (hoje PROVISÓRIO, e a
+ * marca vem junto) antes da caixa. Quem não é administrador só lê o estado.
+ */
+function AceiteDeResposta({
+  dados,
+  enviando,
+  mudar,
+}: {
+  dados: DadosDoJev;
+  enviando: boolean;
+  mudar: (corpo: Record<string, unknown>, sucesso: string) => Promise<void>;
+}) {
+  const t = useT();
+  const tagDoIdioma = useTagDeIdioma();
+  const [concordo, setConcordo] = useState(false);
+  const aceite = dados.config.aceite;
+  if (aceite === null) return null;
+  const cobre = aceite.alcance === "resposta" || aceite.alcance === "conversa";
+  return (
+    <div className="space-y-2 rounded-md border border-border p-3 text-sm" data-testid="jev-aceite-resposta">
+      <p className="font-medium">{t("Conferir a resposta da IA antes de enviar")}</p>
+      {cobre ? (
+        <p className="text-xs text-muted-foreground" data-testid="jev-aceite-resposta-dado">
+          {t("Envio das respostas da IA aceito pela empresa em")} {new Date(aceite.em).toLocaleDateString(tagDoIdioma)}.
+        </p>
+      ) : (
+        <>
+          <p data-testid="jev-aceite-resposta-texto">{textoDoAceiteDeResposta(t)}</p>
+          {dados.pode_editar ? (
+            <>
+              <div className="flex items-start gap-2">
+                <input
+                  id="jev-aceite-resposta"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
+                  checked={concordo}
+                  onChange={(e) => setConcordo(e.target.checked)}
+                />
+                <label htmlFor="jev-aceite-resposta">
+                  {t(
+                    "Concordo com o envio do rascunho das respostas da IA e dos trechos que ela consultou, sem a mensagem do cliente, para a TypeSafe AI, nos Estados Unidos.",
+                  )}
+                </label>
+              </div>
+              <Button
+                size="sm"
+                disabled={enviando || !concordo}
+                onClick={() => void mudar({ aceite_resposta: true }, t("O envio das respostas da IA foi aceito."))}
+              >
+                {t("Aceitar")}
+              </Button>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">{t("Só o administrador pode dar este aceite.")}</p>
+          )}
+        </>
       )}
     </div>
   );

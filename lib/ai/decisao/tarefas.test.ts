@@ -27,6 +27,7 @@ import {
   TAREFA_DO_PEDIDO_PARA_PARAR,
   TAREFA_DO_FOLLOWUP,
   tarefaPodeDecidir,
+  tarefaPedeMaisQueOAceite,
   tarefaSemFluxo,
   type TarefaDoJev,
 } from "@/lib/ai/decisao/tarefas";
@@ -345,8 +346,8 @@ describe("a tarefa do follow-up", () => {
     expect(rotuloDaChamadaDoJev("followup_classify")).toBe(TAREFA_DO_FOLLOWUP.rotulo);
   });
 
-  it("tarefaPodeDecidir: só a do follow-up não pode", () => {
-    expect(TAREFAS_DO_JEV.filter((t) => !tarefaPodeDecidir(t)).map((t) => t.id)).toEqual([TAREFA_DO_FOLLOWUP.id]);
+  it("tarefaPodeDecidir: só as que só observam não podem (follow-up, triagem e conferência)", () => {
+    expect(TAREFAS_DO_JEV.filter((t) => !tarefaPodeDecidir(t)).map((t) => t.id)).toEqual([TAREFA_DO_FOLLOWUP.id, "triagem", "conferencia"]);
   });
 
   it("nasce observando para quem já tem o Jev ligado (R7), com o selo Nova", () => {
@@ -393,5 +394,82 @@ describe("a tarefa do follow-up", () => {
       expect(tarefaSemFluxo(TAREFA_DO_FOLLOWUP, true)).toBe(false);
       expect(TAREFAS_DO_JEV.filter((t) => tarefaSemFluxo(t, false)).map((t) => t.id)).toEqual([TAREFA_DO_FOLLOWUP.id]);
     });
+  });
+});
+
+describe("as tarefas novas da r3: triagem e conferência (T02)", () => {
+  const ACEITE_MENSAGEM = { ...ACEITE, alcance: "mensagem" };
+  const ACEITE_RESPOSTA = { ...ACEITE, alcance: "resposta", versao: 2 };
+  const ligadoCom = (aceite: unknown, tarefas?: unknown) => config({ ligado: true, aceite, tarefas });
+
+  it("as duas estão na lista, com nome e o que fazem em português, e sem ponto", () => {
+    for (const id of ["triagem", "conferencia"]) {
+      const t = TAREFAS_DO_JEV.find((x) => x.id === id);
+      expect(t, id).toBeDefined();
+      expect(t?.rotulo.length).toBeGreaterThan(5);
+      expect(t?.oQueFaz.length).toBeGreaterThan(20);
+      expect(t?.ponto).toBeUndefined();
+    }
+  });
+
+  it("a conferência pede `resposta`, a triagem pede `mensagem`", () => {
+    expect(TAREFAS_DO_JEV.find((t) => t.id === "conferencia")?.alcance).toBe("resposta");
+    expect(TAREFAS_DO_JEV.find((t) => t.id === "triagem")?.alcance).toBe("mensagem");
+  });
+
+  it("a conferência NUNCA nasce observando: nem com o aceite de `mensagem`, nem com o de `resposta` sem escolha gravada", () => {
+    const conferencia = TAREFAS_DO_JEV.find((t) => t.id === "conferencia")!;
+    for (const aceite of [ACEITE, ACEITE_MENSAGEM, ACEITE_RESPOSTA, { ...ACEITE_RESPOSTA, alcance: "conversa" }]) {
+      expect(estadoEfetivoDaTarefa(ligadoCom(aceite), conferencia), JSON.stringify(aceite)).toBe("desligada");
+      expect(estadoAoLigar(ligadoCom(aceite), conferencia), JSON.stringify(aceite)).toBe("desligada");
+      expect(tarefaEhNova(ligadoCom(aceite), conferencia)).toBe(false);
+    }
+  });
+
+  it("a conferência gravada como observando só vale com o aceite de `resposta` (falha fechada)", () => {
+    const conferencia = TAREFAS_DO_JEV.find((t) => t.id === "conferencia")!;
+    const gravada = { conferencia: { estado: "observando" } };
+    expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_MENSAGEM, gravada), conferencia)).toBe("desligada");
+    expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_RESPOSTA, gravada), conferencia)).toBe("observando");
+  });
+
+  it("só observam: um `decidindo` gravado vale observando, e nenhuma das duas pode decidir ainda", () => {
+    const conferencia = TAREFAS_DO_JEV.find((t) => t.id === "conferencia")!;
+    const triagem = TAREFAS_DO_JEV.find((t) => t.id === "triagem")!;
+    expect(tarefaPodeDecidir(conferencia)).toBe(false);
+    expect(tarefaPodeDecidir(triagem)).toBe(false);
+    expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_RESPOSTA, { conferencia: { estado: "decidindo" } }), conferencia)).toBe(
+      "observando",
+    );
+    expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_MENSAGEM, { triagem: { estado: "decidindo" } }), triagem)).toBe(
+      "observando",
+    );
+  });
+
+  it("a triagem, no alcance `mensagem`, começa observando sozinha (a trava é o interruptor da instalação, T03)", () => {
+    const triagem = TAREFAS_DO_JEV.find((t) => t.id === "triagem")!;
+    expect(estadoEfetivoDaTarefa(ligadoCom(ACEITE_MENSAGEM), triagem)).toBe("observando");
+  });
+
+  it("tarefaPedeMaisQueOAceite: só quando há aceite e ele não cobre o alcance", () => {
+    const conferencia = TAREFAS_DO_JEV.find((t) => t.id === "conferencia")!;
+    const triagem = TAREFAS_DO_JEV.find((t) => t.id === "triagem")!;
+    expect(tarefaPedeMaisQueOAceite(ligadoCom(ACEITE), conferencia)).toBe(true);
+    expect(tarefaPedeMaisQueOAceite(ligadoCom(ACEITE_MENSAGEM), conferencia)).toBe(true);
+    expect(tarefaPedeMaisQueOAceite(ligadoCom(ACEITE_RESPOSTA), conferencia)).toBe(false);
+    expect(tarefaPedeMaisQueOAceite(ligadoCom(ACEITE), triagem)).toBe(false);
+    // Sem aceite o Jev está desligado: a pergunta não se aplica.
+    expect(tarefaPedeMaisQueOAceite(config({}), conferencia)).toBe(false);
+  });
+
+  it("as chaves gravadas são lidas, e um valor ruim desliga só a dela", () => {
+    const c = config({
+      ligado: true,
+      aceite: ACEITE_RESPOSTA,
+      tarefas: { clima: { estado: "observando" }, triagem: { estado: "lixo" }, conferencia: { estado: "observando" } },
+    });
+    expect(estadoGravadoDaTarefa(c, "triagem")).toBe("desligada");
+    expect(estadoGravadoDaTarefa(c, "conferencia")).toBe("observando");
+    expect(estadoGravadoDaTarefa(c, "clima")).toBe("observando");
   });
 });

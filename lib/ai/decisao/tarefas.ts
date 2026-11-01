@@ -90,7 +90,8 @@ interface PodeDecidir {
  * uma frase que ninguém pode ver é frase que ninguém confere.
  */
 interface SoObserva {
-  ponto: string;
+  /** Sem ponto = tarefa que não nasce de um ponto do registro (`triagem`, `conferencia`). */
+  ponto?: string;
   soObserva: string;
   aoDecidir?: undefined;
   aoConfirmarDecidir?: undefined;
@@ -306,6 +307,58 @@ export const TAREFA_DO_FOLLOWUP = {
     "Lê a resposta do cliente à mensagem do follow-up, sozinha, e diz em qual das saídas que você criou no fluxo ela se encaixa.",
 } as const satisfies TarefaDoJev;
 
+/**
+ * A TRIAGEM, o Jev ANTES da IA (`docs/14-spec-jev.md`, seção 3.2): lê só o texto
+ * que o cliente digitou e rotula a categoria e o destino. Não há mecanismo de
+ * hoje para comparar (a triagem antiga só grava e ninguém a lê), por isso é
+ * `novo`. Sem ponto: as perguntas dela são feitas por `./triagem.ts` (T17).
+ *
+ * `soObserva` até a T18 ligar o resultado ao turno. Quem tira a marca é a tarefa
+ * que dá efeito a ela, e a saída de `observando` ainda exige as duas semanas e o
+ * corpus em português (D7 e D16).
+ */
+export const TAREFA_DA_TRIAGEM = {
+  id: "triagem",
+  primitiva: "choice",
+  alcance: "mensagem",
+  familia: "novo",
+  soObserva:
+    "Nesta versão, o Jev só observa esta tarefa: ele anota o que entendeu de cada mensagem do cliente, mas não muda nada no atendimento. Primeiro se mede, com mensagens de verdade, o quanto ele acerta.",
+  concordancia: {
+    antes: "dias, o Jev anotou o que entendeu da mensagem do cliente em",
+    depois: "mensagens.",
+  },
+  rotulo: "Entender o pedido do cliente",
+  oQueFaz:
+    "Lê a mensagem do cliente, sozinha, e anota se é conserto, venda, impressão ou outro assunto, e se a IA pode atender, pedir um dado que falta ou avisar a equipe. Ele nunca responde ao cliente.",
+} as const satisfies TarefaDoJev;
+
+/**
+ * A CONFERÊNCIA, o Jev DEPOIS da IA (spec 14, seção 3.3): lê o rascunho da
+ * resposta e os trechos que a IA consultou, SEM a mensagem do cliente
+ * (alcance `resposta`), e só pode APERTAR o que as regras locais já seguram
+ * (família `soma`). Pede mais do que o aceite da onda 1 cobre: nasce DESLIGADA
+ * (item 5 do cabeçalho) e só liga depois do aceite do administrador.
+ *
+ * `soObserva` até a T11/T13 darem efeito à conferência (cadeia `before_send` e
+ * segurar a resposta).
+ */
+export const TAREFA_DA_CONFERENCIA = {
+  id: "conferencia",
+  primitiva: "noul",
+  alcance: "resposta",
+  familia: "soma",
+  soObserva:
+    "Nesta versão, o Jev só observa esta tarefa: ele anota o que acharia de cada resposta da IA, mas não segura nenhuma. Primeiro se mede, com respostas de verdade, o quanto ele acerta.",
+  concordancia: {
+    antes: "dias, o Jev e as regras da casa chegaram ao mesmo veredito sobre a resposta da IA em",
+    depois: "respostas.",
+  },
+  rotulo: "Conferir a resposta da IA antes de enviar",
+  oQueFaz:
+    "Lê o rascunho da resposta da IA e os trechos que ela consultou — nunca a mensagem do cliente — e anota se a resposta traz preço, prazo, garantia ou aprovação sem fonte. Ele só pode ser mais rígido que as regras da casa, nunca liberar o que elas seguraram.",
+} as const satisfies TarefaDoJev;
+
 export const TAREFAS_DO_JEV: readonly TarefaDoJev[] = [
   TAREFA_DO_CLIMA,
   TAREFA_DA_MANIPULACAO,
@@ -313,6 +366,8 @@ export const TAREFAS_DO_JEV: readonly TarefaDoJev[] = [
   TAREFA_DO_PEDIDO_DE_HUMANO,
   TAREFA_DO_PEDIDO_PARA_PARAR,
   TAREFA_DO_FOLLOWUP,
+  TAREFA_DA_TRIAGEM,
+  TAREFA_DA_CONFERENCIA,
 ];
 
 /**
@@ -399,6 +454,16 @@ export function estadoEfetivoDaTarefa(config: ConfigDoJev, tarefa: TarefaNaRegra
  */
 export function estadoAoLigar(config: ConfigDoJev, tarefa: TarefaNaRegra): EstadoDaTarefa {
   return estadoSobOAceite(config, tarefa, config.aceite?.alcance ?? "mensagem");
+}
+
+/**
+ * A tarefa pede mais do que o aceite da empresa cobre (a conferência pede
+ * `resposta`; o aceite da onda 1 é `mensagem`)? Com o Jev sem aceite nenhum a
+ * pergunta não se aplica: ele está desligado de qualquer jeito. É a mesma régua
+ * de `estadoSobOAceite`, dita como pergunta para a rota recusar e a tela explicar.
+ */
+export function tarefaPedeMaisQueOAceite(config: ConfigDoJev, tarefa: Pick<TarefaDoJev, "alcance">): boolean {
+  return config.aceite !== null && ALCANCES.indexOf(tarefa.alcance) > ALCANCES.indexOf(config.aceite.alcance ?? "mensagem");
 }
 
 /** Começou sozinha e ninguém escolheu nada ainda: é o selo "Novo" do cartão. */

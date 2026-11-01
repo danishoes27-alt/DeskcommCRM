@@ -668,6 +668,8 @@ describe("o Jev por tarefa na rota", () => {
       expect.objectContaining({ id: "humano", ponto: null, estado: "desligada", novo: false }),
       expect.objectContaining({ id: "opt_out", ponto: null, estado: "desligada", novo: false }),
       expect.objectContaining({ id: "followup", ponto: "followup_classify", estado: "desligada", novo: false }),
+      expect.objectContaining({ id: "triagem", ponto: null, estado: "desligada", novo: false }),
+      expect.objectContaining({ id: "conferencia", ponto: null, estado: "desligada", novo: false }),
     ]);
 
     estado.settings = { jev: { ligado: true, modo: "decide", aceite: ACEITE_ANTIGO } };
@@ -766,6 +768,8 @@ describe("o Jev por tarefa na rota", () => {
       ["humano", false],
       ["opt_out", false],
       ["followup", false],
+      ["triagem", false],
+      ["conferencia", false],
     ]);
     estado.camadas = [
       { organization_id: ORG, layer: "jailbreak", enabled: false },
@@ -778,6 +782,8 @@ describe("o Jev por tarefa na rota", () => {
       ["humano", false],
       ["opt_out", false],
       ["followup", false],
+      ["triagem", false],
+      ["conferencia", false],
     ]);
   });
 
@@ -792,6 +798,8 @@ describe("o Jev por tarefa na rota", () => {
       ["humano", false],
       ["opt_out", false],
       ["followup", false],
+      ["triagem", false],
+      ["conferencia", false],
     ]);
     // O ativo de OUTRA empresa não conta — o filtro é o da sessão.
     const intencoes = (n: number) => [{ count: n }];
@@ -803,6 +811,8 @@ describe("o Jev por tarefa na rota", () => {
       ["humano", false],
       ["opt_out", false],
       ["followup", false],
+      ["triagem", false],
+      ["conferencia", false],
     ]);
     // Ativo, mas sem intenção nenhuma (o estado logo depois de criar um) ou com
     // mais do que cabe numa pergunta: o Jev nunca é perguntado, e "Só observa"
@@ -819,6 +829,8 @@ describe("o Jev por tarefa na rota", () => {
       ["humano", false],
       ["opt_out", false],
       ["followup", false],
+      ["triagem", false],
+      ["conferencia", false],
     ]);
     // E o cartão segue dizendo que a tarefa observa: é o que ela faz quando há roteador.
     const roteador = (await ler()).corpo.data.por_tarefa.find((t: { id: string }) => t.id === "roteador");
@@ -991,7 +1003,7 @@ describe("o Jev por tarefa na rota", () => {
     vi.mocked(haQuemAtendaAOrganizacao).mockResolvedValue(haQuem);
     const d = (await ler()).corpo.data;
     const motivos = Object.fromEntries(d.por_tarefa.map((t: { id: string; sem_atendente: unknown }) => [t.id, t.sem_atendente]));
-    expect(motivos).toEqual({ clima: null, manipulacao: null, roteador: null, humano: motivo, opt_out: motivo, followup: null });
+    expect(motivos).toEqual({ clima: null, manipulacao: null, roteador: null, humano: motivo, opt_out: motivo, followup: null, triagem: null, conferencia: null });
     // A organização é a da sessão, e a pergunta é a do portão do worker.
     expect(vi.mocked(haQuemAtendaAOrganizacao).mock.calls.map(([, org]) => org)).toEqual([ORG]);
   });
@@ -1281,5 +1293,75 @@ describe("PATCH /api/v1/ai/jev — o aceite de `resposta`", () => {
     const aceite = (estado.settings.jev as Linha).aceite as Linha;
     expect(aceite.alcance).toBe("mensagem");
     expect(aceite).not.toHaveProperty("versao");
+  });
+});
+
+describe("as tarefas triagem e conferência na rota (T02)", () => {
+  const DE_MENSAGEM = { em: "2026-10-15T12:00:00.000Z", por: USUARIO, alcance: "mensagem" };
+  const DE_RESPOSTA = { em: "2026-10-15T12:00:00.000Z", por: USUARIO, alcance: "resposta", versao: 2 };
+  const tarefa = async (id: string) =>
+    (await ler()).corpo.data.por_tarefa.find((t: { id: string }) => t.id === id);
+
+  it("GET: a conferência com o aceite de `mensagem` pede mais que o aceite e fica desligada; a triagem observa", async () => {
+    estado.settings = { jev: { ligado: true, aceite: DE_MENSAGEM } };
+    expect(await tarefa("conferencia")).toMatchObject({
+      alcance: "resposta",
+      pede_mais_que_o_aceite: true,
+      estado: "desligada",
+      novo: false,
+      ao_ligar: "desligada",
+    });
+    expect(await tarefa("triagem")).toMatchObject({
+      alcance: "mensagem",
+      pede_mais_que_o_aceite: false,
+      estado: "observando",
+      novo: true,
+    });
+  });
+
+  it("GET: com o aceite de `resposta` a conferência deixa de pedir mais, mas continua DESLIGADA até alguém religar", async () => {
+    estado.settings = { jev: { ligado: true, aceite: DE_RESPOSTA } };
+    expect(await tarefa("conferencia")).toMatchObject({ pede_mais_que_o_aceite: false, estado: "desligada" });
+  });
+
+  it("PATCH: ligar a conferência sem o aceite de `resposta` é recusado (422), sem escrever nem auditar", async () => {
+    estado.settings = { jev: { ligado: true, modo: "observacao", aceite: DE_MENSAGEM } };
+    const recusado = await mudar({ tarefa: "conferencia", estado: "observando" });
+    expect(recusado.status).toBe(422);
+    expect(recusado.corpo.error.code).toBe("jev_tarefa_pede_mais_aceite");
+    // Decidir é recusado antes, porque nesta versão ela só observa.
+    expect((await mudar({ tarefa: "conferencia", estado: "decidindo" })).status).toBe(422);
+    expect(escritas()).toEqual([]);
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it("PATCH: pausar a conferência sempre pode; e a triagem (alcance `mensagem`) liga normalmente (controle)", async () => {
+    estado.settings = { jev: { ligado: true, modo: "observacao", aceite: DE_MENSAGEM } };
+    expect((await mudar({ tarefa: "conferencia", estado: "desligada" })).status).toBe(200);
+    expect((await mudar({ tarefa: "triagem", estado: "observando" })).status).toBe(200);
+    expect((estado.settings.jev as Linha).tarefas).toMatchObject({
+      conferencia: { estado: "desligada" },
+      triagem: { estado: "observando" },
+    });
+  });
+
+  it("PATCH: com o aceite de `resposta`, a conferência liga observando e a rota grava; decidir continua recusado (só observa)", async () => {
+    estado.settings = { jev: { ligado: true, modo: "observacao", aceite: DE_RESPOSTA } };
+    expect((await mudar({ tarefa: "conferencia", estado: "observando" })).status).toBe(200);
+    expect((estado.settings.jev as Linha).tarefas).toMatchObject({ conferencia: { estado: "observando" } });
+    const decidir = await mudar({ tarefa: "conferencia", estado: "decidindo" });
+    expect(decidir.status).toBe(422);
+    expect(decidir.corpo.error.code).toBe("jev_tarefa_so_observa");
+  });
+
+  it("PATCH: a recusa sai no idioma de quem pede", async () => {
+    estado.settings = { jev: { ligado: true, modo: "observacao", aceite: DE_MENSAGEM } };
+    vi.mocked(requireRole).mockResolvedValueOnce({
+      ok: true,
+      user: { id: USUARIO, idioma: "es" },
+      org: { orgId: ORG, role: "admin" },
+    } as unknown as Awaited<ReturnType<typeof requireRole>>);
+    const { corpo } = await mudar({ tarefa: "conferencia", estado: "observando" });
+    expect(corpo.error.message).toMatch(/^Esta tarea necesita que aceptes el envío/);
   });
 });

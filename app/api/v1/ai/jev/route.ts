@@ -69,6 +69,7 @@ import {
   TAREFA_DO_CLIMA,
   TAREFAS_DO_JEV,
   tarefaEhNova,
+  tarefaPedeMaisQueOAceite,
   algumFluxoQueClassifica,
   algumRoteadorQuePergunta,
   INSCRICAO_ENCERRADA,
@@ -169,6 +170,11 @@ function porTarefa(
     estado: estadoEfetivoDaTarefa(c, t),
     ao_ligar: estadoAoLigar(c, t),
     novo: tarefaEhNova(c, t),
+    // O que ela manda ao fornecedor, e se o aceite da empresa já cobre: a
+    // conferência pede `resposta`, e a tela mostra a caixa do aceite em vez do
+    // botão de religar enquanto o administrador não concordar.
+    alcance: t.alcance,
+    pede_mais_que_o_aceite: tarefaPedeMaisQueOAceite(c, t),
     observacao: observacao[t.id] ?? null,
     percebidos: percebidos[t.id] ?? null,
     // A camada de segurança que ela acompanha está desligada: o turno não
@@ -652,6 +658,26 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   const soObserva = pedido ? TAREFAS_DO_JEV.find((x) => x.id === pedido.tarefa)?.soObserva : undefined;
   if (pedido?.estado === "decidindo" && soObserva !== undefined) {
     return fail("jev_tarefa_so_observa", t(soObserva), 422, { requestId });
+  }
+  // A tarefa que manda ao fornecedor mais do que o aceite cobre não se liga: o
+  // estado gravado seria letra morta (o estado efetivo segue desligada) e a
+  // tela diria "religada" para uma tarefa que não roda. Pausar sempre pode.
+  const alcanceDaTarefa = pedido ? TAREFAS_DO_JEV.find((x) => x.id === pedido.tarefa)?.alcance : undefined;
+  if (
+    pedido &&
+    pedido.estado !== "desligada" &&
+    alcanceDaTarefa !== undefined &&
+    alcanceDaTarefa !== "mensagem" &&
+    !aceiteCobre(atual.aceite, alcanceDaTarefa)
+  ) {
+    return fail(
+      "jev_tarefa_pede_mais_aceite",
+      t(
+        "Esta tarefa precisa que você aceite o envio das respostas da IA para a TypeSafe AI. Marque o aceite no cartão do Jev antes de ligá-la.",
+      ),
+      422,
+      { requestId },
+    );
   }
   const estadoAnterior = pedido ? estadoGravadoDaTarefa(atual, pedido.tarefa) : undefined;
   if (pedido && pedido.estado !== estadoAnterior) mudanca.tarefas = { [pedido.tarefa]: pedido.estado };

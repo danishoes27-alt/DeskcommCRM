@@ -1,0 +1,40 @@
+# Progresso 16 — r3: Jev antes e depois da IA
+
+> Memória do trabalho da r3 (T02 em diante). Releia este arquivo ao retomar a sessão.
+> Spec: `docs/14-spec-jev.md`. Plano: `docs/15-plano-r3-jev.md`. Branch `celuzap-jev`. **Sem push.**
+> Linha de base de testes: 51 falhas antigas por ambiente Windows (bash ausente, PDF, scripts de git) e 3 testes com timeout sob carga (drain-loop, knobs-da-versao, sem-marcador-de-conflito).
+
+## Decisões desta rodada (do dono)
+
+- O texto provisório do aceite da T01 **fica como está**, inclusive a frase de retenção.
+- A caixa de aceite do consentimento `resposta` na tela entra na T02 (feito).
+- Quando a T06 (máscara) estiver pronta, conferir se a frase do aceite "nome, telefone e e-mail não são enviados" passou a ser verdadeira; se não for, avisar e ajustar o texto.
+
+## Tarefas
+
+| Tarefa | Commit | Testes | Estado |
+|---|---|---|---|
+| T01 alcance `resposta` | `93b902658` | (rodada anterior) | feita |
+| T02 registrar `triagem` e `conferencia` | ver `git log` (`feat(jev): T02 ...`) | ver abaixo | feita |
+
+### T02 — registrar as tarefas `triagem` e `conferencia`
+
+- **O que mudou:** `lib/ai/decisao/config.ts` (duas chaves novas em `tarefas`, cada uma com `.catch`), `lib/ai/decisao/tarefas.ts` (`TAREFA_DA_TRIAGEM`, `TAREFA_DA_CONFERENCIA`, `tarefaPedeMaisQueOAceite`; `SoObserva.ponto` virou opcional), `app/api/v1/ai/jev/route.ts` (`por_tarefa` ganha `alcance` e `pede_mais_que_o_aceite`; o PATCH recusa ligar tarefa que pede mais do que o aceite cobre, código `jev_tarefa_pede_mais_aceite`), `CartaoDoJev.tsx` (caixa de aceite de `resposta` com o texto provisório inteiro, selo "Aguarda o seu aceite", sem botão Religar enquanto falta o aceite), `lib/i18n/dicionario.ts` (espanhol de tudo), `lib/api/errors.ts`.
+- **Decisões minhas:**
+  - As duas nascem **`soObserva`** (nenhuma pode "decidir" nesta versão). Quem tira a marca é a tarefa que dá efeito a elas: T11/T13 (conferência) e T18/T19 (triagem). O cartão e a rota recusam `decidindo` até lá, e a saída de `observando` continua dependendo das duas semanas + corpus (D7 e D16).
+  - `triagem` é família `novo` (não há mecanismo de hoje para comparar); `conferencia` é família `soma`.
+  - A recusa de ligar a conferência sem aceite fica **na rota** (422) e também na tela (sem botão). Pausar sempre pode.
+  - A `triagem` usa o alcance `mensagem`, então, pela regra do item 5 do cabeçalho de `tarefas.ts`, **aparece observando** em empresa que já tem o Jev ligado. Nenhuma chamada sai por causa disso: o interruptor da instalação (T03) é quem barra.
+- **Atenção para a T17/T18:** `ponto.ts` (`tarefasDasPerguntas`) exige que cada pergunta de uma chamada sem ponto tenha por chave o **id de uma tarefa**. A triagem terá três perguntas (`categoria`, `destino`, `urgente`); a T17 precisa adaptar essa guarda sem enfraquecê-la (a chave da chamada continua passando pela tarefa `triagem`).
+- **Testes:** `lib/ai/decisao` + `app/api/v1/ai/jev` + `app/app/ai/providers` + i18n/estruturais: 552 + 230 verdes. `pnpm typecheck` verde. ESLint nos arquivos tocados limpo.
+
+## Pendências e coisas que só o dono pode fornecer
+
+| O quê | Quando faz falta | Tarefas |
+|---|---|---|
+| Crédito em dólar na TypeSafe e a chave da plataforma (D2 = B), colada na credencial `typesafe` de cada empresa | só para ligar de verdade em `observando` | nenhuma de código |
+| Cotação do dólar inicial (pesquisada na T23, marcada como valor inicial) | telas em reais | T23, T24 |
+| Texto jurídico final do aceite e revisão do advogado | quando chegar; não bloqueia | T01 (provisório) |
+| Texto final do aviso ao cliente ("Vou confirmar essa informação com a equipe…") | antes de publicar o Marco 1 | T15 (usa o texto provisório do plano) |
+| Corpus em português rotulado (200 mensagens, 100 rascunhos) | para sair de `observando` | portão operacional |
+| Aceite do administrador da loja piloto | para a conferência ser consultada | T01/T02 |

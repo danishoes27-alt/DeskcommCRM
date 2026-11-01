@@ -107,6 +107,9 @@ export const ApiErrorCodes = {
   // PATCH /api/v1/ai/jev pedindo `decidindo` numa tarefa que, nesta versão, só
   // observa (`soObserva` em lib/ai/decisao/tarefas.ts) — a do follow-up.
   jev_tarefa_so_observa: "jev_tarefa_so_observa",
+  // PATCH /api/v1/ai/jev ligando uma tarefa que manda ao fornecedor mais do que o
+  // aceite da empresa cobre (a conferência pede `resposta`).
+  jev_tarefa_pede_mais_aceite: "jev_tarefa_pede_mais_aceite",
 
   // 415 — tipo de mídia
   unsupported_media_type: "unsupported_media_type",
