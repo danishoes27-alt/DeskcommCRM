@@ -62,7 +62,8 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-import { chaveDaOrganizacao, decidirNoPonto } from "@/lib/ai/decisao/ponto";
+import { chaveDaOrganizacao, chaveDasTarefas, decidirNoPonto } from "@/lib/ai/decisao/ponto";
+import { TAREFA_DO_CLIMA, type TarefaDoJev } from "@/lib/ai/decisao/tarefas";
 
 /** Ligado COM aceite — o único estado em que a chave pode sair. */
 const LIGADO = {
@@ -434,6 +435,85 @@ describe("chaveDaOrganizacao — a chave do Jev daquela empresa, e só dela", ()
     );
     expect(r.ok === false && r.motivo).toBe("sem_credencial");
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * O ALCANCE `resposta` NA GUARDA CENTRAL (T01 da r3). Todo caminho até a rede
+ * passa por `chaveDasTarefas`: tarefa que pede o rascunho da IA e os trechos
+ * consultados só ganha a chave com o aceite NOVO do administrador. Sem ele,
+ * nada é lido da credencial e nada sai da máquina.
+ *
+ * Ainda não há tarefa real desse alcance (vêm na T02); a de mentira é o clima
+ * pedindo `resposta`, como os outros testes de alcance fazem.
+ */
+describe("chaveDasTarefas — o alcance `resposta` só com o aceite novo", () => {
+  const ORG_A = "33333333-3333-4333-8333-333333333333";
+  const ORG_B = "44444444-4444-4444-8444-444444444444";
+  const CREDENCIAL = { api_key_encrypted: "cifra", api_key_iv: "iv", api_key_tag: "tag" };
+  const POR = "22222222-2222-4222-8222-222222222222";
+  const DE_RESPOSTA = { tarefas: { clima: { estado: "observando" } } };
+  const PEDE_RESPOSTA: TarefaDoJev = { ...TAREFA_DO_CLIMA, alcance: "resposta" };
+
+  const jev = (aceite: unknown) => ({ jev: { ligado: true, modo: "observacao", aceite, ...DE_RESPOSTA } });
+  const ACEITE_DA_MENSAGEM = { em: "2026-09-23T12:00:00.000Z", por: POR, alcance: "mensagem" };
+  const ACEITE_DE_RESPOSTA = { em: "2026-11-01T12:00:00.000Z", por: POR, alcance: "resposta", versao: 2 };
+
+  it.each([
+    ["o aceite da onda 1 (sem alcance)", { em: "2026-09-23T12:00:00.000Z", por: POR }],
+    ["o aceite de `mensagem`", ACEITE_DA_MENSAGEM],
+    ["o aceite de `mensagem`, com a versão 1", { ...ACEITE_DA_MENSAGEM, versao: 1 }],
+    ["nenhum aceite (ligado sem aceite)", null],
+    ["um aceite de `resposta` SEM a versão nova (config ilegível)", { ...ACEITE_DE_RESPOSTA, versao: undefined }],
+  ])("com %s, a chave validada NÃO sai, e a credencial nem é lida", async (_rotulo, aceite) => {
+    banco.settings = jev(aceite);
+    banco.linha = CREDENCIAL;
+    expect(await chaveDasTarefas(ORG_A, [PEDE_RESPOSTA])).toBeNull();
+    expect(banco.chamadas).not.toContainEqual(["from", "ai_provider_credentials"]);
+    expect(avisos, "desligado é configuração, não incidente").toEqual([]);
+  });
+
+  it("com o aceite novo de `resposta`, a tarefa de resposta ganha a chave", async () => {
+    banco.settings = jev(ACEITE_DE_RESPOSTA);
+    banco.linha = CREDENCIAL;
+    expect(await chaveDasTarefas(ORG_A, [PEDE_RESPOSTA])).toBe("decifrada:cifra");
+  });
+
+  it("uma chamada que mistura a tarefa de `mensagem` e a de `resposta` é tudo ou nada", async () => {
+    banco.linha = CREDENCIAL;
+    banco.settings = jev(ACEITE_DA_MENSAGEM);
+    expect(await chaveDasTarefas(ORG_A, [TAREFA_DO_CLIMA, PEDE_RESPOSTA])).toBeNull();
+    // Com o aceite novo, o que cobre `resposta` cobre também `mensagem` (cumulativo).
+    banco.settings = jev(ACEITE_DE_RESPOSTA);
+    expect(await chaveDasTarefas(ORG_A, [TAREFA_DO_CLIMA, PEDE_RESPOSTA])).toBe("decifrada:cifra");
+  });
+
+  it("o aceite novo não mexe no que já rodava: a tarefa de `mensagem` segue ganhando a chave", async () => {
+    banco.settings = jev(ACEITE_DE_RESPOSTA);
+    banco.linha = CREDENCIAL;
+    expect(await chaveDasTarefas(ORG_A, [TAREFA_DO_CLIMA])).toBe("decifrada:cifra");
+  });
+
+  it("isolamento: o aceite da empresa A não destrava a empresa B — cada uma lê o PRÓPRIO interruptor", async () => {
+    banco.linha = CREDENCIAL;
+
+    banco.settings = jev(ACEITE_DE_RESPOSTA);
+    expect(await chaveDasTarefas(ORG_A, [PEDE_RESPOSTA])).toBe("decifrada:cifra");
+
+    banco.chamadas.length = 0;
+    banco.settings = jev(ACEITE_DA_MENSAGEM);
+    expect(await chaveDasTarefas(ORG_B, [PEDE_RESPOSTA])).toBeNull();
+    expect(banco.chamadas).toContainEqual(["eq", "id", ORG_B]);
+    expect(banco.chamadas).not.toContainEqual(["eq", "id", ORG_A]);
+    // E a credencial da empresa A não foi nem consultada para a B.
+    expect(banco.chamadas).not.toContainEqual(["from", "ai_provider_credentials"]);
+
+    // A credencial buscada pela empresa A é filtrada por A, e só por A.
+    banco.chamadas.length = 0;
+    banco.settings = jev(ACEITE_DE_RESPOSTA);
+    await chaveDasTarefas(ORG_A, [PEDE_RESPOSTA]);
+    expect(banco.chamadas).toContainEqual(["eq", "organization_id", ORG_A]);
+    expect(banco.chamadas).not.toContainEqual(["eq", "organization_id", ORG_B]);
   });
 });
 

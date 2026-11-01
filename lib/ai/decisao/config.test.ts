@@ -6,10 +6,13 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import {
+  aceiteCobre,
+  ALCANCES,
   gravarConfigDoJev,
   idDaTarefaSchema,
   lerConfigDoJev,
   mesclar,
+  VERSAO_DO_ACEITE_DE_RESPOSTA,
   type MudancaDaConfig,
   type TarefaGravada,
 } from "@/lib/ai/decisao/config";
@@ -284,6 +287,124 @@ describe("gravarConfigDoJev — mescla profunda de `tarefas`", () => {
     const f = adminFalso({ settings: {} });
     await gravarConfigDoJev({ admin: f.admin, orgId: ORG, actorUserId: ADMIN, mudanca: { ligado: true, aceite: ACEITE } });
     expect((f.updates[0]!.settings as { jev: Record<string, unknown> }).jev).not.toHaveProperty("tarefas");
+  });
+});
+
+/**
+ * O ACEITE DE `resposta` (T01 da r3): o rascunho da IA e os trechos consultados,
+ * sem a mensagem do cliente. Outro tipo de dado para o fornecedor ⇒ outro aceite,
+ * com a versão nova do texto, por cima do de `mensagem`.
+ */
+describe("o alcance `resposta` e o aceite novo", () => {
+  const OUTRA_ORG = "33333333-3333-4333-8333-333333333333";
+  const DE_MENSAGEM = { ...ACEITE, alcance: "mensagem" as const };
+  const DE_RESPOSTA = { em: "2026-11-01T12:00:00.000Z", por: ADMIN, alcance: "resposta" as const, versao: 2 };
+
+  it("`resposta` fica entre `mensagem` e `conversa`, e o texto novo é a versão 2", () => {
+    expect([...ALCANCES]).toEqual(["mensagem", "resposta", "conversa"]);
+    expect(VERSAO_DO_ACEITE_DE_RESPOSTA).toBe(2);
+  });
+
+  it("o aceite de `resposta` com a versão nova é lido como está", () => {
+    const c = lerConfigDoJev({ jev: { ligado: true, aceite: DE_RESPOSTA } });
+    expect(c.ligado).toBe(true);
+    expect(c.aceite).toEqual(DE_RESPOSTA);
+  });
+
+  it.each([
+    ["sem versão", { ...ACEITE, alcance: "resposta" }],
+    ["com a versão do texto antigo (1)", { ...ACEITE, alcance: "resposta", versao: 1 }],
+  ])(
+    "aceite de `resposta` %s não é aceite: a config inteira cai no desligado",
+    (_caso, aceite) => {
+      // Sem esta cerca, bastaria o JSON dizer `alcance: "resposta"` para passar por um
+      // aceite que o administrador nunca deu ao texto novo.
+      expect(lerConfigDoJev({ jev: { ligado: true, aceite } }).ligado).toBe(false);
+    },
+  );
+
+  it("o aceite da onda 1 e o de `mensagem` seguem valendo, sem versão nova", () => {
+    expect(lerConfigDoJev({ jev: { ligado: true, aceite: ACEITE } }).ligado).toBe(true);
+    expect(lerConfigDoJev({ jev: { ligado: true, aceite: DE_MENSAGEM } }).ligado).toBe(true);
+  });
+
+  it("aceiteCobre: o alcance mais largo cobre o mais estreito, e nunca o contrário", () => {
+    const cobre = (aceite: Parameters<typeof aceiteCobre>[0]) => ALCANCES.map((a) => aceiteCobre(aceite, a));
+    expect(cobre(null), "sem aceite, nada").toEqual([false, false, false]);
+    expect(cobre(ACEITE), "a onda 1 é só `mensagem`").toEqual([true, false, false]);
+    expect(cobre(DE_MENSAGEM)).toEqual([true, false, false]);
+    expect(cobre(DE_RESPOSTA)).toEqual([true, true, false]);
+    expect(cobre({ ...ACEITE, alcance: "conversa", versao: 3 })).toEqual([true, true, true]);
+  });
+
+  it("gravar o aceite de `resposta` mantém o resto: ligado, tarefas e as outras chaves de settings", async () => {
+    const GRAVADA = { estado: "observando", alterado_em: "2026-09-24T10:00:00.000Z", alterado_por: ADMIN };
+    const f = adminFalso({
+      settings: { branding: { nome: "X" }, jev: { ligado: true, modo: "observacao", aceite: DE_MENSAGEM, tarefas: { clima: GRAVADA } } },
+    });
+    const r = await gravarConfigDoJev({
+      admin: f.admin,
+      orgId: ORG,
+      actorUserId: ADMIN,
+      mudanca: { aceite: DE_RESPOSTA },
+      agora: new Date("2026-11-01T12:00:00.000Z"),
+    });
+    expect(r.ok).toBe(true);
+    const gravado = f.updates[0]!.settings as { branding: unknown; jev: Record<string, unknown> };
+    expect(gravado.branding).toEqual({ nome: "X" });
+    expect(gravado.jev).toMatchObject({ ligado: true, aceite: DE_RESPOSTA, tarefas: { clima: GRAVADA } });
+    expect(f.filtros, "toda leitura e escrita é cercada pela organização").toEqual([
+      ["id", ORG],
+      ["id", ORG],
+    ]);
+  });
+
+  it("gravar um aceite de `resposta` sem a versão nova é recusado, e não grava nada", async () => {
+    const f = adminFalso({ settings: { jev: { ligado: true, aceite: DE_MENSAGEM } } });
+    const r = await gravarConfigDoJev({
+      admin: f.admin,
+      orgId: ORG,
+      actorUserId: ADMIN,
+      mudanca: { aceite: { ...ACEITE, alcance: "resposta" } },
+    });
+    expect(r).toEqual({ ok: false, motivo: "config_invalida" });
+    expect(f.updates).toEqual([]);
+  });
+
+  /** Duas empresas no mesmo banco: o aceite de uma nunca chega à outra. */
+  it("isolamento: o aceite de `resposta` da empresa A não muda a empresa B", async () => {
+    const linhas: Record<string, { settings: Record<string, unknown> }> = {
+      [ORG]: { settings: { jev: { ligado: true, aceite: DE_MENSAGEM } } },
+      [OUTRA_ORG]: { settings: { jev: { ligado: true, aceite: DE_MENSAGEM } } },
+    };
+    const deB = structuredClone(linhas[OUTRA_ORG]);
+    // Um banco com as duas linhas: o `update` só alcança a linha que o `eq("id", …)` nomeia.
+    const admin = {
+      from: () => {
+        let escrita: { settings: Record<string, unknown> } | null = null;
+        let alvo: string | null = null;
+        const chain = {
+          select: () => chain,
+          update: (patch: { settings: Record<string, unknown> }) => {
+            escrita = patch;
+            return chain;
+          },
+          eq: (_coluna: string, id: string) => {
+            alvo = id;
+            if (escrita !== null && linhas[id]) linhas[id] = { settings: escrita.settings };
+            return chain;
+          },
+          maybeSingle: async () => ({ data: alvo === null ? null : (linhas[alvo] ?? null), error: null }),
+        };
+        return chain;
+      },
+    } as unknown as Parameters<typeof gravarConfigDoJev>[0]["admin"];
+
+    const r = await gravarConfigDoJev({ admin, orgId: ORG, actorUserId: ADMIN, mudanca: { aceite: DE_RESPOSTA } });
+    expect(r.ok).toBe(true);
+    expect(lerConfigDoJev(linhas[ORG]!.settings).aceite).toEqual(DE_RESPOSTA);
+    expect(linhas[OUTRA_ORG], "a empresa B ficou exatamente como estava").toEqual(deB);
+    expect(aceiteCobre(lerConfigDoJev(linhas[OUTRA_ORG]!.settings).aceite, "resposta")).toBe(false);
   });
 });
 

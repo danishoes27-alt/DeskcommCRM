@@ -1152,3 +1152,134 @@ describe("o Jev por tarefa na rota", () => {
     expect((estado.settings.jev as Linha).aceite).toMatchObject({ por: USUARIO, alcance: "mensagem" });
   });
 });
+
+/**
+ * O ACEITE DE `resposta` (T01 da r3): o rascunho da IA e os trechos consultados,
+ * sem a mensagem do cliente. É outro tipo de dado para o fornecedor ⇒ outro
+ * aceite do administrador, com a versão nova do texto, por cima do de `mensagem`.
+ */
+describe("PATCH /api/v1/ai/jev — o aceite de `resposta`", () => {
+  const COM_MENSAGEM = { jev: { ligado: true, modo: "observacao", aceite: { ...ACEITE_ANTIGO, alcance: "mensagem" } } };
+  const DE_RESPOSTA_ANTIGO = { em: "2026-10-15T12:00:00.000Z", por: USUARIO, alcance: "resposta", versao: 2 };
+
+  it("o administrador amplia o aceite: alcance `resposta`, versão 2, quem e quando; o resto fica; audita", async () => {
+    estado.settings = { ...estado.settings, ...COM_MENSAGEM };
+    const { status, corpo } = await mudar({ aceite_resposta: true });
+
+    expect(status).toBe(200);
+    expect(corpo.data.alterado).toBe(true);
+    expect(corpo.data.config.aceite).toMatchObject({ por: USUARIO, alcance: "resposta", versao: 2 });
+    expect(corpo.data.config.ligado).toBe(true);
+
+    // Pelo cliente admin, cercado pela organização da SESSÃO, sem apagar o resto de `settings`.
+    const [escrita] = escritas();
+    expect(escrita?.cliente).toBe("admin");
+    expect(escrita?.eq).toContainEqual(["id", ORG]);
+    expect(estado.consultas.some((c) => c.eq.some(([, v]) => v === OUTRA_ORG))).toBe(false);
+    expect(estado.settings.branding).toEqual({ app_name: "Loja" });
+    expect(estado.settings.llm).toEqual({ provider: "anthropic" });
+    expect(estado.settings.jev).toMatchObject({
+      ligado: true,
+      aceite: { por: USUARIO, alcance: "resposta", versao: 2 },
+    });
+
+    expect(audit).toHaveBeenCalledTimes(1);
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "ai.jev.aceite_ampliado",
+        organizationId: ORG,
+        actorUserId: USUARIO,
+        resourceId: ORG,
+        metadata: expect.objectContaining({
+          aceite_registrado: true,
+          aceite_alcance: "resposta",
+          aceite_versao: 2,
+        }),
+      }),
+    );
+
+    // E o cartão passa a ver o aceite novo.
+    estado.credenciais = [credencial()];
+    expect((await ler()).corpo.data.config.aceite).toMatchObject({ alcance: "resposta", versao: 2 });
+  });
+
+  it("ampliar o aceite NÃO liga nada: o interruptor e o estado das tarefas ficam como estão", async () => {
+    const GRAVADA = { estado: "decidindo", alterado_em: "2026-09-24T10:00:00.000Z", alterado_por: USUARIO };
+    estado.settings = {
+      jev: { ligado: false, modo: "observacao", aceite: ACEITE_ANTIGO, tarefas: { clima: GRAVADA } },
+    };
+    const { status } = await mudar({ aceite_resposta: true });
+    expect(status).toBe(200);
+    expect(estado.settings.jev).toMatchObject({
+      ligado: false,
+      aceite: { alcance: "resposta", versao: 2 },
+      tarefas: { clima: GRAVADA },
+    });
+  });
+
+  it("o aceite de `resposta` não pode ser o primeiro: sem o de `mensagem`, é recusado e nada é escrito", async () => {
+    const { status, corpo } = await mudar({ aceite_resposta: true });
+    expect(status).toBe(422);
+    expect(corpo.error.code).toBe("jev_exige_aceite_da_mensagem");
+    expect(escritas()).toEqual([]);
+    expect(audit).not.toHaveBeenCalled();
+    expect(estado.settings.jev).toBeUndefined();
+  });
+
+  it("a recusa fala a língua do administrador (espanhol)", async () => {
+    vi.mocked(requireRole).mockResolvedValueOnce({
+      ok: true,
+      user: { id: USUARIO, idioma: "es" },
+      org: { orgId: ORG, role: "admin" },
+    } as unknown as Awaited<ReturnType<typeof requireRole>>);
+    const { corpo } = await mudar({ aceite_resposta: true });
+    expect(corpo.error.message).toMatch(/^Antes de aceptar el envío de las respuestas de la IA/);
+  });
+
+  it("gerente não amplia o aceite: 403, sem escrita e sem auditoria", async () => {
+    papel = "manager";
+    estado.settings = { ...estado.settings, ...COM_MENSAGEM };
+    expect((await mudar({ aceite_resposta: true })).status).toBe(403);
+    expect(escritas()).toEqual([]);
+    expect(audit).not.toHaveBeenCalled();
+    expect((estado.settings.jev as Linha).aceite).toMatchObject({ alcance: "mensagem" });
+  });
+
+  it("idempotente: quem já aceitou `resposta` (ou mais) não é regravado com data nova", async () => {
+    for (const aceite of [DE_RESPOSTA_ANTIGO, { ...DE_RESPOSTA_ANTIGO, alcance: "conversa", versao: 3 }]) {
+      estado.settings = { jev: { ligado: true, modo: "observacao", aceite } };
+      vi.mocked(audit).mockClear();
+      const antes = escritas().length;
+      const { status, corpo } = await mudar({ aceite_resposta: true });
+      expect(status).toBe(200);
+      expect(corpo.data.alterado).toBe(false);
+      expect(escritas().length).toBe(antes);
+      expect(audit).not.toHaveBeenCalled();
+      expect((estado.settings.jev as Linha).aceite).toEqual(aceite);
+    }
+  });
+
+  it.each([
+    ["junto de `ligado`", { aceite_resposta: true, ligado: true }],
+    ["junto de `modo`", { aceite_resposta: true, modo: "decide" }],
+    ["junto de `tarefa`", { aceite_resposta: true, tarefa: "clima", estado: "decidindo" }],
+    ["com valor falso", { aceite_resposta: false }],
+    ["com valor que não é booleano", { aceite_resposta: "sim" }],
+    ["com `organization_id` no corpo", { aceite_resposta: true, organization_id: OUTRA_ORG }],
+  ])("`aceite_resposta` %s é recusado, sem escrever em organização nenhuma", async (_caso, corpo) => {
+    estado.credenciais = [credencial()];
+    estado.settings = { ...estado.settings, ...COM_MENSAGEM };
+    expect((await mudar(corpo)).status).toBe(422);
+    expect(escritas()).toEqual([]);
+    expect(audit).not.toHaveBeenCalled();
+    expect((estado.settings.jev as Linha).aceite).toMatchObject({ alcance: "mensagem" });
+  });
+
+  it("o primeiro aceite (ligar) continua sendo o de `mensagem`, sem versão nova", async () => {
+    estado.credenciais = [credencial()];
+    await mudar({ ligado: true, aceite_lgpd: true });
+    const aceite = (estado.settings.jev as Linha).aceite as Linha;
+    expect(aceite.alcance).toBe("mensagem");
+    expect(aceite).not.toHaveProperty("versao");
+  });
+});

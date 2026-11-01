@@ -973,6 +973,11 @@ export const AUDIT_ACTIONS = [
   // Uma tarefa do Jev mudou de estado (observando/decidindo/desligada) pelo
   // PATCH com `tarefa`; metadata.tarefa diz qual, e estado_anterior o de antes.
   "ai.jev.tarefa_alterada",
+  // O administrador ampliou o aceite do Jev para o alcance `resposta` (o
+  // rascunho da IA e os trechos consultados, sem a mensagem do cliente); o
+  // metadata leva `aceite_alcance` e `aceite_versao` (a versão do texto aceito).
+  // É a prova de LGPD de que esse tipo de dado só saiu depois de um aceite novo.
+  "ai.jev.aceite_ampliado",
   // O pedido de descadastro é do cliente e o padrão é irreversível — mas a
   // regra W-02 do catálogo de negócio prevê o override: admin desbloqueia à
   // mão. Sem esta linha, a ação existiria sem rastro de QUEM a desfez, que é

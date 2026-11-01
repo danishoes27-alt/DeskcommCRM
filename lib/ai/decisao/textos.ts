@@ -150,3 +150,50 @@ export function avisoDoJevNaCentral(
       .join(" "),
   };
 }
+
+/**
+ * O ACEITE DE `resposta` — o que o administrador concorda quando o Jev passa a
+ * conferir a resposta da IA antes de ela sair (alcance `resposta`,
+ * `./config.ts`; versão `VERSAO_DO_ACEITE_DE_RESPOSTA`).
+ *
+ * ⚠️ TEXTO PROVISÓRIO. Nenhum advogado revisou esta redação. Ela parte do
+ * cenário B (decisão D2): a plataforma contrata a TypeSafe AI, e a TypeSafe AI é
+ * operadora subcontratada. A pendência do advogado não bloqueia a tarefa, mas a
+ * tela que mostrar este texto TEM de mostrar a marca junto: `textoDoAceiteDeResposta`
+ * a põe na frente enquanto `TEXTO_DO_ACEITE_DE_RESPOSTA_E_PROVISORIO` for
+ * `true`. Quando o advogado entregar a redação final, troque as frases, aumente
+ * a versão do aceite e vire a constante para `false`.
+ *
+ * Uma frase por chave: cada uma tem o espanhol no dicionário e é cobrada por
+ * `./textos.test.ts`. A retenção é dita como está: a TypeSafe AI não informa
+ * prazo (D10, risco aceito).
+ */
+export const ACEITE_DE_RESPOSTA = {
+  marca: "[TEXTO PROVISÓRIO — aguardando revisão do advogado]",
+  oQueFaz: "Ao aceitar, o Jev passa a conferir a resposta da IA antes de ela ser enviada ao cliente.",
+  oQueSai:
+    "Para isso, o rascunho da resposta e os trechos da base de conhecimento e do catálogo que a IA consultou são enviados à TypeSafe AI, nos Estados Unidos.",
+  oQueNaoSai: "A mensagem do cliente não é enviada, nem o nome, o telefone ou o e-mail dele.",
+  quemContrata:
+    "Quem contrata a TypeSafe AI é a plataforma, e a TypeSafe AI atua como operadora subcontratada, em nome dela.",
+  retencao: "A TypeSafe AI não informa por quanto tempo guarda esse conteúdo.",
+  pedido: "Para aceitar, confirme que você está de acordo.",
+} as const;
+
+export const TEXTO_DO_ACEITE_DE_RESPOSTA_E_PROVISORIO = true;
+
+/** O texto inteiro do aceite, com a marca de provisório na frente enquanto ele for provisório. */
+export function textoDoAceiteDeResposta(traduzirTexto: (texto: string) => string): string {
+  const a = ACEITE_DE_RESPOSTA;
+  return [
+    ...(TEXTO_DO_ACEITE_DE_RESPOSTA_E_PROVISORIO ? [a.marca] : []),
+    a.oQueFaz,
+    a.oQueSai,
+    a.oQueNaoSai,
+    a.quemContrata,
+    a.retencao,
+    a.pedido,
+  ]
+    .map(traduzirTexto)
+    .join(" ");
+}

@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ACEITE_DE_RESPOSTA,
   AO_EXCLUIR_A_CHAVE_DO_JEV,
   avisoAoExcluirAChaveDoJev,
   AVISO_DO_JEV,
@@ -17,6 +18,8 @@ import {
   JEV_FALHOU_E_A_IA_COBRIU,
   JEV_FALHOU_SEM_RESERVA,
   O_QUE_FAZER_DO_JEV,
+  TEXTO_DO_ACEITE_DE_RESPOSTA_E_PROVISORIO,
+  textoDoAceiteDeResposta,
 } from "@/lib/ai/decisao/textos";
 import { TAREFA_DO_CLIMA, TAREFA_DO_ROTEADOR } from "@/lib/ai/decisao/tarefas";
 import { EXPLICACAO_DA_ORIGEM } from "@/lib/ai/pontos/resolver";
@@ -34,6 +37,7 @@ const TEXTOS = [
   JEV_FALHOU_AO_LADO,
   JEV_FALHOU_E_A_IA_COBRIU,
   ...Object.values(AO_EXCLUIR_A_CHAVE_DO_JEV),
+  ...Object.values(ACEITE_DE_RESPOSTA),
 ];
 
 describe("textos do Jev para quem opera", () => {
@@ -60,6 +64,43 @@ describe("textos do Jev para quem opera", () => {
     const semReserva = avisoDoJevNaCentral("sem_credito", false, (t) => t);
     expect(semReserva.body).toContain(AVISO_DO_JEV.semReserva);
     expect(semReserva.body).not.toContain(AVISO_DO_JEV.comReserva);
+  });
+
+  /**
+   * O aceite de `resposta` (T01 da r3). O texto é PROVISÓRIO até o advogado
+   * revisar: a marca vem na frente, em português e em espanhol, e some só quando
+   * alguém vira a constante — de propósito, com o teste vermelho.
+   */
+  describe("o texto do aceite de `resposta`", () => {
+    it("enquanto o texto for provisório, a marca vem na frente — nos dois idiomas", () => {
+      expect(TEXTO_DO_ACEITE_DE_RESPOSTA_E_PROVISORIO, "ao virar `false`, atualize este caso").toBe(true);
+      const pt = textoDoAceiteDeResposta((t) => t);
+      const es = textoDoAceiteDeResposta((t) => traduzir(t, "es"));
+      expect(pt.startsWith(ACEITE_DE_RESPOSTA.marca)).toBe(true);
+      expect(es.startsWith("[TEXTO PROVISIONAL")).toBe(true);
+      expect(es).not.toContain("PROVISÓRIO");
+    });
+
+    it("diz o que sai (rascunho e trechos consultados) e o que NÃO sai (a mensagem do cliente)", () => {
+      const pt = textoDoAceiteDeResposta((t) => t);
+      expect(pt).toMatch(/rascunho da resposta/);
+      expect(pt).toMatch(/trechos da base de conhecimento e do catálogo/);
+      expect(pt).toMatch(/A mensagem do cliente não é enviada/);
+    });
+
+    it("parte do cenário B: a plataforma contrata a TypeSafe AI, que é operadora subcontratada", () => {
+      expect(ACEITE_DE_RESPOSTA.quemContrata).toMatch(/plataforma/);
+      expect(ACEITE_DE_RESPOSTA.quemContrata).toMatch(/operadora subcontratada/);
+    });
+
+    it("diz que a TypeSafe AI não informa o prazo de guarda (D10, risco aceito), sem prometer exclusão", () => {
+      expect(ACEITE_DE_RESPOSTA.retencao).toMatch(/não informa por quanto tempo guarda/);
+      expect(textoDoAceiteDeResposta((t) => t)).not.toMatch(/apaga|exclu|não guarda|retenção zero/i);
+    });
+
+    it("cada frase tem espanhol (o dicionário cobra, uma a uma)", () => {
+      expect(Object.values(ACEITE_DE_RESPOSTA).filter((t) => !DICIONARIO[t]?.es)).toEqual([]);
+    });
   });
 
   // A mesma linha vem do turno e da tela "Testar classificação" do roteador

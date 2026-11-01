@@ -9567,6 +9567,30 @@ export const DICIONARIO: Traducoes = {
   "Ligar o Jev manda cada mensagem dos clientes, uma de cada vez e sem o resto da conversa, para a TypeSafe AI, nos Estados Unidos. Para ligar, confirme que você está de acordo.": {
     es: "Activar Jev envía cada mensaje de los clientes, uno por vez y sin el resto de la conversación, a TypeSafe AI, en Estados Unidos. Para activarlo, confirma que estás de acuerdo.",
   },
+  "Antes de aceitar o envio das respostas da IA, ligue o Jev e aceite o envio de cada mensagem dos clientes.": {
+    es: "Antes de aceptar el envío de las respuestas de la IA, activa Jev y acepta el envío de cada mensaje de los clientes.",
+  },
+  // O aceite de `resposta` (`ACEITE_DE_RESPOSTA`, lib/ai/decisao/textos.ts). Texto
+  // PROVISÓRIO até o advogado revisar: o espanhol leva a mesma marca.
+  "[TEXTO PROVISÓRIO — aguardando revisão do advogado]": {
+    es: "[TEXTO PROVISIONAL — pendiente de revisión del abogado]",
+  },
+  "Ao aceitar, o Jev passa a conferir a resposta da IA antes de ela ser enviada ao cliente.": {
+    es: "Al aceptar, Jev pasa a revisar la respuesta de la IA antes de enviarla al cliente.",
+  },
+  "Para isso, o rascunho da resposta e os trechos da base de conhecimento e do catálogo que a IA consultou são enviados à TypeSafe AI, nos Estados Unidos.": {
+    es: "Para eso, el borrador de la respuesta y los fragmentos de la base de conocimiento y del catálogo que la IA consultó se envían a TypeSafe AI, en Estados Unidos.",
+  },
+  "A mensagem do cliente não é enviada, nem o nome, o telefone ou o e-mail dele.": {
+    es: "El mensaje del cliente no se envía, ni su nombre, su teléfono ni su correo electrónico.",
+  },
+  "Quem contrata a TypeSafe AI é a plataforma, e a TypeSafe AI atua como operadora subcontratada, em nome dela.": {
+    es: "Quien contrata a TypeSafe AI es la plataforma, y TypeSafe AI actúa como operadora subcontratada, en nombre de ella.",
+  },
+  "A TypeSafe AI não informa por quanto tempo guarda esse conteúdo.": {
+    es: "TypeSafe AI no informa por cuánto tiempo guarda ese contenido.",
+  },
+  "Para aceitar, confirme que você está de acordo.": { es: "Para aceptar, confirma que estás de acuerdo." },
   "Para ligar o Jev, cole a chave dele em Credenciais e espere o teste da chave passar.": {
     es: "Para activar Jev, pega su clave en Credenciales y espera a que pase la prueba de la clave.",
   },

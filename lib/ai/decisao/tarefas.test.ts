@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { idDaTarefaSchema, lerConfigDoJev, type ConfigDoJev } from "@/lib/ai/decisao/config";
+import { ALCANCES, idDaTarefaSchema, lerConfigDoJev, type ConfigDoJev } from "@/lib/ai/decisao/config";
 import {
   algumFluxoQueClassifica,
   algumRoteadorQuePergunta,
@@ -203,6 +203,62 @@ describe("estadoEfetivoDaTarefa", () => {
     const c = config({ ligado: true, aceite: { ...ACEITE, alcance: "tudo" } });
     expect(c.ligado).toBe(false);
     expect(estadoEfetivoDaTarefa(c, TAREFA_DO_CLIMA)).toBe("desligada");
+  });
+});
+
+/**
+ * O ALCANCE `resposta` (T01 da r3): o rascunho da IA e os trechos consultados,
+ * sem a mensagem do cliente. É mais largo que `mensagem` e mais estreito que
+ * `conversa`, e a tarefa que o pede nunca começa sozinha.
+ */
+describe("alcance 'resposta' — a conferência do depois", () => {
+  const NOVA_DA_RESPOSTA = { id: "futura_da_resposta", alcance: "resposta" } as const;
+  const ACEITE_DE_RESPOSTA = { ...ACEITE, alcance: "resposta", versao: 2 };
+
+  it("a ordem é mensagem, resposta, conversa — a ordem É a regra", () => {
+    expect([...ALCANCES]).toEqual(["mensagem", "resposta", "conversa"]);
+  });
+
+  it("com o aceite da onda 1 ou de 'mensagem', a tarefa de resposta fica desligada — mesmo gravada decidindo", () => {
+    const semAlcance = config({ ligado: true, aceite: ACEITE });
+    const daMensagem = config({ ligado: true, aceite: { ...ACEITE, alcance: "mensagem", versao: 1 } });
+    for (const c of [semAlcance, daMensagem]) {
+      expect(estadoEfetivoDaTarefa(c, NOVA_DA_RESPOSTA)).toBe("desligada");
+      expect(tarefaEhNova(c, NOVA_DA_RESPOSTA)).toBe(false);
+      const gravada: ConfigDoJev = { ...c, tarefas: { clima: { estado: "decidindo" } } };
+      expect(
+        estadoEfetivoDaTarefa(gravada, { ...NOVA_DA_RESPOSTA, id: "clima" }),
+        "falha fechada pelo alcance",
+      ).toBe("desligada");
+    }
+  });
+
+  it("com o aceite de 'resposta', a tarefa vale o gravado — mas NUNCA começa sozinha (nasce desligada)", () => {
+    const c = config({ ligado: true, aceite: ACEITE_DE_RESPOSTA });
+    expect(estadoEfetivoDaTarefa(c, NOVA_DA_RESPOSTA)).toBe("desligada");
+    expect(tarefaEhNova(c, NOVA_DA_RESPOSTA)).toBe(false);
+    const gravada: ConfigDoJev = { ...c, tarefas: { clima: { estado: "observando" } } };
+    expect(estadoEfetivoDaTarefa(gravada, { ...NOVA_DA_RESPOSTA, id: "clima" })).toBe("observando");
+  });
+
+  it("o aceite da conversa, que é mais largo, cobre a resposta; o de resposta não cobre a conversa", () => {
+    const daConversa = config({ ligado: true, aceite: { ...ACEITE, alcance: "conversa", versao: 3 } });
+    const gravada: ConfigDoJev = { ...daConversa, tarefas: { clima: { estado: "observando" } } };
+    expect(estadoEfetivoDaTarefa(gravada, { ...NOVA_DA_RESPOSTA, id: "clima" })).toBe("observando");
+    const daResposta = config({ ligado: true, aceite: ACEITE_DE_RESPOSTA });
+    expect(estadoEfetivoDaTarefa(daResposta, NOVA_DA_CONVERSA)).toBe("desligada");
+  });
+
+  it("sem aceite ainda, a tela pede só 'mensagem': a tarefa de resposta não é prometida ao ligar", () => {
+    expect(estadoAoLigar(config({}), NOVA_DA_RESPOSTA), "falha fechada pelo alcance").toBe("desligada");
+  });
+
+  it("o aceite de 'resposta' não muda as tarefas de hoje: as de 'mensagem' seguem iguais", () => {
+    const antes = config({ ligado: true, aceite: ACEITE });
+    const depois = config({ ligado: true, aceite: ACEITE_DE_RESPOSTA });
+    for (const t of TAREFAS_DO_JEV) {
+      expect(estadoEfetivoDaTarefa(depois, t), t.id).toBe(estadoEfetivoDaTarefa(antes, t));
+    }
   });
 });
 

@@ -32,6 +32,13 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * vez, o aceite explícito do administrador (LGPD, D6), que fica gravado com
  * quem e quando. O interruptor mora em `organizations.settings.jev`
  * (`lib/ai/decisao/config.ts`); a organização vem da sessão, nunca do corpo.
+ *
+ * PATCH também amplia o aceite para o alcance `resposta` (`aceite_resposta`): o
+ * rascunho da IA e os trechos que ela consultou, SEM a mensagem do cliente (a
+ * conferência do "depois"). Só o administrador, só por cima do aceite de
+ * `mensagem` (cumulativo), com a versão nova do texto, e sozinho no pedido: uma
+ * linha de auditoria própria (`ai.jev.aceite_ampliado`). O texto que a tela
+ * mostra é `ACEITE_DE_RESPOSTA` (`lib/ai/decisao/textos.ts`), hoje PROVISÓRIO.
  */
 import { randomUUID } from "node:crypto";
 
@@ -43,11 +50,13 @@ import { camadasEfetivas } from "@/lib/agent-engine/guardrails/camadas-da-org";
 import { haQuemAtendaAOrganizacao } from "@/lib/ai/agents/quem-atende-a-sessao";
 import { credencialEmUsoPeloJev, PROVEDOR_DO_JEV } from "@/lib/ai/decisao/credencial";
 import {
+  aceiteCobre,
   ESTADO_DO_MODO,
   ESTADOS_DA_TAREFA,
   gravarConfigDoJev,
   idDaTarefaSchema,
   lerConfigDoJev,
+  VERSAO_DO_ACEITE_DE_RESPOSTA,
   type ConfigDoJev,
   type MudancaDaConfig,
 } from "@/lib/ai/decisao/config";
@@ -577,6 +586,12 @@ const corpoDoPatch = z
     modo: z.enum(["observacao", "decide"]).optional(),
     /** A caixa marcada na tela. Só pesa ao ligar pela primeira vez. */
     aceite_lgpd: z.literal(true).optional(),
+    /**
+     * A caixa do aceite de `resposta`: o rascunho da IA e os trechos que ela
+     * consultou. Vai SOZINHA no pedido (refine abaixo), e só vale por cima do
+     * aceite de `mensagem`.
+     */
+    aceite_resposta: z.literal(true).optional(),
     tarefa: idDaTarefaSchema.optional(),
     estado: z.enum(ESTADOS_DA_TAREFA).optional(),
   })
@@ -587,9 +602,14 @@ const corpoDoPatch = z
   .refine((c) => c.modo === undefined || c.tarefa === undefined, {
     message: "informe `modo` ou `tarefa`, não os dois",
   })
-  .refine((c) => c.ligado !== undefined || c.modo !== undefined || c.tarefa !== undefined, {
-    message: "informe `ligado`, `modo` ou `tarefa`",
-  });
+  .refine(
+    (c) => c.aceite_resposta === undefined || (c.ligado === undefined && c.modo === undefined && c.tarefa === undefined),
+    { message: "`aceite_resposta` vai sozinho, sem `ligado`, `modo` nem `tarefa`" },
+  )
+  .refine(
+    (c) => c.ligado !== undefined || c.modo !== undefined || c.tarefa !== undefined || c.aceite_resposta !== undefined,
+    { message: "informe `ligado`, `modo`, `tarefa` ou `aceite_resposta`" },
+  );
 
 export async function PATCH(req: NextRequest): Promise<Response> {
   const supportDenied = await requireSupportWrite();
@@ -670,6 +690,31 @@ export async function PATCH(req: NextRequest): Promise<Response> {
     mudanca.ligado = true;
   }
 
+  // O aceite de `resposta` é cumulativo: só por cima do de `mensagem`, que já foi
+  // dado. Sem ele, o administrador nunca consentiu em mandar nada ao fornecedor,
+  // e este aceite não pode ser o primeiro. Quem já cobre `resposta` (ou mais)
+  // não é regravado: o carimbo de quem aceitou, e quando, é o do aceite original.
+  let aceiteAmpliado = false;
+  if (corpo.aceite_resposta === true) {
+    if (atual.aceite === null) {
+      return fail(
+        "jev_exige_aceite_da_mensagem",
+        t("Antes de aceitar o envio das respostas da IA, ligue o Jev e aceite o envio de cada mensagem dos clientes."),
+        422,
+        { requestId },
+      );
+    }
+    if (!aceiteCobre(atual.aceite, "resposta")) {
+      mudanca.aceite = {
+        em: new Date().toISOString(),
+        por: user.id,
+        alcance: "resposta",
+        versao: VERSAO_DO_ACEITE_DE_RESPOSTA,
+      };
+      aceiteAmpliado = true;
+    }
+  }
+
   // Pedir o estado que já vale não é mutação: sem escrita e sem auditoria.
   if (Object.keys(mudanca).length === 0) {
     return ok({ config: configPublica(atual), alterado: false }, { requestId });
@@ -689,9 +734,11 @@ export async function PATCH(req: NextRequest): Promise<Response> {
         ? "ai.jev.ligado"
         : mudanca.ligado === false
           ? "ai.jev.desligado"
-          : corpo.modo !== undefined
-            ? "ai.jev.modo_alterado"
-            : "ai.jev.tarefa_alterada",
+          : aceiteAmpliado
+            ? "ai.jev.aceite_ampliado"
+            : corpo.modo !== undefined
+              ? "ai.jev.modo_alterado"
+              : "ai.jev.tarefa_alterada",
     organizationId: org.orgId,
     actorUserId: user.id,
     resourceType: "organization",
@@ -704,6 +751,10 @@ export async function PATCH(req: NextRequest): Promise<Response> {
         ? { tarefa: pedido.tarefa, estado: pedido.estado, estado_anterior: estadoAnterior ?? null }
         : {}),
       aceite_registrado: mudanca.aceite !== undefined,
+      // O que o administrador aceitou, e a versão do texto — só quando o aceite mudou.
+      ...(mudanca.aceite
+        ? { aceite_alcance: mudanca.aceite.alcance ?? "mensagem", aceite_versao: mudanca.aceite.versao ?? null }
+        : {}),
     },
   });
 

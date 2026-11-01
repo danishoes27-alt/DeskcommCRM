@@ -101,6 +101,9 @@ export const ApiErrorCodes = {
   // colar e testar a chave, ou marcar o aceite de mandar a mensagem para fora.
   jev_exige_chave_validada: "jev_exige_chave_validada",
   jev_exige_aceite: "jev_exige_aceite",
+  // PATCH /api/v1/ai/jev com `aceite_resposta` numa empresa que ainda não deu o
+  // aceite de `mensagem`: o de `resposta` é cumulativo e não pode ser o primeiro.
+  jev_exige_aceite_da_mensagem: "jev_exige_aceite_da_mensagem",
   // PATCH /api/v1/ai/jev pedindo `decidindo` numa tarefa que, nesta versão, só
   // observa (`soObserva` em lib/ai/decisao/tarefas.ts) — a do follow-up.
   jev_tarefa_so_observa: "jev_tarefa_so_observa",

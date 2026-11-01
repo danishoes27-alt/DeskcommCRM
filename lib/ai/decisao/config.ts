@@ -44,9 +44,28 @@ export type EstadoQuePergunta = (typeof ESTADOS_QUE_PERGUNTAM)[number];
 /**
  * O que sai para o fornecedor, do mais estreito ao mais largo — a ORDEM é a
  * regra: tarefa que pede mais do que o aceite cobre fica desligada.
+ *
+ *  - `mensagem`: cada mensagem do cliente, sozinha (o aceite da onda 1).
+ *  - `resposta`: o rascunho da resposta da IA e os trechos que ela consultou,
+ *    SEM a mensagem do cliente (a conferência do "depois"). O aceite de
+ *    `resposta` é CUMULATIVO: só se concede por cima do de `mensagem`
+ *    (`app/api/v1/ai/jev/route.ts` recusa sem ele) e vale os dois. Tarefa
+ *    desse alcance nasce DESLIGADA (`./tarefas.ts`, item 5).
+ *  - `conversa`: as últimas mensagens da conversa. Ainda sem tela nem aceite.
+ *
+ * ⚠️ ROLLBACK: a imagem anterior (r2) só conhece `mensagem` e `conversa`. Numa
+ * empresa que já deu o aceite de `resposta`, ela lê o aceite como ilegível e
+ * deixa o Jev DESLIGADO ali (falha fechada) — nunca ligado por engano.
  */
-export const ALCANCES = ["mensagem", "conversa"] as const;
+export const ALCANCES = ["mensagem", "resposta", "conversa"] as const;
 export type Alcance = (typeof ALCANCES)[number];
+
+/**
+ * A versão do texto do aceite de `resposta` (`ACEITE_DE_RESPOSTA`, `./textos.ts`).
+ * O aceite de `mensagem` é a versão 1, ou nenhuma (o da onda 1). Aceite de
+ * `resposta` sem esta versão (ou maior) é ilegível — ver o schema abaixo.
+ */
+export const VERSAO_DO_ACEITE_DE_RESPOSTA = 2;
 
 const tarefaGravadaSchema = z.object({
   estado: z.enum(ESTADOS_DA_TAREFA),
@@ -94,6 +113,12 @@ export const configDoJevSchema = z
         alcance: z.enum(ALCANCES).optional(),
         versao: z.number().int().positive().optional(),
       })
+      // `resposta` manda outro tipo de dado ao fornecedor (o rascunho da IA e os
+      // trechos consultados): só vale com o texto novo. Sem esta cerca, um JSON
+      // com `alcance: "resposta"` e sem versão passaria por aceite dado.
+      .refine((a) => a.alcance !== "resposta" || (a.versao ?? 0) >= VERSAO_DO_ACEITE_DE_RESPOSTA, {
+        message: "o aceite de `resposta` exige a versão do texto novo",
+      })
       .nullable()
       .default(null),
     /**
@@ -111,6 +136,16 @@ export const configDoJevSchema = z
   });
 
 export type ConfigDoJev = z.infer<typeof configDoJevSchema>;
+
+/**
+ * O aceite cobre este alcance? Sem aceite, nenhum. O aceite grava o alcance
+ * MAIS LARGO que o administrador concedeu; sem alcance, é o da onda 1:
+ * `mensagem`. É a mesma régua de `estadoSobOAceite` (`./tarefas.ts`).
+ */
+export function aceiteCobre(aceite: ConfigDoJev["aceite"], alcance: Alcance): boolean {
+  if (aceite === null) return false;
+  return ALCANCES.indexOf(aceite.alcance ?? "mensagem") >= ALCANCES.indexOf(alcance);
+}
 
 const DESLIGADO: ConfigDoJev = { ligado: false, modo: "observacao", aceite: null };
 
