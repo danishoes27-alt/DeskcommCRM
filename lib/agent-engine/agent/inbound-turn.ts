@@ -232,6 +232,7 @@ import {
   ultimaInboundJaRespondida,
 } from './turno-ja-respondido';
 import { triarEGravarMensagemRecebida } from '@/lib/ai/triagem/aplicar';
+import { triarOTurno } from './triagem-no-turno';
 
 /**
  * Superfície ESTÁTICA das tools do agente (description + inputSchema) — parte do
@@ -2134,6 +2135,11 @@ async function executarTurnoDoAgente(
     }
   }
 
+  // LEGADO (r3): esta é a triagem ANTIGA, via AI Gateway, desligada por padrão. A triagem nova do
+  // Jev (tarefa `triagem`, chave por empresa, direto na TypeSafe) é `triarOTurno`, mais abaixo,
+  // depois do opt-out e do pedido de atendente. As duas não se tocam: chaves de metadata
+  // diferentes (`triagem` × `triagem_jev`) e interruptores diferentes.
+  //
   // Triagem rápida (Jev): só REGISTRA categoria/urgência em messages.metadata.triagem.
   //
   // Fica AQUI de propósito: depois de TODA saída antecipada do turno (lead em handoff /
@@ -2493,6 +2499,28 @@ async function executarTurnoDoAgente(
   // modelo BARATO; o resumo compactado entra no lugar do rolling summary e o transcript
   // integral é trocado por uma cauda recente sob orçamento (regra de cache 15). O rolling
   // summary DURÁVEL segue vindo do checkpoint de fechamento; aqui ele só alimenta o prompt.
+  // A triagem do "antes" (Jev, r3): depois de TODAS as saídas antecipadas e dos avisos de código
+  // (atendente, opt-out), que encerram o turno acima. Lê só o que o cliente DIGITOU, grava
+  // custo/observação/metadado e devolve o veredito (ou `undefined`: prévia, outro tipo de turno,
+  // contato bloqueado, instalação/tarefa desligadas, sem texto, Jev fora do ar). Nunca lança.
+  const triagemDoTurno = await triarOTurno(
+    {
+      pool,
+      organizationId: tenantId,
+      tipoDoJob: liveJob().kind,
+      preview: Boolean(preview),
+      contatoBloqueado: optedOutThisTurn,
+      conversationId: input.conversationId,
+      messageId: input.inboundMessageId,
+      jobId: liveJob().id,
+      contactId: leadId || null,
+      agentId: agentConfig?.agentId ?? null,
+      nomeDoContato: openingContext.context.contact.name,
+    },
+    deps.jev,
+  );
+  void triagemDoTurno; // consumido pela dica do prompt (T19), pelo aviso (T20) e pela marca do cartão (T21)
+
   let effectivePrevious = previous;
   let effectiveContext = openingContext.context;
   if (deps.knobs.compaction !== undefined) {
