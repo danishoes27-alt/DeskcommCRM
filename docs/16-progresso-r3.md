@@ -154,6 +154,16 @@
 - `pnpm typecheck` limpo; ESLint sem erro nos arquivos tocados (avisos antigos de outros arquivos).
 - **Não rodei `pnpm test:db`** (precisa da imagem `pgvector/pgvector:pg15`, que não está nesta máquina — veja "O que preciso de você").
 
+## MARCO 2 (T16–T22) — ANTES
+
+### Prova contra Postgres de verdade (licença concedida; imagem `pgvector/pgvector:pg15` baixada)
+
+- `pnpm test:db` funciona nesta máquina (Docker Desktop). Novo invariante **`tests/invariants/jev-conferencia-no-turno.test.ts`** (7 casos, o turno REAL com Postgres, modelo e Jev dublês, canal dublê): 2 reprovações = rascunho não sai, 1 caso na empresa/conversa certas (`guardrail_autofallback`), 3 linhas de rastro, 2 linhas de custo `jev_depois` com preço, 1 observação, aviso fixo ao cliente; 1ª reprova e 2ª passa = sai a 2ª sem caso; `observando` nunca segura (e o trace diz `faria: segurar`); tarefa/instalação desligadas = Jev não chamado; caso já aberto = nenhum caso novo e aviso uma só vez por conversa; Jev 401 = linha de erro + incidente da plataforma (um só para duas lojas, atualizado); isolamento entre duas empresas. **Isso prova o SQL de T10, T12 e T14 e o isolamento de T26 (parte do turno).** Passou de primeira.
+
+### T16 — categorias por empresa num lugar só
+
+- `lib/ai/decisao/categorias.ts` + schema em `config.ts` (`settings.jev.categorias`, sem migração): padrão Conserto, Venda (com boleto e parcelamento), Impressão, Outro; `outro` sempre por último, ordem gravada preservada, lista ruim vale o padrão sem derrubar o resto da configuração. A triagem antiga (`lib/ai/triagem/`) ficou como está (legado, desligada). Testes: `categorias.test.ts` (8).
+
 ## Pendências e coisas que só o dono pode fornecer
 
 | O quê | Quando faz falta | Tarefas |
