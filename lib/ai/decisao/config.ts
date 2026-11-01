@@ -67,6 +67,14 @@ export type Alcance = (typeof ALCANCES)[number];
  */
 export const VERSAO_DO_ACEITE_DE_RESPOSTA = 2;
 
+/** Uma categoria da triagem: o id que o Jev devolve, o nome que a tela mostra e a descrição que ele lê. */
+const categoriaSchema = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9_]{0,31}$/),
+  rotulo: z.string().trim().min(1).max(40),
+  descricao: z.string().trim().min(1).max(300),
+});
+const categoriasSchema = z.array(categoriaSchema).min(2).max(20);
+
 const tarefaGravadaSchema = z.object({
   estado: z.enum(ESTADOS_DA_TAREFA),
   alterado_em: z.string().datetime().optional(),
@@ -130,6 +138,11 @@ export const configDoJevSchema = z
      * chave — o objeto inteiro sumiria, e com ele as tarefas boas.
      */
     tarefas: tarefasSchema.optional(),
+    /**
+     * As categorias da triagem desta empresa (T16). Lista ruim vale ausente (o padrão): ela só
+     * muda o rótulo que o Jev devolve, nunca o consentimento. Ver `./categorias.ts`.
+     */
+    categorias: categoriasSchema.optional().catch(undefined),
     alterado_em: z.string().datetime().optional(),
     alterado_por: z.string().uuid().optional(),
   })
