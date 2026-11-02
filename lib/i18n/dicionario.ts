@@ -14050,6 +14050,10 @@ export const DICIONARIO: Traducoes = {
   // ═══ r4: arrastar colunas ═══
   "Arrastar a coluna": { es: "Arrastrar la columna" },
   "Arraste para mudar a coluna de lugar": { es: "Arrastra para cambiar la columna de lugar" },
+  // ═══ r4: onboarding do atendente ═══
+  "Não consegui criar o atendente:": { es: "No pude crear el atendente:" },
+  "Essas verificações acontecem antes de cada mensagem sair, e não dá para desligar.": { es: "Estas verificaciones ocurren antes de que salga cada mensaje, y no se pueden desactivar." },
+  "Detalhe técnico (mostre ao suporte):": { es: "Detalle técnico (muéstralo a soporte):" },
 };
 
 /**

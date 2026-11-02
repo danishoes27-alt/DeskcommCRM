@@ -81,7 +81,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
           setRegrasNaoSalvas(null);
           const res = await createDefaultAgent(formData);
           if (res && !res.ok) {
-            toast.error(`${t("Falha ao criar agente:")} ${res.error}`);
+            toast.error(`${t("Não consegui criar o atendente:")} ${res.error}`);
             return;
           }
           if (res?.regras_nao_salvas) setRegrasNaoSalvas(res.regras_nao_salvas);
@@ -202,7 +202,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
             ))}
           </ul>
           <p className="mt-2 text-xs text-muted-foreground">
-            {t("Essas conferências acontecem antes de cada mensagem sair, e não têm interruptor.")}
+            {t("Essas verificações acontecem antes de cada mensagem sair, e não dá para desligar.")}
           </p>
         </section>
       </div>
@@ -218,7 +218,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
             <strong>{t("Meu agente › O que o agente lembra")}</strong>.
           </p>
           <p className="text-xs text-muted-foreground">
-            {t("Erro do banco de dados:")} <code className="break-all">{regrasNaoSalvas}</code>
+            {t("Detalhe técnico (mostre ao suporte):")} <code className="break-all">{regrasNaoSalvas}</code>
           </p>
         </div>
       )}
@@ -327,7 +327,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
             )}
           </p>
           <p className="text-xs text-muted-foreground">
-            {t("Erro do banco de dados:")} <code className="break-all">{naoPublicado}</code>
+            {t("Detalhe técnico (mostre ao suporte):")} <code className="break-all">{naoPublicado}</code>
           </p>
           <p className="text-sm">
             {t("Tente de novo no botão abaixo (clicar de novo não cria um segundo agente) ou siga agora e publique depois em")}{" "}
