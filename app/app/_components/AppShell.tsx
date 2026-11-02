@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
+import { BarraInferior } from "@/components/shell/BarraInferior";
 import { BarraDeProgressoNavegacao } from "@/components/shell/BarraDeProgressoNavegacao";
 import { useSinalDePresenca } from "@/hooks/atendimento/useSinalDePresenca";
 import { useInboundMessageAlerts } from "@/hooks/notifications/useInboundMessageAlerts";
@@ -83,6 +84,9 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
         >
           {children}
         </main>
+        {/* Reserva o lugar da barra de baixo, que é fixa e só existe no celular. */}
+        <div className="h-16 md:hidden" aria-hidden />
+        <BarraInferior />
       </div>
     </div>
   );

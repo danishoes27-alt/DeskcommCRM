@@ -14022,6 +14022,8 @@ export const DICIONARIO: Traducoes = {
   "Resultados": { es: "Resultados" },
   "Ver tudo de Resultados": { es: "Ver todo de Resultados" },
   "Minha loja": { es: "Mi tienda" },
+  "Atalhos": { es: "Atajos" },
+  "Menu": { es: "Menú" },
 };
 
 /**

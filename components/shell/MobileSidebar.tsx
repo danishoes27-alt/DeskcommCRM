@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
 import { useT } from "@/hooks/i18n/useT";
 import { SidebarContent } from "@/components/shell/Sidebar";
 import { List } from "@/lib/ui/icons";
+import { EVENTO_ABRIR_MENU } from "@/components/shell/BarraInferior";
 
 /**
  * Navegação mobile do app autenticado.
@@ -22,6 +23,13 @@ import { List } from "@/lib/ui/icons";
 export function MobileSidebar() {
   const t = useT();
   const [open, setOpen] = useState(false);
+
+  // A barra de baixo do celular tem um botão "Menu" que abre esta mesma gaveta.
+  useEffect(() => {
+    const abrir = () => setOpen(true);
+    window.addEventListener(EVENTO_ABRIR_MENU, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_MENU, abrir);
+  }, []);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
