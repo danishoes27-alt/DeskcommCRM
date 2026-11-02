@@ -43,7 +43,7 @@ const REGUA = extrairRegua(CSS);
 const SEMENTES = [
   "#0f172a", "#f5c518", "#ffffff", "#000000", "#808080", "#dc2626", "#22c55e",
   "#f59e0b", "#2563eb", "#14b8a6", "#4b0082", "#e11d48", "#7c3aed", "#1a1f36",
-  "#fafafa", "#506d48",
+  "#fafafa", "#0b7d46",
 ] as const;
 
 /** Quantos pares cada tema tem no globals.css de hoje — o piso da vacuidade. */
@@ -247,7 +247,7 @@ describe("o que o produto pinta — todo par, toda semente", () => {
     // globals.css:376 e :381) e não passa por token nenhum — é exatamente a
     // categoria que a régua alcança e que a emissão deixava para trás. Se ele
     // sumir do conjunto medido, os pares acima ficam verdes sem cobri-lo.
-    const pintados = pintadosDaSemente("#506d48");
+    const pintados = pintadosDaSemente("#0b7d46");
     for (const { nome } of TEMAS) {
       const papeis = new Set(pintados[nome].map((p) => p.papel));
       expect([...papeis].some((p) => p.includes(":focus-visible")), nome).toBe(true);
@@ -338,17 +338,17 @@ describe("o bloco emitido não pode contradizer o globals.css", () => {
 
 describe("controle positivo — o produto sem marca não pode se mexer", () => {
   it("a Sage reproduz, pintada, os números do design system", () => {
-    // `#506d48` é a semente do próprio produto: ela não desloca nada, e os pares
+    // `#0b7d46` é a semente do próprio produto: ela não desloca nada, e os pares
     // pintados têm que dar o que o `globals.css` sempre deu. Se estes números
     // mudarem, o conserto vazou para quem não pediu.
-    const cor = corDe("#506d48");
+    const cor = corDe("#0b7d46");
     expect(cor.derivada?.claro.deslocamento).toBe(0);
     expect(cor.derivada?.escuro.deslocamento).toBe(0);
 
-    const p = pintadosDaSemente("#506d48");
+    const p = pintadosDaSemente("#0b7d46");
     // Claro: os dois números que `contraste.ts` documenta como medidos à mão.
-    expect(foco(p.claro, "--color-bg")).toBeCloseTo(3.79, 2);
-    expect(foco(p.claro, "--color-surface-elevated")).toBeCloseTo(3.6, 2);
+    expect(foco(p.claro, "--color-bg")).toBeCloseTo(3.43, 2);
+    expect(foco(p.claro, "--color-surface-elevated")).toBeCloseTo(3.22, 2);
     // Escuro: 6,30 e 5,22 na rampa DERIVADA da semente; os literais do
     // `globals.css` (`#82a077`) dão 6,31 e 5,23 — a rampa reproduz a Sage com
     // Δ ≤ 2/255 por canal, e a diferença de 0,01 é esse arredondamento.
@@ -356,15 +356,15 @@ describe("controle positivo — o produto sem marca não pode se mexer", () => {
     // do escuro passaram a `#0d1117 · #161b22 · #21262d` (antes `#161510 · #1d1c17 ·
     // #272620`) e os números abaixo foram REMEDIDOS pelo mesmo código. Antes:
     // 6,30 · 5,22 · 4,58 · 4,03. O deslocamento segue 0 e tudo segue acima do piso.
-    expect(foco(p.escuro, "--color-bg")).toBeCloseTo(6.52, 2);
-    expect(foco(p.escuro, "--color-surface-elevated")).toBeCloseTo(5.24, 2);
+    expect(foco(p.escuro, "--color-bg")).toBeCloseTo(6.89, 2);
+    expect(foco(p.escuro, "--color-surface-elevated")).toBeCloseTo(5.45, 2);
     // No escuro o anel NÃO fica apertado contra as bases: quem aperta é o
     // `-soft` COMPOSTO. 4,58 aqui — é este o par que a prova em tela reportou
     // como "4,58 no escuro", e não `foco × --color-bg` (6,30). Nos literais do
     // `globals.css` o mesmo par dá 4,59, e `superficiesDoTema` documenta o trio
     // 4,99 · 4,59 · 4,02.
-    expect(foco(p.escuro, "--color-accent-soft@--color-surface")).toBeCloseTo(4.66, 2);
-    expect(foco(p.escuro, "--color-accent-soft@--color-surface-elevated")).toBeCloseTo(4.04, 2);
+    expect(foco(p.escuro, "--color-accent-soft@--color-surface")).toBeCloseTo(4.86, 2);
+    expect(foco(p.escuro, "--color-accent-soft@--color-surface-elevated")).toBeCloseTo(4.22, 2);
   });
 
   it("sem marca configurada nada é injetado, e a tela fica como está", () => {
@@ -381,11 +381,11 @@ describe("a navy #0f172a — o defeito que a prova em tela achou", () => {
     // pintava `--color-accent-400: #545f77`, o stop CRU. O tema escuro anda -1,
     // então o anel agora pinta `#828a9d`, o stop 300 da rampa da marca.
     const p = pintadosDaSemente("#0f172a");
-    expect(foco(p.claro, "--color-bg")).toBeCloseTo(10.77, 2);
-    expect(foco(p.claro, "--color-surface-elevated")).toBeCloseTo(10.22, 2);
+    expect(foco(p.claro, "--color-bg")).toBeCloseTo(10.66, 2);
+    expect(foco(p.claro, "--color-surface-elevated")).toBeCloseTo(10.02, 2);
     // Escuro remedido na paleta Celuzap (2026-09-20): antes 5,28 e 4,39.
-    expect(foco(p.escuro, "--color-bg")).toBeCloseTo(5.47, 2);
-    expect(foco(p.escuro, "--color-surface-elevated")).toBeCloseTo(4.4, 2);
+    expect(foco(p.escuro, "--color-bg")).toBeCloseTo(5.38, 2);
+    expect(foco(p.escuro, "--color-surface-elevated")).toBeCloseTo(4.26, 2);
     for (const superficie of ["--color-bg", "--color-surface-elevated"] as const) {
       expect(foco(p.escuro, superficie), superficie).toBeGreaterThanOrEqual(PISOS.componente);
     }
