@@ -209,6 +209,13 @@
 - Novo `tests/invariants/jev-nenhuma-chamada-sem-guarda.test.ts` (Postgres real, turno de verdade, as duas tarefas no mesmo turno): controle com todas as guardas chama o Jev (1 do ANTES e 1 do DEPOIS) e o `state` traz só o permitido (ANTES: texto sem nome, telefone nem id; DEPOIS: só `resposta_da_ia` e `evidencias`); depois tira UMA guarda por vez (mestre, sem aceite, aceite só de mensagem, tarefa desligada x2, sem chave, interruptor da instalação x2, contato bloqueado) e confere o zero da(s) tarefa(s) protegida(s); a prévia não chama nem toca o banco.
 - **Achado real, consertado:** com contato bloqueado o DEPOIS ainda chamava o Jev (o ANTES já não). O teste reprovou antes da correção. `conferirOTurno` ganhou `contatoBloqueado` e o ponto de chamada no turno o repassa. O opt-out já vetava o envio; agora também não gasta chamada nem manda o rascunho de quem pediu para parar.
 
+### T26 — isolamento entre empresas
+- `tests/invariants/jev-isolamento-entre-empresas.test.ts` (Postgres real, turno de verdade): duas empresas **ao mesmo tempo** (`Promise.all`), com chave, aceite e estado diferentes (A: resposta, triagem observando, conferência decidindo, resposta vetada duas vezes; B: só mensagem, triagem decidindo, conferência desligada). Prova, pelas LINHAS: cada pedido ao Jev leva a chave do lado que o fez e `buscarChave` só é perguntado pela empresa do turno (itens 1 e 6); toda linha de `llm_calls` e de `jev_observacoes` aponta para mensagem/conversa da mesma empresa (2); o caso nasce só em A, na conversa dela, e o cliente de A não recebe o rascunho ruim (3); o gasto (`fn_gasto_de_ia_do_mes`) cobre as linhas da própria empresa (4).
+- `lib/ai/decisao/isolamento-da-chave.test.ts`: `chaveDasTarefas` lê a LINHA da empresa pedida (duas linhas com o MESMO valor de chave, como em D2 = B), todo filtro leva `organization_id`, empresa sem credencial não herda a de outra (item 1).
+- `lib/agent-engine/agent/evidencias-isolamento-entre-empresas.test.ts`: evidência registrada em nome de outra empresa é recusada, e dois turnos intercalados não se contaminam (item 5).
+- Varredura de RLS (`rls-completude-varredura` + `jev-observacoes`): verde, sem exceção nova (item 7).
+- **O que NÃO foi feito:** o e2e em Playwright com o dublê HTTP (`scripts/duble-jev-e2e.mjs`) não foi estendido nem rodado nesta máquina (precisa de Supabase local, servidor e navegador). O equivalente que roda aqui é o invariante acima, com o turno real e duas empresas concorrentes; falta só a prova pela tela com duas empresas.
+
 ## Pendências e coisas que só o dono pode fornecer
 
 | O quê | Quando faz falta | Tarefas |
