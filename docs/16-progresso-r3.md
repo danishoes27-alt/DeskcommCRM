@@ -205,6 +205,10 @@
 - O campo do teto mensal passa a ser em reais quando há cotação. A tela manda `monthly_limit_brl_cents`; **o servidor converte** (a tela não decide o câmbio), grava em dólar e audita o digitado e `cotacao_usd_brl_usada`. O campo só é reenviado se a pessoa o mudou (senão o teto "mudaria sozinho" depois de atualizar o dólar). Sem cotação configurada, o servidor recusa o campo em reais (422).
 - Testes: `lib/ai/cotacao*.test.*`, `tests/unit/api-orcamento-em-reais.test.ts`, ES no dicionário.
 
+### T25 — invariantes de turno fechados
+- Novo `tests/invariants/jev-nenhuma-chamada-sem-guarda.test.ts` (Postgres real, turno de verdade, as duas tarefas no mesmo turno): controle com todas as guardas chama o Jev (1 do ANTES e 1 do DEPOIS) e o `state` traz só o permitido (ANTES: texto sem nome, telefone nem id; DEPOIS: só `resposta_da_ia` e `evidencias`); depois tira UMA guarda por vez (mestre, sem aceite, aceite só de mensagem, tarefa desligada x2, sem chave, interruptor da instalação x2, contato bloqueado) e confere o zero da(s) tarefa(s) protegida(s); a prévia não chama nem toca o banco.
+- **Achado real, consertado:** com contato bloqueado o DEPOIS ainda chamava o Jev (o ANTES já não). O teste reprovou antes da correção. `conferirOTurno` ganhou `contatoBloqueado` e o ponto de chamada no turno o repassa. O opt-out já vetava o envio; agora também não gasta chamada nem manda o rascunho de quem pediu para parar.
+
 ## Pendências e coisas que só o dono pode fornecer
 
 | O quê | Quando faz falta | Tarefas |

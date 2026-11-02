@@ -49,6 +49,8 @@ export interface EntradaDaConferenciaNoTurno {
   /** `inbound_turn` é o único que confere. */
   tipoDoJob: string;
   preview: boolean;
+  /** `contacts.is_blocked` deste turno: quem pediu para parar não gera chamada ao fornecedor. */
+  contatoBloqueado?: boolean;
   rascunho: string;
   evidencias: Pick<EvidenciasDoTurno, "todas" | "consultou" | "senhasDoCliente" | "documentosDoCliente">;
   /** Só para MASCARAR o nome no que vai ao Jev; nunca é enviado. */
@@ -104,7 +106,7 @@ export async function conferirOTurno(
   deps: DependenciasDoPonto & { tetoMs?: number } = {},
 ): Promise<ConferenciaJevNoGate | undefined> {
   try {
-    if (e.preview || e.tipoDoJob !== "inbound_turn") return undefined;
+    if (e.preview || e.tipoDoJob !== "inbound_turn" || e.contatoBloqueado === true) return undefined;
     if (e.rascunho.trim() === "") return undefined;
     if (!interruptorDaInstalacaoLigado(TAREFA_DA_CONFERENCIA.id)) return undefined;
 

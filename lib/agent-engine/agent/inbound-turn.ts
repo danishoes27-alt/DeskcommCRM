@@ -3196,6 +3196,7 @@ async function executarTurnoDoAgente(
               organizationId: tenantId,
               tipoDoJob: preview ? 'previa' : liveJob().kind,
               preview: Boolean(preview),
+              contatoBloqueado: optedOutThisTurn,
               rascunho: body,
               evidencias,
               nomeDoContato: effectiveContext.contact.name,
