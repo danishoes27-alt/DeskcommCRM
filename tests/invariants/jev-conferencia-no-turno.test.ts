@@ -243,6 +243,20 @@ describe("a conferência do depois, pelo turno real", () => {
     expect(r.pedidosAoJev[0]!.corpo.model).toBe("jev-1.13.0");
   });
 
+  it("DECIDINDO, depois de segurar de vez: um NOVO send_message no mesmo turno não sai e não chama o Jev", async () => {
+    const c = await cenario("decidindo");
+    const r = novaRodada();
+    // Duas reprovações seguram a resposta; o modelo insiste com uma terceira, limpa.
+    await rodaTurno(c, deps([RASCUNHO_RUIM, RASCUNHO_RUIM, RASCUNHO_BOM], r, jevDuble(r, [0.9, 0.1, 0.1])));
+
+    expect(r.pedidosAoJev).toHaveLength(2);
+    expect(r.enviadas).toHaveLength(1);
+    expect(r.enviadas[0]).toMatch(/confirmar/);
+    expect(r.enviadas).not.toContain(RASCUNHO_BOM);
+    expect(await casos(c.org)).toHaveLength(1);
+    expect(await chamadas(c.org)).toHaveLength(2);
+  });
+
   it("DECIDINDO, reprovada na 1ª e aprovada na 2ª: sai a segunda, sem caso e sem aviso", async () => {
     const c = await cenario("decidindo");
     const r = novaRodada();

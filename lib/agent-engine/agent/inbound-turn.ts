@@ -3065,6 +3065,10 @@ async function executarTurnoDoAgente(
     send_message: tool({
       ...AGENT_TOOL_DEFS.send_message,
       execute: async ({ body, produto_codigo }) => {
+        // A resposta já foi segurada de vez pela conferência (como no `send_template`): este turno
+        // não envia mais nada, e a nova tentativa nem chega ao Jev. É código, e não só o pedido
+        // ao modelo na mensagem de erro.
+        if (respostaSegurada) return erroDaRespostaSegurada();
         // CORPO VAZIO NÃO SAI. Medido ao vivo (2026-09-19): o `gpt-4o-mini`
         // chamou `send_message` várias vezes com corpo que virou vazio e o
         // WhatsApp do cliente recebeu bolhas em branco. O schema garante
