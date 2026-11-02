@@ -174,6 +174,8 @@ export const ACEITE_DE_RESPOSTA = {
   oQueSai:
     "Para isso, o rascunho da resposta e os trechos da base de conhecimento e do catálogo que a IA consultou são enviados à TypeSafe AI, nos Estados Unidos.",
   oQueNaoSai: "A mensagem do cliente não é enviada. Antes de sair, o sistema troca por uma marca (como [NOME]) o nome, o telefone, o e-mail, o CPF e o endereço do cliente que aparecerem no rascunho, e qualquer senha de aparelho; essa troca segue regras de texto e pode deixar passar algo escrito de um jeito fora do comum.",
+  dadosDeTerceiros:
+    "Os trechos consultados no estoque e no Bling podem trazer dados de outras pessoas (nomes, endereços) que o sistema pode não conseguir trocar por marca; esse conteúdo vai para a TypeSafe AI do jeito que está.",
   quemContrata:
     "Quem contrata a TypeSafe AI é a plataforma, e a TypeSafe AI atua como operadora subcontratada, em nome dela.",
   retencao: "A TypeSafe AI não informa por quanto tempo guarda esse conteúdo.",
@@ -190,6 +192,7 @@ export function textoDoAceiteDeResposta(traduzirTexto: (texto: string) => string
     a.oQueFaz,
     a.oQueSai,
     a.oQueNaoSai,
+    a.dadosDeTerceiros,
     a.quemContrata,
     a.retencao,
     a.pedido,

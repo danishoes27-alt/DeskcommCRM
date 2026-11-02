@@ -88,6 +88,20 @@ describe("textos do Jev para quem opera", () => {
       expect(pt).toMatch(/A mensagem do cliente não é enviada/);
     });
 
+    it("avisa, em linguagem simples, que estoque e Bling podem trazer dados de outras pessoas que a troca por marca pode não pegar, e que isso vai para a TypeSafe AI", () => {
+      const pt = textoDoAceiteDeResposta((t) => t);
+      expect(ACEITE_DE_RESPOSTA.dadosDeTerceiros).toMatch(/estoque e no Bling/);
+      expect(ACEITE_DE_RESPOSTA.dadosDeTerceiros).toContain("outras pessoas (nomes, endereços)");
+      expect(ACEITE_DE_RESPOSTA.dadosDeTerceiros).toMatch(/pode não conseguir trocar por marca/);
+      expect(ACEITE_DE_RESPOSTA.dadosDeTerceiros).toMatch(/vai para a TypeSafe AI/);
+      expect(pt).toContain(ACEITE_DE_RESPOSTA.dadosDeTerceiros);
+      // A frase de retenção segue no texto, depois da de terceiros.
+      expect(pt.indexOf(ACEITE_DE_RESPOSTA.dadosDeTerceiros)).toBeLessThan(pt.indexOf(ACEITE_DE_RESPOSTA.retencao));
+      const es = textoDoAceiteDeResposta((t) => traduzir(t, "es"));
+      expect(es).toMatch(/Bling/);
+      expect(es).toMatch(/otras personas/);
+    });
+
     it("parte do cenário B: a plataforma contrata a TypeSafe AI, que é operadora subcontratada", () => {
       expect(ACEITE_DE_RESPOSTA.quemContrata).toMatch(/plataforma/);
       expect(ACEITE_DE_RESPOSTA.quemContrata).toMatch(/operadora subcontratada/);

@@ -9637,6 +9637,9 @@ export const DICIONARIO: Traducoes = {
   "A mensagem do cliente não é enviada. Antes de sair, o sistema troca por uma marca (como [NOME]) o nome, o telefone, o e-mail, o CPF e o endereço do cliente que aparecerem no rascunho, e qualquer senha de aparelho; essa troca segue regras de texto e pode deixar passar algo escrito de um jeito fora do comum.": {
     es: "El mensaje del cliente no se envía. Antes de salir, el sistema reemplaza por una marca (como [NOME]) el nombre, el teléfono, el correo electrónico, el CPF y la dirección del cliente que aparezcan en el borrador, y cualquier contraseña de dispositivo; ese reemplazo sigue reglas de texto y puede dejar pasar algo escrito de una forma fuera de lo común.",
   },
+  "Os trechos consultados no estoque e no Bling podem trazer dados de outras pessoas (nomes, endereços) que o sistema pode não conseguir trocar por marca; esse conteúdo vai para a TypeSafe AI do jeito que está.": {
+    es: "Los fragmentos consultados en el inventario y en Bling pueden traer datos de otras personas (nombres, direcciones) que el sistema quizá no logre reemplazar por una marca; ese contenido va a TypeSafe AI tal como está.",
+  },
   "Quem contrata a TypeSafe AI é a plataforma, e a TypeSafe AI atua como operadora subcontratada, em nome dela.": {
     es: "Quien contrata a TypeSafe AI es la plataforma, y TypeSafe AI actúa como operadora subcontratada, en nombre de ella.",
   },
