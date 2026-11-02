@@ -47,7 +47,7 @@ export default async function LoginPage({
           className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
           role="alert"
         >
-          {t("Link inválido ou expirado. Peça um novo em Recuperar senha ou refaça o cadastro.")}
+          {t("Esse link não vale mais. Peça um novo em “Esqueci minha senha” ou crie a conta de novo.")}
         </div>
       )}
       {/*

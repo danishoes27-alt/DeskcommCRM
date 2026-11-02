@@ -20,14 +20,20 @@ import { CalendarBlank, ChatsCircle, Kanban, List, Users } from "@/lib/ui/icons"
 export const EVENTO_ABRIR_MENU = "celuzap:abrir-menu";
 
 const DESTINOS = [
-  { href: "/app/inbox", rotulo: "Conversas", Icone: ChatsCircle },
-  { href: "/app/contacts", rotulo: "Clientes", Icone: Users },
-  { href: "/app/kanban", rotulo: "Funis de venda", Icone: Kanban },
-  { href: "/app/agenda", rotulo: "Agenda", Icone: CalendarBlank },
+  { href: "/app/inbox", Icone: ChatsCircle },
+  { href: "/app/contacts", Icone: Users },
+  { href: "/app/kanban", Icone: Kanban },
+  { href: "/app/agenda", Icone: CalendarBlank },
 ] as const;
 
 export function BarraInferior() {
   const t = useT();
+  const rotulos: Record<(typeof DESTINOS)[number]["href"], string> = {
+    "/app/inbox": t("Conversas"),
+    "/app/contacts": t("Clientes"),
+    "/app/kanban": t("Funis de venda"),
+    "/app/agenda": t("Agenda"),
+  };
   const pathname = usePathname();
   const { user, activeOrg } = useAuth();
   const visiveis = new Set(
@@ -50,7 +56,7 @@ export function BarraInferior() {
       data-testid="barra-inferior"
     >
       <ul className="flex">
-        {itens.map(({ href, rotulo, Icone }) => {
+        {itens.map(({ href, Icone }) => {
           const ativo = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <li key={href} className="flex flex-1">
@@ -60,7 +66,7 @@ export function BarraInferior() {
                 className={cn(base, ativo ? "text-accent" : "text-text-muted")}
               >
                 <Icone size={24} weight={ativo ? "fill" : "regular"} aria-hidden />
-                <span className="truncate">{t(rotulo)}</span>
+                <span className="truncate">{rotulos[href]}</span>
               </Link>
             </li>
           );

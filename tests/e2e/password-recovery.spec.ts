@@ -93,7 +93,7 @@ test("recuperar senha: forgot → e-mail → nova senha → login com a nova", a
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Senha").fill(oldPassword);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page.getByText("Email ou senha incorretos.")).toBeVisible();
+  await expect(page.getByText("E-mail ou senha não conferem. Confira e tente de novo.")).toBeVisible();
 
   // 5b. Senha NOVA entra
   await page.getByLabel("Senha").fill(newPassword);

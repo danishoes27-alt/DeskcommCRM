@@ -13971,7 +13971,6 @@ export const DICIONARIO: Traducoes = {
   },
   // ═══ r4: menu em linguagem de lojista ═══
   "Buscar clientes novos": { es: "Buscar clientes nuevos" },
-  "Conversas": { es: "Conversaciones" },
   "Clientes esfriando": { es: "Clientes enfriándose" },
   "Mensagens prontas": { es: "Mensajes listos" },
   "Funis de venda": { es: "Embudos de venta" },
@@ -14018,7 +14017,6 @@ export const DICIONARIO: Traducoes = {
   "Ver tudo de Vender": { es: "Ver todo de Vender" },
   "Meu agente": { es: "Mi agente" },
   "Ver tudo do agente": { es: "Ver todo del agente" },
-  "Conectar": { es: "Conectar" },
   "Resultados": { es: "Resultados" },
   "Ver tudo de Resultados": { es: "Ver todo de Resultados" },
   "Minha loja": { es: "Mi tienda" },
@@ -14029,7 +14027,6 @@ export const DICIONARIO: Traducoes = {
   "Loja de celular — encomendas e pedidos de peças": { es: "Tienda de celulares — encargos y pedidos de repuestos" },
   "Venda": { es: "Venta" },
   "Conserto": { es: "Reparación" },
-  "Pedidos": { es: "Pedidos" },
   "Escolhendo o aparelho": { es: "Eligiendo el equipo" },
   "Combinando o pagamento": { es: "Acordando el pago" },
   "Venda fechada": { es: "Venta cerrada" },
@@ -14037,7 +14034,6 @@ export const DICIONARIO: Traducoes = {
   "Aprovou o conserto": { es: "Aprobó la reparación" },
   "Em conserto": { es: "En reparación" },
   "Pronto para retirar": { es: "Listo para retirar" },
-  "Entregue": { es: "Entregado" },
   "Não aprovou": { es: "No aprobó" },
   "Pedido novo": { es: "Pedido nuevo" },
   "Procurando com o fornecedor": { es: "Buscando con el proveedor" },
@@ -14045,7 +14041,12 @@ export const DICIONARIO: Traducoes = {
   "Aguardando o pagamento": { es: "Esperando el pago" },
   "Peça chegou": { es: "Llegó la pieza" },
   "Entregue ao cliente": { es: "Entregado al cliente" },
-  "Cancelado": { es: "Cancelado" },
+  // ═══ r4: login em português simples ═══
+  "E-mail ou senha não conferem. Confira e tente de novo.": { es: "El correo o la contraseña no coinciden. Revisa e inténtalo de nuevo." },
+  "Você tentou entrar muitas vezes. Espere alguns minutos e tente de novo.": { es: "Intentaste entrar muchas veces. Espera unos minutos e inténtalo de nuevo." },
+  "Tem alguma informação errada. Confira os campos.": { es: "Hay algún dato incorrecto. Revisa los campos." },
+  "Algo deu errado do nosso lado. Tente de novo em instantes.": { es: "Algo salió mal de nuestro lado. Inténtalo de nuevo en unos instantes." },
+  "Esse link não vale mais. Peça um novo em “Esqueci minha senha” ou crie a conta de novo.": { es: "Ese enlace ya no vale. Pide uno nuevo en “Olvidé mi contraseña” o crea la cuenta de nuevo." },
 };
 
 /**

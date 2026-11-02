@@ -48,13 +48,13 @@ export function LoginForm({ next }: { next?: string }) {
         return;
       }
       if (res.error === "invalid_credentials") {
-        setServerError(t("Email ou senha incorretos."));
+        setServerError(t("E-mail ou senha não conferem. Confira e tente de novo."));
       } else if (res.error === "rate_limited") {
-        setServerError(t("Muitas tentativas. Aguarde alguns minutos."));
+        setServerError(t("Você tentou entrar muitas vezes. Espere alguns minutos e tente de novo."));
       } else if (res.error === "validation_error") {
-        setServerError(t("Dados inválidos. Confira os campos."));
+        setServerError(t("Tem alguma informação errada. Confira os campos."));
       } else {
-        setServerError(t("Erro inesperado. Tente novamente."));
+        setServerError(t("Algo deu errado do nosso lado. Tente de novo em instantes."));
       }
     });
   };
