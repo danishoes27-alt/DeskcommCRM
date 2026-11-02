@@ -26,7 +26,7 @@ type Props = {
   readonly decorativo?: boolean;
 };
 
-const SIMBOLO_CLARO_ESCURO = "fill-[#0b7d46] dark:fill-[#4db074]";
+const SIMBOLO_CLARO_ESCURO = "fill-[#2347b8] dark:fill-[#5482fb]";
 const NOME_CLARO_ESCURO = "fill-[#0c112a] dark:fill-[#e8e9f3]";
 const SUFIXO_CLARO_ESCURO = "fill-[#4a4f6e] dark:fill-[#9a9cb8]";
 

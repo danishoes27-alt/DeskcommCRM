@@ -47,17 +47,17 @@
   --color-border-strong: #c3c9de;
 
   /* Accent — Sage (11 stops) */
-  --color-accent-50:  #eef8f1;
-  --color-accent-100: #daefe0;
-  --color-accent-200: #b3dfc0;
-  --color-accent-300: #82c799;
-  --color-accent-400: #4db074;
-  --color-accent-500: #20995a;
-  --color-accent-600: #0b7d46;
-  --color-accent-700: #166339;
-  --color-accent-800: #195030;
-  --color-accent-900: #1a432a;
-  --color-accent-950: #0a2213;
+  --color-accent-50:  #f0f5ff;
+  --color-accent-100: #dce7ff;
+  --color-accent-200: #b6cdff;
+  --color-accent-300: #82a8ff;
+  --color-accent-400: #5482fb;
+  --color-accent-500: #3663e5;
+  --color-accent-600: #2347b8;
+  --color-accent-700: #1f3c91;
+  --color-accent-800: #1d3475;
+  --color-accent-900: #1b2e61;
+  --color-accent-950: #0e1a39;
   --color-accent: var(--color-accent-600);
   --color-accent-fg: #ffffff;
   --color-accent-soft: var(--color-accent-100);
@@ -343,20 +343,20 @@
   --color-border-strong: #4a4e7a;
 
   /* Accent stays same hex stops; default shifts up for dark contrast */
-  --color-accent-50:  #eef8f1;
-  --color-accent-100: #daefe0;
-  --color-accent-200: #b3dfc0;
-  --color-accent-300: #82c799;
-  --color-accent-400: #4db074;
-  --color-accent-500: #20995a;
-  --color-accent-600: #0b7d46;
-  --color-accent-700: #166339;
-  --color-accent-800: #195030;
-  --color-accent-900: #1a432a;
-  --color-accent-950: #0a2213;
+  --color-accent-50:  #f0f5ff;
+  --color-accent-100: #dce7ff;
+  --color-accent-200: #b6cdff;
+  --color-accent-300: #82a8ff;
+  --color-accent-400: #5482fb;
+  --color-accent-500: #3663e5;
+  --color-accent-600: #2347b8;
+  --color-accent-700: #1f3c91;
+  --color-accent-800: #1d3475;
+  --color-accent-900: #1b2e61;
+  --color-accent-950: #0e1a39;
   --color-accent: var(--color-accent-400);
-  --color-accent-fg: #03150d;
-  --color-accent-soft: rgba(77, 176, 116, 0.16);
+  --color-accent-fg: #0c112a;
+  --color-accent-soft: rgba(84, 130, 251, 0.16);
   --color-accent-hover: var(--color-accent-300);
 
   /* Neutrals — greige (11 stops, dark) */
