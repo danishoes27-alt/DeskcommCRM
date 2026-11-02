@@ -361,6 +361,13 @@ const schemaBase = z.object({
   RESEND_FROM_EMAIL: z.string().optional().default(""),
 
   /**
+   * Cotação do dólar em reais (R$ por US$ 1), só para EXIBIÇÃO (spec do Jev, 7.4 e D11).
+   * A fonte de verdade do custo segue em dólar. Vazio = as telas mostram só o dólar. O valor em
+   * vigor é o do painel (`valorDaInstalacao`); isto é só o piso. Leitor: `lib/ai/cotacao.ts`.
+   */
+  COTACAO_USD_BRL: z.string().optional().default(""),
+
+  /**
    * SMTP — o SEGUNDO transporte de e-mail, ao lado da Resend, nunca no lugar
    * dela. Quem já roda com Resend não mexe em nada; quem instala numa VPS e não
    * quer criar conta em serviço externo preenche estas sete e o envio sai pelo

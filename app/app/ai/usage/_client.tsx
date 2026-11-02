@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAiUsage, type AiUsageFilters } from "@/hooks/ai/useAiUsage";
 import { UsageFilters, type UsageFiltersAgent } from "@/components/ai/UsageFilters";
 import { UsageChart } from "@/components/ai/UsageChart";
+import { formatarCustoEmReais } from "@/lib/ai/cotacao";
 import { formatCentsUSD } from "@/lib/money";
 import { useT } from "@/hooks/i18n/useT";
 
@@ -16,6 +17,8 @@ interface Props {
     from?: string;
     to?: string;
   };
+  /** R$ por US$ 1; sem ela a tela fica em dólar. */
+  cotacao?: number | null;
 }
 
 function StatCard({
@@ -62,7 +65,7 @@ function ChartSkeletons() {
   );
 }
 
-export function UsageDashboardClient({ agents, initial }: Props) {
+export function UsageDashboardClient({ agents, initial, cotacao = null }: Props) {
   const t = useT();
   const searchParams = useSearchParams();
 
@@ -91,7 +94,8 @@ export function UsageDashboardClient({ agents, initial }: Props) {
               label={t("Custo no período")}
               // DÓLAR: esta tela mostrava o MESMO número em duas moedas — o card de
               // orçamento logo acima em US$ e este StatCard em R$, dois centímetros abaixo.
-              value={formatCentsUSD(q.data.totals.cost_cents)}
+              value={cotacao === null ? formatCentsUSD(q.data.totals.cost_cents) : formatarCustoEmReais(q.data.totals.cost_cents, cotacao)}
+              hint={cotacao === null ? undefined : `${formatCentsUSD(q.data.totals.cost_cents)} ${t("em dólar, a moeda em que o provedor cobra")}`}
             />
             <StatCard
               label={t("Atendimentos com IA")}

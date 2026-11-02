@@ -40,6 +40,7 @@ import {
   normalizarModoDeOrcamento,
   type ModoDeOrcamento,
 } from "@/lib/agent-engine/edge/llm/orcamento";
+import { centavosEmDolares, cotacaoDoDolar } from "@/lib/ai/cotacao";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -67,6 +68,12 @@ const DEGRAU: Record<ModoDeOrcamento, number> = { off: 0, avisar: 1, bloquear: 2
 const patchSchema = z
   .object({
     monthly_limit_cents: z.number().int().min(0).optional(),
+    /**
+     * O teto digitado em REAIS (centavos de real). O servidor converte pela cotação em vigor e grava
+     * a cotação usada na auditoria; a fonte de verdade continua em dólar. Não vem junto com o
+     * campo em dólar: dois tetos no mesmo corpo não têm resposta certa.
+     */
+    monthly_limit_brl_cents: z.number().int().min(0).optional(),
     // 50..99 casa o CHECK `ai_budgets_alarm_threshold_pct_check` do banco. O Zod
     // aceitava 1..100: 30 ou 100 passavam aqui, batiam no 23514 e viravam
     // "Erro ao atualizar orçamento." 500 — sem dizer qual campo ofendeu, e com o
@@ -81,10 +88,14 @@ const patchSchema = z
   .refine(
     (v) =>
       v.monthly_limit_cents !== undefined ||
+      v.monthly_limit_brl_cents !== undefined ||
       v.alarm_threshold_pct !== undefined ||
       v.enforcement_mode !== undefined,
     { message: "Informe ao menos um campo: teto, limiar ou modo." },
-  );
+  )
+  .refine((v) => !(v.monthly_limit_cents !== undefined && v.monthly_limit_brl_cents !== undefined), {
+    message: "Informe o teto em dólar ou em reais, não nos dois.",
+  });
 
 export async function GET(_req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
@@ -121,6 +132,22 @@ export async function PATCH(req: NextRequest): Promise<Response> {
     });
   }
 
+  // Teto em reais: converte AQUI, pela cotação em vigor, para a tela não decidir o câmbio.
+  let cotacaoUsada: number | null = null;
+  let tetoPedido = parsed.data.monthly_limit_cents;
+  if (parsed.data.monthly_limit_brl_cents !== undefined) {
+    cotacaoUsada = await cotacaoDoDolar();
+    if (cotacaoUsada === null) {
+      return fail(
+        "unprocessable_entity",
+        t("A cotação do dólar não está configurada nesta instalação. Informe o limite em dólar."),
+        422,
+        { requestId },
+      );
+    }
+    tetoPedido = centavosEmDolares(parsed.data.monthly_limit_brl_cents, cotacaoUsada);
+  }
+
   const admin = createAdminClient();
 
   const { data: existing, error: readErr } = await admin
@@ -145,7 +172,7 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   const limiarAntes = Number(existing?.alarm_threshold_pct ?? 80);
 
   const modoDepois = parsed.data.enforcement_mode ?? modoAntes;
-  const tetoDepois = parsed.data.monthly_limit_cents ?? tetoAntes;
+  const tetoDepois = tetoPedido ?? tetoAntes;
   const limiarDepois = parsed.data.alarm_threshold_pct ?? limiarAntes;
 
   const armando = modoDepois === "bloquear" && modoAntes !== "bloquear";
@@ -192,8 +219,8 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   }
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (parsed.data.monthly_limit_cents !== undefined) {
-    patch.monthly_limit_cents = parsed.data.monthly_limit_cents;
+  if (tetoPedido !== undefined) {
+    patch.monthly_limit_cents = tetoPedido;
   }
   if (parsed.data.alarm_threshold_pct !== undefined) {
     patch.alarm_threshold_pct = parsed.data.alarm_threshold_pct;
@@ -270,6 +297,14 @@ export async function PATCH(req: NextRequest): Promise<Response> {
     metadata: {
       enforcement_mode: { antes: modoAntes, depois: modoDepois },
       monthly_limit_cents: { antes: tetoAntes, depois: tetoDepois },
+      // Teto digitado em reais: o que a pessoa digitou e a cotação com que virou dólar, para o
+      // teto não "mudar sozinho" quando o dólar for atualizado.
+      ...(cotacaoUsada !== null
+        ? {
+            monthly_limit_brl_cents: parsed.data.monthly_limit_brl_cents,
+            cotacao_usd_brl_usada: cotacaoUsada,
+          }
+        : {}),
       alarm_threshold_pct: { antes: limiarAntes, depois: limiarDepois },
       ...(armando
         ? {

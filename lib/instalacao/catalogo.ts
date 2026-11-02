@@ -139,6 +139,15 @@ export const CATALOGO_DA_INSTALACAO: readonly ChaveDaInstalacao[] = [
     telaDona: "email",
   },
   {
+    chave: "COTACAO_USD_BRL",
+    rotulo: "Cotação do dólar (R$ por US$ 1)",
+    explicacao:
+      "Usada só para mostrar o custo da IA também em reais, nas telas de uso e de orçamento. O custo continua guardado em dólar. Atualize uma vez por mês.",
+    grupo: "ia",
+    natureza: "numero",
+    controle: "edita",
+  },
+  {
     chave: "SUPPORT_EMAIL",
     rotulo: "E-mail de suporte",
     explicacao: "O endereço que o sistema mostra a quem usa, quando alguém precisa de ajuda.",

@@ -193,6 +193,18 @@
 - **`pnpm test:unit` (sem caminho):** 53 falhas; **2 eram minhas** (`painel-de-seguranca`: a lista de conferências sem escolha foi de 10 para 11, e o texto da conferência do Jev agora diz "Neste painel ela não tem chave" em vez de "não é uma chave deste agente", que contradizia o "Isto não se desliga." do painel; `jev-nunca-cala-bloqueia-nem-responde`: a cerca proíbe `lib/ai/decisao/` de escrever em mensagem — o metadado da triagem em `messages.metadata` passou a ser gravado por `triagem-no-turno.ts`, no agent-engine, e o módulo do Jev só monta o conteúdo). Corrigidas e verdes. As outras 51 são as mesmas do commit-base (ambiente Windows).
 - Os três SQLs que ficaram sem prova no Marco 1 (T10, T12, T14) agora têm prova contra Postgres de verdade (invariante `jev-conferencia-no-turno`).
 
+## MARCO 3 (T23–T26) — reais e fechamento
+
+### T23 — cotação do dólar na configuração da plataforma
+- Chave `COTACAO_USD_BRL` em `platform_config` (sem migração), no catálogo da instalação (grupo IA, número, editável) e em `lib/env.ts` como piso. Leitor: `lib/ai/cotacao.ts` (`cotacaoDoDolar`, faixa 0,5 a 50; vazio ou inválido = `null` = telas em dólar).
+- Gravação só pela ação `salvarConfiguracaoDaInstalacao` (`requirePlatformAdmin`); aceita "5,42", grava "5.42", recusa o resto; a auditoria `platform.config_changed` leva o valor (só desta chave, que não é segredo). O admin da loja não chega: teste prova que nada é gravado nem auditado.
+- **VALOR INICIAL (provisório, para você conferir):** R$ 5,4212 por US$ 1 = PTAX de venda de 30/10/2026 (sexta, último dia útil antes de 01/11, que é domingo), obtida em notícias que citam o Banco Central (piranot.com.br, boca.com.br, dgabc.com.br). O mercado à vista fechou perto de R$ 5,44. Não consegui abrir o site do Banco Central; confira lá. Está em `.env.example` (`COTACAO_USD_BRL=5.4212`); o painel de Credenciais (grupo IA) troca sem reiniciar. Atualização manual, mensal.
+
+### T24 — telas em reais
+- `BudgetCard` e a tela de uso mostram "R$ X (cotação R$ Y)" quando há cotação, com a frase dizendo que o provedor cobra em dólar; sem cotação, ficam como antes (US$).
+- O campo do teto mensal passa a ser em reais quando há cotação. A tela manda `monthly_limit_brl_cents`; **o servidor converte** (a tela não decide o câmbio), grava em dólar e audita o digitado e `cotacao_usd_brl_usada`. O campo só é reenviado se a pessoa o mudou (senão o teto "mudaria sozinho" depois de atualizar o dólar). Sem cotação configurada, o servidor recusa o campo em reais (422).
+- Testes: `lib/ai/cotacao*.test.*`, `tests/unit/api-orcamento-em-reais.test.ts`, ES no dicionário.
+
 ## Pendências e coisas que só o dono pode fornecer
 
 | O quê | Quando faz falta | Tarefas |

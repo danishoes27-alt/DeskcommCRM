@@ -3545,6 +3545,17 @@ export const DICIONARIO: Traducoes = {
   "um atendimento — é erro de digitação. Se você só quer acompanhar o gasto sem limite, escolha \"Só acompanhar\".": {
     es: "una atención — es un error al escribir. Si solo quieres monitorear el gasto sin límite, elige \"Solo monitorear\".",
   },
+  "valores em reais pela cotação do dia; o provedor de IA cobra em dólar": {
+    es: "valores en reales según la cotización del día; el proveedor de IA cobra en dólares",
+  },
+  "Limite mensal (R$)": { es: "Límite mensual (R$)" },
+  "Aqui o limite é em reais, convertido em dólar pela cotação do dia:": {
+    es: "Aquí el límite es en reales, convertido a dólares con la cotización del día:",
+  },
+  "em dólar, a moeda em que o provedor cobra": { es: "en dólares, la moneda en la que cobra el proveedor" },
+  "A cotação do dólar não está configurada nesta instalação. Informe o limite em dólar.": {
+    es: "La cotización del dólar no está configurada en esta instalación. Indica el límite en dólares.",
+  },
   "valores em dólar (é a moeda em que o provedor de IA cobra)": {
     es: "valores en dólares (es la moneda en la que cobra el proveedor de IA)",
   },

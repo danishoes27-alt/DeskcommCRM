@@ -10,6 +10,8 @@ export type { BudgetStatus };
 
 export interface BudgetPatch {
   monthly_limit_cents?: number;
+  /** O teto digitado em reais (centavos de real); o servidor converte e audita a cotação. */
+  monthly_limit_brl_cents?: number;
   alarm_threshold_pct?: number;
   /**
    * A INTENÇÃO, declarada — não inferida da forma do payload. É o campo que

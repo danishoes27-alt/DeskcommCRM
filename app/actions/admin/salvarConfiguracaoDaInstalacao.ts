@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { audit } from "@/lib/audit";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
+import { COTACAO_MAXIMA, COTACAO_MINIMA, lerCotacao } from "@/lib/ai/cotacao";
 import { acharChave } from "@/lib/instalacao/catalogo";
 import { estadoParaTela, gravarPelaTela, voltarAoAmbiente, type EstadoParaTela } from "@/lib/instalacao/config";
 
@@ -70,7 +71,18 @@ export async function salvarConfiguracaoDaInstalacao(
     return { ok: false, erro: "Escreva um valor, ou use “Voltar ao padrão” para limpar." };
   }
 
-  const r = await gravarPelaTela(chave, limpo, {
+  let valorNormalizado: string | undefined;
+  // A cotação é número com faixa: "5,42" vira "5.42", e o que não é número (ou é absurdo) é
+  // recusado aqui, e não depois, quando as telas simplesmente deixariam de mostrar reais.
+  if (chave === "COTACAO_USD_BRL") {
+    const n = lerCotacao(limpo);
+    if (n === null) {
+      return { ok: false, erro: `Escreva a cotação em reais por dólar, entre ${COTACAO_MINIMA} e ${COTACAO_MAXIMA}. Exemplo: 5,42.` };
+    }
+    valorNormalizado = String(n);
+  }
+
+  const r = await gravarPelaTela(chave, valorNormalizado ?? limpo, {
     ehSegredo: doCatalogo.natureza === "segredo",
     ator: user.id,
   });
@@ -100,6 +112,9 @@ export async function salvarConfiguracaoDaInstalacao(
       // NUNCA o valor. Os últimos 4 caracteres identificam QUAL credencial ficou
       // lá sem revelá-la — mesma decisão de `ai_provider_credentials`.
       last4: doCatalogo.natureza === "segredo" ? limpo.slice(-4) : undefined,
+      // A cotação não é segredo, e "quem mudou o dólar de quanto para quanto" é a pergunta
+      // da auditoria mensal. Só ela (número público) entra com o valor.
+      valor: chave === "COTACAO_USD_BRL" ? valorNormalizado : undefined,
       natureza: doCatalogo.natureza,
     },
   });
