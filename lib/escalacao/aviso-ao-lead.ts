@@ -74,7 +74,7 @@ export type MotivoDoAviso =
    * A conferência do "depois" segurou a resposta da IA (r3, `docs/14-spec-jev.md`, D6): o
    * cliente não pediu pessoa nenhuma — a IA é que não pôde afirmar o que ia dizer. A frase NÃO
    * fala em "atendente" nem em "passei sua conversa": a IA não saiu de campo, ela vai confirmar.
-   * TEXTO PROVISÓRIO até o dono aprovar a redação final.
+   * Texto aprovado pelo dono em 01/11/2026; pode ser ajustado depois de ver conversas reais.
    */
   | "resposta_segurada"
   /** O sistema decidiu escalar (sentimento, baixa confiança, etapa, termo jurídico…). */
