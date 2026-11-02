@@ -39,7 +39,7 @@ const LETRA_C =
 
 export const SIMBOLO = {
   viewBox: "300 162 424 698",
-  degrade: { id: "celuzap-tela", de: "#00C853", meio: "#0F9D58", ate: "#0A6E57" },
+  degrade: { id: "celuzap-tela", de: "#5482fb", meio: "#2347b8", ate: "#1b2e61" },
   camadas: [
     { papel: "contorno", forma: "rect", attrs: { x: 308, y: 170, width: 408, height: 682, rx: 66 } },
     { papel: "anel", forma: "rect", attrs: { x: 326, y: 188, width: 372, height: 646, rx: 50 } },

@@ -24,7 +24,7 @@ const letraC =
 const simbolo = `
   <defs>
     <linearGradient id="verde" x1="0.85" y1="0.05" x2="0.1" y2="0.95">
-      <stop offset="0" stop-color="#00C853"/><stop offset="0.5" stop-color="#0F9D58"/><stop offset="1" stop-color="#0A6E57"/>
+      <stop offset="0" stop-color="#5482fb"/><stop offset="0.5" stop-color="#2347b8"/><stop offset="1" stop-color="#1b2e61"/>
     </linearGradient>
   </defs>
   <rect x="308" y="170" width="408" height="682" rx="66" fill="${NAVY}"/>
@@ -40,7 +40,7 @@ const svgSimbolo = (fundo) =>
 const svgIcone = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Celuzap"><rect width="1024" height="1024" rx="224" fill="#0C112A"/><g transform="translate(512 512) scale(1.05) translate(-512 -511)">${simbolo.split(NAVY).join("#33466e")}</g></svg>`;
 
 const svgHorizontal = (texto) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="270 150 1900 722" width="1900" height="722" role="img" aria-label="Celuzap">${simbolo}<text x="760" y="630" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif" font-size="330" font-weight="700" fill="${texto}">Celu<tspan fill="#0F9D58">zap</tspan></text></svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="270 150 1900 722" width="1900" height="722" role="img" aria-label="Celuzap">${simbolo}<text x="760" y="630" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif" font-size="330" font-weight="700" fill="${texto}">Celu<tspan fill="${texto === NAVY ? "#2347b8" : "#5482fb"}">zap</tspan></text></svg>`;
 
 async function png(svg, size, file, fundo) {
   await sharp(Buffer.from(svg)).resize(size, size, { fit: "contain", background: fundo ?? { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(file);
