@@ -231,3 +231,15 @@
 | Texto final do aviso ao cliente ("Vou confirmar essa informação com a equipe…") | antes de publicar o Marco 1 | T15 (usa o texto provisório do plano) |
 | Corpus em português rotulado (200 mensagens, 100 rascunhos) | para sair de `observando` | portão operacional |
 | Aceite do administrador da loja piloto | para a conferência ser consultada | T01/T02 |
+
+### Pendências técnicas da revisão independente (anotadas, NÃO implementadas)
+
+Vieram da revisão de 01/11/2026 sobre T01 a T26. Nenhuma bloqueia publicar no fork em `observando`; cada uma precisa de decisão ou verificação antes de ligar `decidindo` em produção.
+
+- **(a) Contador de vetos por turno, não por resposta.** `jevConferenciaVetoCount` (`inbound-turn.ts`) conta no turno inteiro: o 1º veto da 2ª mensagem do mesmo turno já conta como o 2º e segura sem chance de reescrever. Os contadores irmãos (vocabulário interno) são iguais. Decidir se vira por resposta.
+- **(b) Portão de 14 dias e do corpus só na rota/tela.** O bloqueio `jev_tarefa_ainda_observando` mora no PATCH de `/api/v1/ai/jev`; o runtime (`estadoEfetivoDaTarefa`) não revalida, e o corpus em português (D16) é só texto na tela. Uma escrita direta em `settings.jev` passa por cima. Não há outro escritor no código hoje.
+- **(c) Legenda de mídia não passa pela conferência.** Só o `send_message` chama `conferirOTurno`; template tem texto fixo, mas a legenda de mídia não foi verificada. Verificar se ela chega ao canal por outro caminho sem a cadeia.
+- **(d) Falha dentro de `conferirOTurno` desliga as regras locais L1 a L6.** O `catch` devolve `undefined` e o gate fica no-op, então, se a leitura do estado falhar, nem a regra local segura. A queda do Jev (rede) não tem esse efeito: nela as regras locais valem.
+- **(e) `JEV_*_ENABLED` aceita só "true" ou "false".** `JEV_TRIAGEM_DO_SISTEMA_ENABLED` e `JEV_CONFERENCIA_ENABLED` usam `z.enum(["true","false"])`: "1" ou "TRUE" no `.env` derruba o boot. Só importa se alguém definir a variável.
+- **(f) E2E Playwright com duas empresas pela tela: não rodado.** O equivalente que roda aqui é o invariante `jev-isolamento-entre-empresas` (turno real, duas empresas ao mesmo tempo). Falta a prova pela tela, com o dublê HTTP (`scripts/duble-jev-e2e.mjs`).
+- **Decisão do dono sobre o aceite:** o texto do aceite de `resposta` ganhou a frase sobre dados de terceiros no estoque e no Bling (fix de 01/11/2026), mas `VERSAO_DO_ACEITE_DE_RESPOSTA` continua 2. Quem já aceitou a versão 2 não viu essa frase. Se houver aceites reais dados, subir para 3 (obriga a aceitar de novo).
