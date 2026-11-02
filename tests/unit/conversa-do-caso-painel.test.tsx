@@ -167,10 +167,10 @@ describe("CaseChatPanel — instalação fresca, sem chave de IA", () => {
 
     expect(
       screen.getByText(
-        "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em IA › Provedores.",
+        "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em Meu agente › Serviços de IA.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Abrir IA › Provedores" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Abrir Meu agente › Serviços de IA" })).toHaveAttribute(
       "href",
       "/app/ai/providers",
     );
@@ -343,7 +343,7 @@ describe("CaseChatPanel — a thread", () => {
 
     expect(
       screen.getByText(
-        "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em IA › Provedores.",
+        "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em Meu agente › Serviços de IA.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("llm_not_configured")).not.toBeInTheDocument();
@@ -382,14 +382,14 @@ describe("CaseChatPanel — falhas da pergunta", () => {
       "orcamento_esgotado",
       undefined,
       "req-42",
-      "A IA parou porque o gasto do mês atingiu o limite definido. Ajuste em Uso de IA › Orçamento.",
+      "A IA parou porque o gasto do mês atingiu o limite definido. Ajuste em Meu agente › Gasto com IA.",
     );
     comChat(dados());
     pintar();
 
     expect(
       screen.getByText(
-        "A IA parou porque o gasto do mês atingiu o limite definido. Ajuste em Uso de IA › Orçamento.",
+        "A IA parou porque o gasto do mês atingiu o limite definido. Ajuste em Meu agente › Gasto com IA.",
       ),
     ).toBeInTheDocument();
     // O id é ANEXO, não a mensagem: quem lê não sabe o que é um uuid.

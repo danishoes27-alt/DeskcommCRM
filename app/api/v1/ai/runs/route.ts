@@ -53,11 +53,11 @@ const O_QUE_FAZER: Record<string, string> = {
   // a tela que nasceu para explicar o silêncio da IA nunca mostrava o único
   // caso em que o silêncio é intencional.
   orcamento_esgotado:
-    "A IA parou porque o gasto do mês atingiu o limite que você definiu. Ajuste o limite (ou desligue a parada) em Uso de IA › Orçamento.",
+    "A IA parou porque o gasto do mês atingiu o limite que você definiu. Ajuste o limite (ou desligue a parada) em Meu agente › Gasto com IA.",
   // A outra recusa deliberada: o ponto aponta para um endereço escolhido pela
   // empresa, e a chave que ia junto era a da instalação (decisão 22-a).
   endereco_exige_chave_da_empresa:
-    "A chamada foi recusada porque este ponto usa um endereço próprio e a empresa não tem chave cadastrada para ele — a chave da instalação não vai para endereço escolhido pela empresa. Cadastre a chave da empresa em Agente de IA › Provedores, ou tire o endereço próprio do ponto.",
+    "A chamada foi recusada porque este ponto usa um endereço próprio e a empresa não tem chave cadastrada para ele — a chave da instalação não vai para endereço escolhido pela empresa. Cadastre a chave da empresa em Agente de Meu agente › Serviços de IA, ou tire o endereço próprio do ponto.",
   erro_desconhecido:
     "Não conseguimos classificar esta falha. A mensagem original do provedor está abaixo.",
   // As falhas do Jev (`jev_*`), escritas junto do cliente dele.

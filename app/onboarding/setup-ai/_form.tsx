@@ -215,7 +215,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
           <p className="text-sm font-medium">
             {t("O atendente foi criado, mas as")} <strong>{t("regras da casa")}</strong>{" "}
             {t("não foram gravadas. Copie o que você escreveu antes de sair — e salve de novo em")}{" "}
-            <strong>{t("IA › Memória")}</strong>.
+            <strong>{t("Meu agente › O que o agente lembra")}</strong>.
           </p>
           <p className="text-xs text-muted-foreground">
             {t("Erro do banco de dados:")} <code className="break-all">{regrasNaoSalvas}</code>
@@ -244,7 +244,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
             <p className="text-sm">
               {t("Não achei chave")} {provedorLegivel(provedor, t)}{" "}
               {t("nem cadastrada aqui, nem vinda da instalação. Cole a chave no campo acima («o cérebro dele») e crie o atendente de novo — ou cadastre em")}{" "}
-              <strong>{t("IA › Credenciais")}</strong>.
+              <strong>{t("Meu agente › Chaves de IA")}</strong>.
             </p>
           )}
           {/*
@@ -291,13 +291,13 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
               {t(
                 "que esta instalação conhece não sabem usar ferramentas — sem isso ele conversaria bem e nunca criaria um cliente nem moveria um negócio no funil. Escolha outra empresa de IA em",
               )}{" "}
-              <strong>{t("IA › Provedores")}</strong>.
+              <strong>{t("Meu agente › Serviços de IA")}</strong>.
             </p>
           ) : (
             <p className="text-sm">
               {t("Esta instalação ainda não tem a lista de modelos")} {provedorLegivel(provedor, t)}.{" "}
               {t("Ela é baixada automaticamente uma vez por dia; depois disso, publique em")}{" "}
-              <strong>{t("IA › Agentes")}</strong>.
+              <strong>{t("Meu agente › Atendentes virtuais")}</strong>.
             </p>
           )}
           <div className="flex sm:justify-end">
@@ -331,7 +331,7 @@ export function SetupAiForm({ capacidades, conferencias }: Props) {
           </p>
           <p className="text-sm">
             {t("Tente de novo no botão abaixo (clicar de novo não cria um segundo agente) ou siga agora e publique depois em")}{" "}
-            <strong>{t("IA › Agentes")}</strong>.
+            <strong>{t("Meu agente › Atendentes virtuais")}</strong>.
           </p>
           <div className="flex sm:justify-end">
             <Button

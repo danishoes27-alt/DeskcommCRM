@@ -8,7 +8,7 @@ import type { AuthUser } from "@/lib/auth/types";
 /**
  * O SELETOR DE MODELO DO ATENDENTE NÃO OFERECE MODELO DE BUSCA.
  *
- * MEDIDO numa instalação fresca (issue #1694, item 1): IA › Agentes › Modelo
+ * MEDIDO numa instalação fresca (issue #1694, item 1): Meu agente › Atendentes virtuais › Modelo
  * listava "Text Embedding 3 Small" — o modelo que indexa o material do RAG,
  * que não conversa. Um leigo escolhia e ficava com um atendente mudo.
  *

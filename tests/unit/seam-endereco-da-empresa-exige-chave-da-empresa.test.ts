@@ -195,7 +195,7 @@ describe("endereço da empresa + chave da INSTALAÇÃO: a chave não sai", () =>
     expect(avisos[0]!.sql).toContain("'critical'");
     // A dedup: uma rajada de conversas não pode virar uma rajada de avisos.
     expect(avisos[0]!.sql).toContain("not exists");
-    expect(corpo).toContain("cadastre a chave da empresa em Agente de IA › Provedores");
+    expect(corpo).toContain("cadastre a chave da empresa em Agente de Meu agente › Serviços de IA");
     expect(corpo).toContain("tire o endereço próprio");
     expect(corpo).toContain("gateway.da-empresa.exemplo");
     // Quem lê a Central é a equipe inteira: usuário, senha e token da URL não

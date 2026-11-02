@@ -196,7 +196,7 @@ export function TelefoniaClient() {
               </Select>
               {(voiceAgents ?? []).length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  {t("Nenhum agente de voz publicado ainda — crie um em IA › Agentes.")}
+                  {t("Nenhum agente de voz publicado ainda — crie um em Meu agente › Atendentes virtuais.")}
                 </p>
               )}
             </div>

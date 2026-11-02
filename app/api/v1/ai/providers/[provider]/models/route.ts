@@ -57,7 +57,7 @@ export async function GET(
   //
   // O catálogo é o mesmo que alimenta os pontos de índice/busca do RAG, então
   // ele traz `text-embedding-3-small` — modelo que só converte texto em
-  // vetor. Era oferecido no seletor "Modelo" do agente (IA › Agentes › Modelo),
+  // vetor. Era oferecido no seletor "Modelo" do agente (Meu agente › Atendentes virtuais › Modelo),
   // e quem o escolhia ficava com um atendente mudo: embedding não conversa.
   //
   // `supports_tools` é a MESMA régua que `escolherModeloDoProvedor`

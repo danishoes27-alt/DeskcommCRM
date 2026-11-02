@@ -173,7 +173,7 @@ describe("o worker responde com a chave da instalação", () => {
 
   it("caminho 1 — a chave da CONTA responde, sem chave nenhuma no ambiente", async () => {
     // Sem `OPENAI_API_KEY` de propósito: quem paga é a credencial que a
-    // organização cadastrou e validou em IA › Credenciais.
+    // organização cadastrou e validou em Meu agente › Chaves de IA.
     estado.settings = { llm: { provider: "openai" } };
     estado.credencial = { api_key_encrypted: "x", api_key_iv: "y", api_key_tag: "z" };
 

@@ -336,7 +336,7 @@ export function RouterEditorClient({
               <p className="text-xs text-muted-foreground">
                 {classifierModels.length === 0
                   ? t(
-                      "Nenhuma chave de IA utilizável nesta organização — cadastre uma em Agentes IA › Credenciais para poder escolher o modelo.",
+                      "Nenhuma chave de IA utilizável nesta organização — cadastre uma em Agentes Meu agente › Chaves de IA para poder escolher o modelo.",
                     )
                   : t(
                       "Só aparecem modelos de provedores com chave cadastrada aqui. Se a conta do provedor estiver sem crédito, a identificação falha e tudo cai no fallback.",

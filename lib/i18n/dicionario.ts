@@ -707,8 +707,8 @@ export const DICIONARIO: Traducoes = {
   "Essa chave parece incompleta. Cole a chave inteira, do começo ao fim.": {
     es: "Esa clave parece incompleta. Pega la clave entera, de principio a fin.",
   },
-  "Já existe uma chave cadastrada com esse nome. Veja em IA › Credenciais.": {
-    es: "Ya existe una clave registrada con ese nombre. Puedes verla en IA › Credenciales.",
+  "Já existe uma chave cadastrada com esse nome. Veja em Meu agente › Chaves de IA.": {
+    es: "Ya existe una clave registrada con ese nombre. Puedes verla en Mi agente › Claves de IA.",
   },
   "Não consegui guardar a chave agora. Tente de novo.": {
     es: "No pude guardar la clave ahora. Intenta de nuevo.",
@@ -864,8 +864,8 @@ export const DICIONARIO: Traducoes = {
   "Enviando resposta aprovada…": { es: "Enviando respuesta aprobada…" },
   "Resposta aprovada enviada": { es: "Respuesta aprobada enviada" },
   "Sugestão rejeitada": { es: "Sugerencia rechazada" },
-  "Nenhum agente publicado atende este canal. Publique uma versão do agente em IA › Agentes.": {
-    es: "Ningún agente publicado atiende este canal. Publica una versión del agente en IA › Agentes.",
+  "Nenhum agente publicado atende este canal. Publique uma versão do agente em Meu agente › Atendentes virtuais.": {
+    es: "Ningún agente publicado atiende este canal. Publica una versión del agente en Mi agente › Atendentes virtuales.",
   },
   "Não dá para sugerir nesta conversa: o contato pediu para não receber mensagens, foi anonimizado, ou o histórico não pôde ser lido.":
     {
@@ -3006,9 +3006,9 @@ export const DICIONARIO: Traducoes = {
   "Modelo do classificador": { es: "Modelo del clasificador" },
   "Automático — usa o provedor da organização": { es: "Automático: usa el proveedor de la organización" },
   "chave desta instalação": { es: "clave de esta instalación" },
-  "Nenhuma chave de IA utilizável nesta organização — cadastre uma em Agentes IA › Credenciais para poder escolher o modelo.":
+  "Nenhuma chave de IA utilizável nesta organização — cadastre uma em Agentes Meu agente › Chaves de IA para poder escolher o modelo.":
     {
-      es: "No hay ninguna clave de IA que se pueda usar en esta organización. Registra una en Agentes IA › Credenciales para poder elegir el modelo.",
+      es: "No hay ninguna clave de IA que se pueda usar en esta organización. Registra una en Agentes Mi agente › Claves de IA para poder elegir el modelo.",
     },
   "Só aparecem modelos de provedores com chave cadastrada aqui. Se a conta do provedor estiver sem crédito, a identificação falha e tudo cai no fallback.":
     {
@@ -3926,11 +3926,11 @@ export const DICIONARIO: Traducoes = {
   "O modelo escolhido não sabe usar as ferramentas do CRM. Troque por um que saiba, no painel de Provedores.": {
     es: "El modelo elegido no sabe usar las herramientas del CRM. Cámbialo por uno que sepa, en el panel de Proveedores.",
   },
-  "A IA parou porque o gasto do mês atingiu o limite que você definiu. Ajuste o limite (ou desligue a parada) em Uso de IA › Orçamento.": {
-    es: "La IA se detuvo porque el gasto del mes llegó al límite que definiste. Ajusta el límite (o desactiva el corte) en Uso de IA › Presupuesto.",
+  "A IA parou porque o gasto do mês atingiu o limite que você definiu. Ajuste o limite (ou desligue a parada) em Meu agente › Gasto com IA.": {
+    es: "La IA se detuvo porque el gasto del mes llegó al límite que definiste. Ajusta el límite (o desactiva el corte) en Uso de Mi agente › Gasto con IA.",
   },
-  "A chamada foi recusada porque este ponto usa um endereço próprio e a empresa não tem chave cadastrada para ele — a chave da instalação não vai para endereço escolhido pela empresa. Cadastre a chave da empresa em Agente de IA › Provedores, ou tire o endereço próprio do ponto.": {
-    es: "Se rechazó la llamada porque este punto usa una dirección propia y la empresa no tiene una clave registrada para esa dirección. La clave de la instalación no se envía a direcciones que elige la empresa. Registra la clave de la empresa en Agente de IA › Proveedores o quita la dirección propia del punto.",
+  "A chamada foi recusada porque este ponto usa um endereço próprio e a empresa não tem chave cadastrada para ele — a chave da instalação não vai para endereço escolhido pela empresa. Cadastre a chave da empresa em Agente de Meu agente › Serviços de IA, ou tire o endereço próprio do ponto.": {
+    es: "Se rechazó la llamada porque este punto usa una dirección propia y la empresa no tiene una clave registrada para esa dirección. La clave de la instalación no se envía a direcciones que elige la empresa. Registra la clave de la empresa en Agente de Mi agente › Servicios de IA o quita la dirección propia del punto.",
   },
   "Não conseguimos classificar esta falha. A mensagem original do provedor está abaixo.": {
     es: "No pudimos clasificar esta falla. El mensaje original del proveedor está abajo.",
@@ -3953,7 +3953,7 @@ export const DICIONARIO: Traducoes = {
   "O produto resolve este ponto sozinho — não há modelo a escolher.": {
     es: "El producto resuelve este punto por sí solo; no hay modelo que elegir.",
   },
-  // O Jev em IA › Execuções e na Central (`lib/ai/decisao/textos.ts`).
+  // O Jev em Meu agente › O que o agente fez e na Central (`lib/ai/decisao/textos.ts`).
   "O Jev decidiu.": { es: "Jev decidió." },
   "O Jev observou: a resposta dele ficou registrada para comparar, e não decidiu nada.": {
     es: "Jev observó: su respuesta quedó registrada para comparar y no decidió nada.",
@@ -4036,7 +4036,7 @@ export const DICIONARIO: Traducoes = {
   "Este aviso se fecha sozinho quando o Jev voltar a medir.": {
     es: "Este aviso se cierra solo cuando Jev vuelva a medir.",
   },
-  // O cartão do Jev em IA › Provedores (`app/app/ai/providers/_components/CartaoDoJev.tsx`).
+  // O cartão do Jev em Meu agente › Serviços de IA (`app/app/ai/providers/_components/CartaoDoJev.tsx`).
   "Enquanto isso, o atendimento usa a chave que veio na instalação.": {
     es: "Mientras tanto, la atención usa la clave que vino con la instalación.",
   },
@@ -4333,7 +4333,7 @@ export const DICIONARIO: Traducoes = {
   "Perceber pedidos do cliente": {
     es: "Detectar pedidos del cliente",
   },
-  // O "por quê" da chamada dos pedidos em IA › Execuções (`PEDIDOS_DO_CLIENTE`).
+  // O "por quê" da chamada dos pedidos em Meu agente › O que o agente fez (`PEDIDOS_DO_CLIENTE`).
   "O Jev foi perguntado se esta mensagem traz um pedido que a regra de hoje não viu. Ele não bloqueia nem passa a conversa.": {
     es: "Se le preguntó a Jev si este mensaje trae un pedido que la regla de hoy no vio. Él no bloquea ni transfiere la conversación.",
   },
@@ -4462,7 +4462,7 @@ export const DICIONARIO: Traducoes = {
   "O Jev mede sozinho: não há modelo de reserva.": {
     es: "Jev mide solo: no hay modelo de respaldo.",
   },
-  // IA › Execuções, o filtro do Jev.
+  // Meu agente › O que o agente fez, o filtro do Jev.
   "Só o Jev": { es: "Solo Jev" },
   "Mostrando só o Jev": { es: "Mostrando solo Jev" },
   "O Jev ainda não mediu nenhuma mensagem.": { es: "Jev todavía no midió ningún mensaje." },
@@ -7164,7 +7164,7 @@ export const DICIONARIO: Traducoes = {
   "não foram gravadas. Copie o que você escreveu antes de sair — e salve de novo em": {
     es: "no se guardaron. Copia lo que escribiste antes de salir y vuelve a guardarlo en",
   },
-  "IA › Memória": { es: "IA › Memoria" },
+  "Meu agente › O que o agente lembra": { es: "Mi agente › Lo que el agente recuerda" },
   "Erro do banco de dados:": { es: "Error de la base de datos:" },
   "Seu atendente foi criado, mas ficou como": { es: "Tu agente se creó, pero quedó como" },
   "rascunho": { es: "borrador" },
@@ -7173,7 +7173,7 @@ export const DICIONARIO: Traducoes = {
   "nem cadastrada aqui, nem vinda da instalação. Cole a chave no campo acima («o cérebro dele») e crie o atendente de novo — ou cadastre em": {
     es: "ni registrada aquí ni incluida con la instalación. Pega la clave en el campo de arriba («su cerebro») y vuelve a crear el agente, o regístrala en",
   },
-  "IA › Credenciais": { es: "IA › Credenciales" },
+  "Meu agente › Chaves de IA": { es: "Mi agente › Claves de IA" },
   "A chave que você colou ainda não foi confirmada pelo provedor.": {
     es: "El proveedor todavía no confirma la clave que pegaste.",
   },
@@ -7186,14 +7186,14 @@ export const DICIONARIO: Traducoes = {
   "que esta instalação conhece não sabem usar ferramentas — sem isso ele conversaria bem e nunca criaria um cliente nem moveria um negócio no funil. Escolha outra empresa de IA em": {
     es: "que conoce esta instalación no saben usar herramientas. Sin eso, conversaría bien, pero nunca crearía un cliente ni movería un negocio en el embudo. Elige otra empresa de IA en",
   },
-  "IA › Provedores": { es: "IA › Proveedores" },
+  "Meu agente › Serviços de IA": { es: "Mi agente › Servicios de IA" },
   "Esta instalação ainda não tem a lista de modelos": {
     es: "Esta instalación todavía no tiene la lista de modelos",
   },
   "Ela é baixada automaticamente uma vez por dia; depois disso, publique em": {
     es: "Se descarga automáticamente una vez al día. Cuando se descargue, publica en",
   },
-  "IA › Agentes": { es: "IA › Agentes" },
+  "Meu agente › Atendentes virtuais": { es: "Mi agente › Atendentes virtuales" },
   "Seu agente foi criado, mas ficou como": { es: "Tu agente se creó, pero quedó como" },
   "não consegui ler os números de WhatsApp desta instalação, então não dá pra dizer em qual número ele atenderia — e rascunho não responde mensagem.": {
     es: "no pude leer los números de WhatsApp de esta instalación, así que no puedo decir en qué número atendería — y un borrador no responde mensajes.",
@@ -7219,8 +7219,8 @@ export const DICIONARIO: Traducoes = {
   "A chave foi guardada. A lista de modelos desta empresa de IA ainda não chegou nesta instalação — por enquanto a IA da empresa continua a anterior. Não precisa colar a chave de novo.": {
     es: "La clave se guardó. La lista de modelos de esta empresa de IA todavía no llega a esta instalación, así que por ahora la empresa sigue usando la IA anterior. No hace falta pegar la clave de nuevo.",
   },
-  "A chave foi guardada, mas não consegui mudar a IA da empresa agora. Dá para trocar em IA › Provedores.": {
-    es: "La clave se guardó, pero ahora no pude cambiar la IA de la empresa. Puedes cambiarla en IA › Proveedores.",
+  "A chave foi guardada, mas não consegui mudar a IA da empresa agora. Dá para trocar em Meu agente › Serviços de IA.": {
+    es: "La clave se guardó, pero ahora no pude cambiar la IA de la empresa. Puedes cambiarla en Mi agente › Servicios de IA.",
   },
   "Guardando...": { es: "Guardando..." },
   "Guardar a chave": { es: "Guardar la clave" },
@@ -7234,7 +7234,7 @@ export const DICIONARIO: Traducoes = {
   "A chave foi aceita, mas o teste não passou:": { es: "La clave se aceptó, pero la prueba no pasó:" },
   "A empresa de IA recusou por falta de saldo ou limite de uso. Adicione crédito na conta dela — sem isso ele não responde a nenhum cliente.": { es: "La empresa de IA lo rechazó por falta de saldo o por límite de uso. Agrega crédito en su cuenta: sin eso no responderá a ningún cliente." },
   "A empresa de IA não aceitou esta chave. Confira se ela foi colada inteira e se é a chave do provedor escolhido.": { es: "La empresa de IA no aceptó esta clave. Revisa que la hayas pegado completa y que sea la clave del proveedor que elegiste." },
-  "A empresa de IA não reconhece o modelo escolhido para ele. Dá para escolher outro em IA › Provedores.": { es: "La empresa de IA no reconoce el modelo elegido para él. Puedes elegir otro en IA › Proveedores." },
+  "A empresa de IA não reconhece o modelo escolhido para ele. Dá para escolher outro em Meu agente › Serviços de IA.": { es: "La empresa de IA no reconoce el modelo elegido para él. Puedes elegir otro en Mi agente › Servicios de IA." },
   "Não consegui falar com a empresa de IA agora — rede ou serviço fora do ar. Isto não é a chave: tente de novo em minutos.": { es: "No pude comunicarme con la empresa de IA ahora: red o servicio fuera de línea. Esto no es la clave, vuelve a intentarlo en unos minutos." },
   "A empresa de IA recusou a chamada de teste, e não sei dizer o motivo pelo que ela respondeu. Confira o saldo e a chave na conta da empresa de IA.": { es: "La empresa de IA rechazó la llamada de prueba y no sé decir el motivo por lo que respondió. Revisa el saldo y la clave en la cuenta de la empresa de IA." },
   "Se for falta de crédito, adicione saldo na conta da empresa de IA — sem isso ele não responde a nenhum cliente.": {
@@ -7289,13 +7289,13 @@ export const DICIONARIO: Traducoes = {
   "o ensaio terminou como": { es: "el ensayo terminó como" },
   "Ele executou, mas não devolveu texto nenhum.": { es: "Se ejecutó, pero no devolvió ningún texto." },
   "Você ainda não montou seu funcionário.": { es: "Todavía no armaste a tu empleado." },
-  "Sem ninguém treinado, não há o que testar. Dá para voltar ao passo anterior agora ou fazer isso depois, em IA › Agentes.": {
-    es: "Sin nadie entrenado, no hay nada que probar. Puedes volver al paso anterior ahora o hacerlo después, en IA › Agentes.",
+  "Sem ninguém treinado, não há o que testar. Dá para voltar ao passo anterior agora ou fazer isso depois, em Meu agente › Atendentes virtuais.": {
+    es: "Sin nadie entrenado, no hay nada que probar. Puedes volver al paso anterior ahora o hacerlo después, en Mi agente › Atendentes virtuales.",
   },
   "está como": { es: "está como" },
   "ainda não foi para o ar.": { es: "todavía no está en línea." },
-  "Rascunho não responde mensagem, então não há o que ensaiar. O passo anterior explicou o que falta; você pode resolver depois em IA › Agentes.": {
-    es: "Un borrador no responde mensajes, así que no hay nada que ensayar. El paso anterior explicó qué falta. Puedes resolverlo después en IA › Agentes.",
+  "Rascunho não responde mensagem, então não há o que ensaiar. O passo anterior explicou o que falta; você pode resolver depois em Meu agente › Atendentes virtuais.": {
+    es: "Un borrador no responde mensajes, así que no hay nada que ensayar. El paso anterior explicó qué falta. Puedes resolverlo después en Mi agente › Atendentes virtuales.",
   },
   "Escreva como se fosse um cliente": { es: "Escribe como si fueras un cliente" },
   "Ele está pensando...": { es: "Está pensando..." },
@@ -9217,8 +9217,8 @@ export const DICIONARIO: Traducoes = {
   "Provedor trocado. A base está sendo refeita.": { es: "Proveedor cambiado. La base se está rehaciendo." },
   "Provedor trocado, mas parte do material não entrou na fila. Use “Preparar tudo de novo”.": { es: "Proveedor cambiado, pero parte del material no entró en la cola. Usa “Preparar todo de nuevo”." },
   "Provedor trocado, mas a base não começou a ser refeita. Use “Preparar tudo de novo”.": { es: "Proveedor cambiado, pero la base no empezó a rehacerse. Usa “Preparar todo de nuevo”." },
-  "Cadastre e valide uma chave do Google em IA › Credenciais antes de trocar.": { es: "Registra y valida una clave de Google en IA › Credenciales antes de cambiar." },
-  "Cadastre e valide uma chave da OpenAI ou OpenRouter em IA › Credenciais antes de trocar.": { es: "Registra y valida una clave de OpenAI u OpenRouter en IA › Credenciales antes de cambiar." },
+  "Cadastre e valide uma chave do Google em Meu agente › Chaves de IA antes de trocar.": { es: "Registra y valida una clave de Google en Mi agente › Claves de IA antes de cambiar." },
+  "Cadastre e valide uma chave da OpenAI ou OpenRouter em Meu agente › Chaves de IA antes de trocar.": { es: "Registra y valida una clave de OpenAI u OpenRouter en Mi agente › Claves de IA antes de cambiar." },
   "Não foi possível trocar o provedor.": { es: "No se pudo cambiar el proveedor." },
   "Não consegui confirmar agora com que provedor a base é preparada. Tente de novo em instantes.": { es: "No pude confirmar ahora con qué proveedor se prepara la base. Inténtalo de nuevo en unos instantes." },
   "Não consegui confirmar agora com que provedor a base é preparada. Recarregue em instantes.": { es: "No pude confirmar ahora con qué proveedor se prepara la base. Recarga en unos instantes." },
@@ -11622,8 +11622,8 @@ export const DICIONARIO: Traducoes = {
   "IA, depois time humano": { es: "La IA y después el equipo humano" },
   "Agente de voz": { es: "Agente de voz" },
   "Nenhum agente": { es: "Ningún agente" },
-  "Nenhum agente de voz publicado ainda — crie um em IA › Agentes.": {
-    es: "Aún no hay agentes de voz publicados. Crea uno en IA › Agentes.",
+  "Nenhum agente de voz publicado ainda — crie um em Meu agente › Atendentes virtuais.": {
+    es: "Aún no hay agentes de voz publicados. Crea uno en Mi agente › Atendentes virtuales.",
   },
   "Sem rótulo": { es: "Sin etiqueta" },
 
@@ -12259,12 +12259,12 @@ export const DICIONARIO: Traducoes = {
   "Filtro inválido.": { es: "Filtro no válido." },
   "Este contato foi anonimizado a pedido dele. A IA não responde sobre casos de contato anonimizado.":
     { es: "Este contacto fue anonimizado por petición suya. La IA no responde sobre casos de contactos anonimizados." },
-  "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em IA › Provedores.":
-    { es: "No hay ningún proveedor de IA configurado. Pide a un administrador que lo configure en IA › Proveedores." },
-  "A IA parou porque o gasto do mês atingiu o limite definido. Ajuste em Uso de IA › Orçamento.":
-    { es: "La IA se detuvo porque el gasto del mes alcanzó el límite definido. Ajústalo en Uso de IA › Presupuesto." },
-  "O modelo escolhido para este uso não está disponível. Reveja a escolha em IA › Provedores.":
-    { es: "El modelo elegido para este uso no está disponible. Revisa la elección en IA › Proveedores." },
+  "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em Meu agente › Serviços de IA.":
+    { es: "No hay ningún proveedor de IA configurado. Pide a un administrador que lo configure en Mi agente › Servicios de IA." },
+  "A IA parou porque o gasto do mês atingiu o limite definido. Ajuste em Meu agente › Gasto com IA.":
+    { es: "La IA se detuvo porque el gasto del mes alcanzó el límite definido. Ajústalo en Mi agente › Gasto con IA." },
+  "O modelo escolhido para este uso não está disponível. Reveja a escolha em Meu agente › Serviços de IA.":
+    { es: "El modelo elegido para este uso no está disponible. Revisa la elección en Mi agente › Servicios de IA." },
   "Não deu para responder agora. Tente de novo; se continuar, mande este código para quem instalou o sistema.":
     { es: "No se pudo responder ahora. Inténtalo de nuevo; si continúa, envía este código a quien instaló el sistema." },
 
@@ -12296,7 +12296,7 @@ export const DICIONARIO: Traducoes = {
   "O que o cliente já tentou?": { es: "¿Qué ha intentado ya el cliente?" },
   "O que muda se eu concluir agora?": { es: "¿Qué cambia si lo concluyo ahora?" },
   "A IA está lendo o caso…": { es: "La IA está leyendo el caso…" },
-  "Abrir IA › Provedores": { es: "Abrir IA › Proveedores" },
+  "Abrir Meu agente › Serviços de IA": { es: "Abrir Mi agente › Servicios de IA" },
   "Sua pergunta para a IA": { es: "Tu pregunta para la IA" },
   "Pergunte à IA sobre este caso…": { es: "Pregúntale a la IA sobre este caso…" },
   "Ctrl + Enter envia. Enter quebra linha.": { es: "Ctrl + Enter envía. Enter inserta un salto de línea." },
@@ -13503,7 +13503,7 @@ export const DICIONARIO: Traducoes = {
   "O cliente recebeu e não decidiu. Retome antes que esfrie de vez.": {"es": "El cliente la recibió y no decidió. Retómala antes de que se enfríe del todo."},
   "venceu em": {"es": "venció el"},
   "Proposta sem número": {"es": "Propuesta sin número"},
-  "O orçamento mensal de IA desta organização foi atingido. Ajuste o limite em Uso de IA › Orçamento, ou aguarde a virada do mês.": {"es": "Se alcanzó el presupuesto mensual de IA de esta organización. Ajusta el límite en Uso de IA › Presupuesto, o espera al cambio de mes."},
+  "O orçamento mensal de IA desta organização foi atingido. Ajuste o limite em Meu agente › Gasto com IA, ou aguarde a virada do mês.": {"es": "Se alcanzó el presupuesto mensual de IA de esta organización. Ajusta el límite en Mi agente › Gasto con IA, o espera al cambio de mes."},
   "Atualizar preços": {"es": "Actualizar precios"},
   "Manter": {"es": "Mantener"},
   "Ignorar aviso": {"es": "Ignorar aviso"},
@@ -13602,7 +13602,7 @@ export const DICIONARIO: Traducoes = {
   "É um roteiro de perguntas que a IA segue durante a conversa: ela pergunta uma coisa por vez, entende a resposta e guarda o dado no cadastro do cliente.": { es: "Es un guion de preguntas que la IA sigue durante la conversación: pregunta una cosa a la vez, entiende la respuesta y guarda el dato en el registro del cliente." },
   "Montando o roteiro": { es: "Armando el guion" },
   "Crie o roteiro e dê um nome.": { es: "Crea el guion y dale un nombre." },
-  "No Início, escreva as palavras-gatilho: quando a mensagem do cliente tiver uma delas, o roteiro começa sozinho. Ele também pode começar por uma intenção em IA › Roteadores.": { es: "En el Inicio, escribe las palabras clave: cuando el mensaje del cliente tenga una de ellas, el guion empieza solo. También puede empezar por una intención en IA › Enrutadores." },
+  "No Início, escreva as palavras-gatilho: quando a mensagem do cliente tiver uma delas, o roteiro começa sozinho. Ele também pode começar por uma intenção em Meu agente › Quem atende o quê.": { es: "En el Inicio, escribe las palabras clave: cuando el mensaje del cliente tenga una de ellas, el guion empieza solo. También puede empezar por una intención en Mi agente › Quién atiende qué." },
   "Adicione uma Pergunta para cada dado, com uma chave curta (ex.: cidade), o tipo e se é obrigatória. O tipo CPF confere o dígito verificador.": { es: "Agrega una Pregunta para cada dato, con una clave corta (ej.: ciudad), el tipo y si es obligatoria. El tipo CPF valida el dígito verificador." },
   "Se quiser, adicione uma Skill — um procedimento da loja que a IA usa naquele passo.": { es: "Si quiere, agregue una Skill: un procedimiento de la tienda que la IA usa en ese paso." },
   "Ligue as caixas em linha, do Início ao Fim. No Fim, escolha o que acontece ao concluir: nada, orientar a IA, chamar uma skill ou começar outro roteiro.": { es: "Conecta las cajas en línea, del Inicio al Fin. En el Fin, elige qué pasa al concluir: nada, orientar a la IA, llamar una skill o empezar otro guion." },
@@ -13842,7 +13842,7 @@ export const DICIONARIO: Traducoes = {
   "Disponível nesta instalação": { es: "Disponible en esta instalación" },
   "Da sua empresa": { es: "De tu empresa" },
   "Em cada agente": { es: "En cada agente" },
-  "Estes se ligam em cada agente, em Agente de IA › Agentes.": { es: "Estos se activan en cada agente, en Agente de IA › Agentes." },
+  "Estes se ligam em cada agente, em Agente de Meu agente › Atendentes virtuais.": { es: "Estos se activan en cada agente, en Agente de Mi agente › Atendentes virtuales." },
   "Tudo o que se liga e desliga nesta instalação, num lugar só. Vale para todas as empresas hospedadas aqui.": { es: "Todo lo que se activa y desactiva en esta instalación, en un solo lugar. Vale para todas las empresas alojadas aquí." },
   "Depende do servidor": { es: "Depende del servidor" },
   "Só leitura. Estes dependem de credencial ou do arquivo de ambiente do servidor. Nenhum valor de segredo aparece aqui.": { es: "Solo lectura. Estos dependen de credenciales o del archivo de entorno del servidor. Ningún valor secreto aparece aquí." },

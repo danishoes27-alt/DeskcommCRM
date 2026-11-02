@@ -103,7 +103,7 @@ export function motivoDaFalha(erro: unknown): MotivoDaFalha {
     return {
       codigo: "reply_no_agent",
       texto:
-        "Nenhum agente publicado atende este canal. Publique uma versão do agente em IA › Agentes.",
+        "Nenhum agente publicado atende este canal. Publique uma versão do agente em Meu agente › Atendentes virtuais.",
       acionavel: true,
     };
   if (marca === "reply_context_unavailable")

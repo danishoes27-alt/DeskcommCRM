@@ -1,5 +1,5 @@
 /**
- * O QUE O JEV DIZ A QUEM OPERA — IA › Execuções e a Central de avisos.
+ * O QUE O JEV DIZ A QUEM OPERA — Meu agente › O que o agente fez e a Central de avisos.
  *
  * Quem lê é o dono do negócio. Cada frase diz o que aconteceu e o que dá para
  * fazer, sem código de status nem nome de campo. As frases chegam à tela por

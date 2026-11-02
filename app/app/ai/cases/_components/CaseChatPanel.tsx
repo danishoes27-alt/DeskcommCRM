@@ -242,11 +242,11 @@ export function CaseChatPanel({ caseId }: { caseId: string }) {
         <div className="flex flex-col items-start gap-2">
           <p className="text-sm text-muted-foreground">
             {t(
-              "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em IA › Provedores.",
+              "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em Meu agente › Serviços de IA.",
             )}
           </p>
           <a className="text-sm text-accent underline underline-offset-2" href="/app/ai/providers">
-            {t("Abrir IA › Provedores")}
+            {t("Abrir Meu agente › Serviços de IA")}
           </a>
         </div>
       ) : null}

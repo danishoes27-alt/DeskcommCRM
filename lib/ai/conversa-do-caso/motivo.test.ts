@@ -16,7 +16,7 @@ describe("motivoDaConversaDoCaso", () => {
     // `llm_calls`, então a tela de Execuções também não conta.
     const m = motivoDaConversaDoCaso(new LlmNotConfiguredError());
     expect(m.codigo).toBe("llm_not_configured");
-    expect(m.texto).toContain("IA › Provedores");
+    expect(m.texto).toContain("Meu agente › Serviços de IA");
     expect(m.acionavel).toBe(true);
   });
 
@@ -25,7 +25,7 @@ describe("motivoDaConversaDoCaso", () => {
     // novo seria mandar a pessoa bater na mesma porta até desistir.
     const m = motivoDaConversaDoCaso(new LlmBudgetExceededError());
     expect(m.codigo).toBe("orcamento_esgotado");
-    expect(m.texto).toContain("Uso de IA › Orçamento");
+    expect(m.texto).toContain("Meu agente › Gasto com IA");
   });
 
   it("modelo não habilitado e provider desconhecido caem no MESMO código", () => {

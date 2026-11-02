@@ -67,11 +67,11 @@ describe("espanhol dos textos que vêm de lista, não de literal", () => {
     expect(semEspanhol(textos)).toEqual([]);
   });
 
-  it("o nome e o porquê da chamada do Jev que não é de ponto nenhum, em IA › Execuções", () => {
+  it("o nome e o porquê da chamada do Jev que não é de ponto nenhum, em Meu agente › O que o agente fez", () => {
     expect(semEspanhol([PEDIDOS_DO_CLIENTE.rotulo, PEDIDOS_DO_CLIENTE.porQue, PEDIDOS_DO_CLIENTE.porQueNaFalha])).toEqual([]);
   });
 
-  it("o nome e o porquê das chamadas do Jev DEPOIS e ANTES da IA, em IA › Execuções", () => {
+  it("o nome e o porquê das chamadas do Jev DEPOIS e ANTES da IA, em Meu agente › O que o agente fez", () => {
     expect(
       semEspanhol(
         [CONFERENCIA_DA_RESPOSTA, TRIAGEM_DA_MENSAGEM].flatMap((c) => [c.rotulo, c.porQue, c.porQueNaFalha]),
@@ -79,7 +79,7 @@ describe("espanhol dos textos que vêm de lista, não de literal", () => {
     ).toEqual([]);
   });
 
-  it("toda explicação de origem — o \"por que este modelo\" de IA › Execuções", () => {
+  it("toda explicação de origem — o \"por que este modelo\" de Meu agente › O que o agente fez", () => {
     expect(semEspanhol(Object.values(EXPLICACAO_DA_ORIGEM))).toEqual([]);
   });
 });

@@ -141,7 +141,7 @@ export default async function RecursosOpcionaisPage() {
             {traduzir("Em cada agente", idioma)}
           </h2>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            {traduzir("Estes se ligam em cada agente, em Agente de IA › Agentes.", idioma)}
+            {traduzir("Estes se ligam em cada agente, em Agente de Meu agente › Atendentes virtuais.", idioma)}
           </p>
         </div>
         <ul className="space-y-3">{deCadaAgente.map(linha)}</ul>

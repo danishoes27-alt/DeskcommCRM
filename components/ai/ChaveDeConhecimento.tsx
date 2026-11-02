@@ -322,7 +322,7 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
               href="/app/ai/credentials"
               className="font-medium text-foreground underline underline-offset-4"
             >
-              {t("IA › Credenciais")}
+              {t("Meu agente › Chaves de IA")}
             </Link>
           </span>
         </div>
@@ -402,7 +402,7 @@ function TrocaDeProvedor({
             href="/app/ai/credentials"
             className="font-medium text-foreground underline underline-offset-4"
           >
-            {t("IA › Credenciais")}
+            {t("Meu agente › Chaves de IA")}
           </Link>
           .
         </span>

@@ -400,7 +400,7 @@ export function tarefaPodeDecidir(tarefa: Pick<TarefaDoJev, "soObserva">): boole
  * `purpose` na linha dela em `llm_calls`. Não é um ponto do registro: não há IA
  * de sempre para escolher ali — a regra de hoje não usa modelo —, e um ponto
  * sem chamador seria botão que não controla nada na tela de provedores. Quem
- * dá nome de gente a ela em IA › Execuções e na "Última falha" do cartão é
+ * dá nome de gente a ela em Meu agente › O que o agente fez e na "Última falha" do cartão é
  * `rotuloDaChamadaDoJev`.
  *
  * O "por quê" da linha em Execuções também é dela (`porQue`, `porQueNaFalha`):

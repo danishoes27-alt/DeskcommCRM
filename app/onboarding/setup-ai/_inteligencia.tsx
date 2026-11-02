@@ -187,7 +187,7 @@ export function InteligenciaDele({ inicial }: { inicial: EstadoDaChave }) {
               } else if (r.aviso) {
                 toast.warning(
                   t(
-                    "A chave foi guardada, mas não consegui mudar a IA da empresa agora. Dá para trocar em IA › Provedores.",
+                    "A chave foi guardada, mas não consegui mudar a IA da empresa agora. Dá para trocar em Meu agente › Serviços de IA.",
                   ),
                 );
               } else {

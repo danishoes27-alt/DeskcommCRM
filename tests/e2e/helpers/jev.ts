@@ -205,7 +205,7 @@ export async function escoarAFila(page: Page): Promise<void> {
   throw new Error("a fila não escoou em 20 drenos — a prova do Jev desligado mediria o vazio");
 }
 
-/** A linha da medição em IA › Execuções, pelo filtro que o cartão oferece. */
+/** A linha da medição em Meu agente › O que o agente fez, pelo filtro que o cartão oferece. */
 export async function esperarMedicaoEmExecucoes(page: Page, modelo: RegExp): Promise<void> {
   await expect(async () => {
     await page.goto("/app/ai/runs?provider=typesafe");

@@ -6,7 +6,7 @@
  * porquê é de versionamento, não de segurança:
  *
  * Recusar no instante da atualização obriga quem opera a agir ANTES de
- * atualizar (abrir Agente de IA › Provedores em cada empresa), sob pena de a IA
+ * atualizar (abrir Agente de Meu agente › Serviços de IA em cada empresa), sob pena de a IA
  * de uma empresa parar de responder aos clientes. Pela régua de
  * `docs/doctrine/versionamento.md`, "antes de atualizar você precisa fazer
  * algo" é **major** — e a decisão do dono (19/09/2026, doc 40) é que major só

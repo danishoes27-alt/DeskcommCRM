@@ -47,11 +47,11 @@ export type CaseChatErrorCode = (typeof CASE_CHAT_ERROR_CODES)[number];
  */
 export const FRASE_DA_FALHA: Record<CaseChatErrorCode, string> = {
   llm_not_configured:
-    "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em IA › Provedores.",
+    "Nenhum provedor de IA está configurado. Peça a quem administra para configurar em Meu agente › Serviços de IA.",
   orcamento_esgotado:
-    "A IA parou porque o gasto do mês atingiu o limite definido. Ajuste em Uso de IA › Orçamento.",
+    "A IA parou porque o gasto do mês atingiu o limite definido. Ajuste em Meu agente › Gasto com IA.",
   modelo_indisponivel:
-    "O modelo escolhido para este uso não está disponível. Reveja a escolha em IA › Provedores.",
+    "O modelo escolhido para este uso não está disponível. Reveja a escolha em Meu agente › Serviços de IA.",
   case_chat_unavailable:
     "Não deu para responder agora. Tente de novo; se continuar, mande este código para quem instalou o sistema.",
 };

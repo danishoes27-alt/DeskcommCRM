@@ -289,7 +289,7 @@ test("rejeitar tira a sugestão da tela e diz que rejeitou; sem agente publicado
     expect((await recusa.json()).error.code).toBe("reply_no_agent");
     await expect(
       page.getByText(
-        "Nenhum agente publicado atende este canal. Publique uma versão do agente em IA › Agentes.",
+        "Nenhum agente publicado atende este canal. Publique uma versão do agente em Meu agente › Atendentes virtuais.",
         { exact: false },
       ),
       "a falha não disse o motivo na tela",

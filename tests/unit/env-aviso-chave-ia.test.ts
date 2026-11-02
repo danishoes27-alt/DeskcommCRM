@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * O BOOT SÓ SABE O QUE ESTÁ NO AMBIENTE.
  *
- * A credencial que uma organização cadastra em IA › Credenciais mora no banco e
+ * A credencial que uma organização cadastra em Meu agente › Chaves de IA mora no banco e
  * só é resolvida quando o turno conhece a organização. Logo, três variáveis
  * vazias não autorizam `lib/env.ts` a concluir que o agente ficará mudo.
  *
@@ -59,7 +59,7 @@ describe("aviso de chave de IA no boot", () => {
 
     expect(aviso).toBeDefined();
     expect(aviso).toContain("no ambiente");
-    expect(aviso).toContain("IA › Credenciais");
+    expect(aviso).toContain("Meu agente › Chaves de IA");
     expect(aviso).not.toContain("o agente vai pular toda resposta");
     expect(aviso).not.toContain("ai_gateway_key_missing");
   });

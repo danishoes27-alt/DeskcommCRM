@@ -75,7 +75,7 @@ export type ModoDeOrcamento = 'off' | 'avisar' | 'bloquear';
 export const AVISO_TITULO = 'O gasto de IA passou do aviso que você definiu';
 export const AVISO_CORPO =
   'A IA continua respondendo normalmente — isto é o aviso, não a parada. ' +
-  'Veja quanto já foi gasto e ajuste o limite em Uso de IA › Orçamento.';
+  'Veja quanto já foi gasto e ajuste o limite em Meu agente › Gasto com IA.';
 export const BLOQUEIO_TITULO = 'O limite de gasto com IA foi atingido';
 
 /**
@@ -115,7 +115,7 @@ export function corpoDoBloqueio(gastoCents: number, tetoCents: number): string {
     'e você escolheu que a IA parasse ao chegar nele. ' +
     'As conversas que estavam sendo atendidas foram para a FILA DE ATENDIMENTO HUMANO — ' +
     'ninguém ficou sem próximo passo, mas alguém precisa responder. ' +
-    'Aumentar o limite ou desligar a parada em Uso de IA › Orçamento evita paradas NOVAS; ' +
+    'Aumentar o limite ou desligar a parada em Meu agente › Gasto com IA evita paradas NOVAS; ' +
     'cada conversa já parada volta ao automático pelo botão "Devolver ao automático" ' +
     'no cabeçalho dela.'
   );

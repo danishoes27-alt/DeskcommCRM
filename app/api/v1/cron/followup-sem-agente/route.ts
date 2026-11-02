@@ -86,7 +86,7 @@ export function corpoDoAviso(nome: string, kind: string): string {
   const quando = COMO_DISPARA[kind] ?? "pelo gatilho configurado";
   return (
     `O fluxo «${nome}» está publicado e dispararia ${quando} — mas nenhum agente publicado ` +
-    `arma ele, e por isso nenhum contato entra. Abra IA › Agentes, escolha o agente que ` +
+    `arma ele, e por isso nenhum contato entra. Abra Meu agente › Atendentes virtuais, escolha o agente que ` +
     `atende esse número, marque «${nome}» em "follow-ups que arma" e publique a versão. ` +
     `Este aviso se resolve sozinho quando o vínculo existir.`
   );

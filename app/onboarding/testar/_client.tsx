@@ -93,7 +93,7 @@ export function TestarClient({ nome, agenteId, versaoId }: Props) {
           <p className="text-sm font-medium">{t("Você ainda não montou seu funcionário.")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {t(
-              "Sem ninguém treinado, não há o que testar. Dá para voltar ao passo anterior agora ou fazer isso depois, em IA › Agentes.",
+              "Sem ninguém treinado, não há o que testar. Dá para voltar ao passo anterior agora ou fazer isso depois, em Meu agente › Atendentes virtuais.",
             )}
           </p>
         </div>
@@ -106,7 +106,7 @@ export function TestarClient({ nome, agenteId, versaoId }: Props) {
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {t(
-              "Rascunho não responde mensagem, então não há o que ensaiar. O passo anterior explicou o que falta; você pode resolver depois em IA › Agentes.",
+              "Rascunho não responde mensagem, então não há o que ensaiar. O passo anterior explicou o que falta; você pode resolver depois em Meu agente › Atendentes virtuais.",
             )}
           </p>
         </div>
@@ -164,7 +164,7 @@ export function TestarClient({ nome, agenteId, versaoId }: Props) {
                 {t(
                   "As causas mais comuns são a chave da empresa de IA sem saldo ou o modelo indisponível. Dá para conferir em",
                 )}{" "}
-                <strong>{t("IA › Credenciais")}</strong>{" "}
+                <strong>{t("Meu agente › Chaves de IA")}</strong>{" "}
                 {t("e seguir daqui mesmo — o que você montou está salvo.")}
               </p>
             </div>

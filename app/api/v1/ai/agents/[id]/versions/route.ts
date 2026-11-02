@@ -120,7 +120,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     if (v.credential_id === null && lerAmbiente().chavesDeProvedor[v.provider] !== true) {
       return fail(
         "credential_required",
-        `Esta instalação não tem chave de ${v.provider} no ambiente. Cadastre uma chave em IA › Credenciais ou escolha outra empresa de inteligência artificial.`,
+        `Esta instalação não tem chave de ${v.provider} no ambiente. Cadastre uma chave em Meu agente › Chaves de IA ou escolha outra empresa de inteligência artificial.`,
         422,
         { requestId },
       );

@@ -101,7 +101,7 @@ export async function salvarChaveDaIa(formData: FormData): Promise<ResultadoDaCh
     if (r.motivo === "label_em_uso") {
       return {
         ok: false,
-        erro: "Já existe uma chave cadastrada com esse nome. Veja em IA › Credenciais.",
+        erro: "Já existe uma chave cadastrada com esse nome. Veja em Meu agente › Chaves de IA.",
       };
     }
     return { ok: false, erro: "Não consegui guardar a chave agora. Tente de novo." };

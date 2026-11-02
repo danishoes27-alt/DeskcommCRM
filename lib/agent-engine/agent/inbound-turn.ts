@@ -618,7 +618,7 @@ export { HANDOFF_REASON_ORCAMENTO };
 export const RESUMO_DO_HANDOFF_POR_ORCAMENTO =
   'A IA parou de responder porque o teto de gasto mensal com IA desta organização foi ' +
   'atingido — o lead NÃO pediu atendimento humano. Assuma a conversa; para devolvê-la ao ' +
-  'atendimento automático, ajuste o teto em Uso de IA › Orçamento e use "Devolver ao ' +
+  'atendimento automático, ajuste o teto em Meu agente › Gasto com IA e use "Devolver ao ' +
   'automático" no cabeçalho da conversa.';
 
 /** Título do item da Central que este handoff abre — rótulo visível, logo constante. */

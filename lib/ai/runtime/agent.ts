@@ -351,7 +351,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
         return await failRun(
           run,
           "credential_invalid",
-          `sem chave para ${version.provider}: cadastre em IA › Credenciais ou configure a chave desta instalação`,
+          `sem chave para ${version.provider}: cadastre em Meu agente › Chaves de IA ou configure a chave desta instalação`,
           startedAt,
         );
       }

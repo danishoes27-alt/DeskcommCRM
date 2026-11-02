@@ -5,7 +5,7 @@
 export const EXPLICACAO_POR_BALDE = {
   limite_ou_saldo: "A empresa de IA recusou por falta de saldo ou limite de uso. Adicione crédito na conta dela — sem isso ele não responde a nenhum cliente.",
   credencial_recusada: "A empresa de IA não aceitou esta chave. Confira se ela foi colada inteira e se é a chave do provedor escolhido.",
-  modelo_inexistente: "A empresa de IA não reconhece o modelo escolhido para ele. Dá para escolher outro em IA › Provedores.",
+  modelo_inexistente: "A empresa de IA não reconhece o modelo escolhido para ele. Dá para escolher outro em Meu agente › Serviços de IA.",
   provedor_indisponivel: "Não consegui falar com a empresa de IA agora — rede ou serviço fora do ar. Isto não é a chave: tente de novo em minutos.",
 } as const;
 

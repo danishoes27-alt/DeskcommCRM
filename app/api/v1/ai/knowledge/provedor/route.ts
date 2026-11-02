@@ -104,9 +104,9 @@ export async function PUT(req: NextRequest): Promise<Response> {
     return fail(
       "sem_chave_do_provedor",
       provedor === "google"
-        ? t("Cadastre e valide uma chave do Google em IA › Credenciais antes de trocar.")
+        ? t("Cadastre e valide uma chave do Google em Meu agente › Chaves de IA antes de trocar.")
         : t(
-            "Cadastre e valide uma chave da OpenAI ou OpenRouter em IA › Credenciais antes de trocar.",
+            "Cadastre e valide uma chave da OpenAI ou OpenRouter em Meu agente › Chaves de IA antes de trocar.",
           ),
       422,
       { requestId },

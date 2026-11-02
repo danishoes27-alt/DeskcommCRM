@@ -128,7 +128,7 @@ const FORA_DO_SEAM: Record<string, { arquivo: string; marcador: string }> = {
  * para escolher ali — o Jev não se escolhe por ponto, e a regra que ele
  * acompanha não usa IA —, então um ponto no registro seria o botão que não
  * controla nada que o segundo caso abaixo reprova. Quem a nomeia é outra tela:
- * IA › Execuções e o cartão do Jev, por `rotuloDaChamadaDoJev` — e o caso
+ * Meu agente › O que o agente fez e o cartão do Jev, por `rotuloDaChamadaDoJev` — e o caso
  * "a chamada do Jev sem ponto" confere que ela tem nome e é de fato emitida.
  */
 const CHAMADAS_DO_JEV_SEM_PONTO: ReadonlySet<string> = new Set([
