@@ -31,7 +31,7 @@ beforeAll(async () => {
      values ($1, 'org-adaptador-nega-is', 'Adaptador Nega Is', 'Adaptador Nega Is') on conflict (id) do nothing`,
     [ORG],
   );
-  // O trigger de seed criou o "Pedidos" (default). Estes são os extras: só
+  // O trigger de seed criou o "Venda" (default). Estes são os extras: só
   // "Alfa" tem descrição.
   await pool.query(
     `insert into crm_pipelines (organization_id, name, slug, is_default, position, description) values

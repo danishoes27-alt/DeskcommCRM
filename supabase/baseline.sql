@@ -43914,6 +43914,55 @@ create trigger trg_channel_sessions_guard_waha
   before insert or update on public.channel_sessions
   for each row execute function public.fn_guard_channel_sessions_waha();
 
+-- ---- Funil "Venda" nasce com a empresa (migration 9002) ----
+-- 9002 (numeração do Celuzap, como a 9001): troca o corpo do gatilho de seed — a empresa nova nasce com o funil "Venda" (padrão) em vez de "Pedidos" de e-commerce. Só create or replace; empresa existente não muda; reaplicável.
+create or replace function`: nenhuma coluna, constraint, índice ou gatilho novo; o
+--     gatilho continua o mesmo e a função mantém o mesmo nome e a mesma assinatura;
+--   * NÃO toca em empresa que já existe: o gatilho dispara só em INSERT em `organizations`, então
+--     quem já tem "Pedidos" (ou qualquer funil) segue com ele, sem backfill;
+--   * reaplicável: `create or replace` não falha na segunda passada (update.sh).
+--
+-- Desfazer: reaplicar o corpo antigo da função (o do dump, em `supabase/baseline.sql`, bloco
+-- `fn_seed_default_pipeline_for_org`: funil "Pedidos", slug `pedidos`, oito etapas de e-commerce).
+-- Empresas criadas enquanto esta versão valia ficam com o "Venda", que é um funil comum e pode ser
+-- renomeado ou arquivado na tela de Funis — não há dado a migrar de volta.
+
+create or replace function public.fn_seed_default_pipeline_for_org()
+returns trigger
+language plpgsql
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_pipeline_id uuid;
+  v_position numeric := 1000;
+  r record;
+begin
+  insert into public.crm_pipelines (organization_id, name, slug, is_default, position)
+  values (new.id, 'Venda', 'venda', true, 1000)
+  returning id into v_pipeline_id;
+
+  for r in
+    select * from (values
+      ('Novo contato',            'novo_contato',        'new',         false, false),
+      ('Já respondi',             'ja_respondi',         'contacted',   false, false),
+      ('Escolhendo o aparelho',   'escolhendo_aparelho', 'qualifying',  false, false),
+      ('Vai levar',               'vai_levar',           'qualified',   false, false),
+      ('Combinando o pagamento',  'combinando_pagamento','negotiating', false, false),
+      ('Venda fechada',           'venda_fechada',       'won',         true,  false),
+      ('Não comprou',             'nao_comprou',         'lost',        false, true)
+    ) as t(stage_name, stage_slug, hint, won, lost)
+  loop
+    insert into public.crm_stages
+      (organization_id, pipeline_id, name, slug, position, is_won, is_lost, agent_stage_hint)
+    values
+      (new.id, v_pipeline_id, r.stage_name, r.stage_slug, v_position, r.won, r.lost, r.hint);
+    v_position := v_position + 1000;
+  end loop;
+
+  return new;
+end$$;
+
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria
@@ -45473,3 +45522,4 @@ comment on column public.channel_sessions.waha_base_url is
   'Endereço interno do WAHA DESTE canal (http/https). NULL = usa o WAHA global da instalação (modo compartilhado). Só o operador da plataforma escreve (um gatilho recusa anon e authenticated); nunca vai ao navegador do lojista.';
 comment on column public.channel_sessions.waha_api_key_encrypted is
   'Chave de API do WAHA deste canal, cifrada por public.fn_encrypt_oauth (pgp_sym AES-256). NUNCA em claro: só service_role decifra (fn_decrypt_oauth). NULL = sem chave própria. Nunca vai ao navegador.';
+

@@ -7,7 +7,7 @@
  * explicadas na tela (arquivar o padrão, arquivar o último).
  *
  * ⚠️ O PRIMEIRO CASO SÓ TEM PODER COM DUAS ORGANIZAÇÕES. `seed-e2e-funis.ts`
- * coloca o manager numa segunda org que também tem um funil "Pedidos" (o gatilho
+ * coloca o manager numa segunda org que também tem um funil "Venda" (o gatilho
  * de seed cria um em toda org nova). Com uma org só, o caso passaria mesmo com o
  * filtro de `organization_id` apagado da página — mediria o seed, não o código.
  *
@@ -88,10 +88,10 @@ test.describe("gestão de funis", () => {
   test("a lista mostra só a organização ativa, mesmo com funil homônimo em outra", async ({
     page,
   }) => {
-    // O manager é membro de DUAS organizações, e as duas têm um funil "Pedidos".
+    // O manager é membro de DUAS organizações, e as duas têm um funil "Venda".
     // Sem o filtro por organização, apareceriam as duas linhas — indistinguíveis,
     // cada uma levando a um quadro diferente.
-    await expect(page.getByText("Pedidos", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("Venda", { exact: true })).toHaveCount(1);
   });
 
   test("cria funil com colunas, edita, e as recusas aparecem explicadas", async ({ page }) => {
@@ -142,9 +142,9 @@ test.describe("gestão de funis", () => {
     });
 
     // ---- devolve o padrão e arquiva de verdade ----
-    const idPedidos = await idDoFunil(page, "Pedidos");
+    const idPedidos = await idDoFunil(page, "Venda");
     await page.getByTestId(`padrao-${idPedidos}`).click();
-    await expect(linhaDoFunil(page, "Pedidos").getByText("Padrão")).toBeVisible();
+    await expect(linhaDoFunil(page, "Venda").getByText("Padrão")).toBeVisible();
 
     await page.getByTestId(`arquivar-${id}`).click();
     await page.getByTestId(`arquivar-confirmar-${id}`).click();
@@ -173,7 +173,7 @@ test("quem não pode gerenciar vê a lista sem os controles de escrita", async (
   await login(page, creds.users.agent!.email);
   await page.goto("/app/kanban");
   await expect(page.getByRole("heading", { name: "Funis" })).toBeVisible();
-  await expect(page.getByText("Pedidos", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("Venda", { exact: true })).toHaveCount(1);
   await expect(page.getByTestId("novo-funil")).toHaveCount(0);
   await expect(page.locator('[data-testid^="arquivar-"]')).toHaveCount(0);
 });

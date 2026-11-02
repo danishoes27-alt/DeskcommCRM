@@ -36,7 +36,7 @@ beforeAll(async () => {
      values ($1, 'org-adaptador', 'Adaptador LTDA', 'Adaptador') on conflict (id) do nothing`,
     [ORG],
   );
-  // O trigger fn_seed_default_pipeline_for_org já criou "Pedidos". Estes são
+  // O trigger fn_seed_default_pipeline_for_org já criou "Venda". Estes são
   // funis EXTRA, com `position` fora de ordem alfabética de propósito.
   await pool.query(
     `insert into crm_pipelines (organization_id, name, slug, is_default, position) values
