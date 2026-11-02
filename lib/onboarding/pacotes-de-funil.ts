@@ -33,6 +33,56 @@ export interface PacoteDeFunil {
 
 export const PACOTES: readonly PacoteDeFunil[] = [
   {
+    id: "celular-venda",
+    comoSeApresenta: "Loja de celular — vender aparelhos e acessórios",
+    proposta: {
+      nome: "Venda",
+      etapas: [
+        { nome: "Novo contato", passo: "new" },
+        { nome: "Já respondi", passo: "contacted" },
+        { nome: "Escolhendo o aparelho", passo: "qualifying" },
+        { nome: "Vai levar", passo: "qualified" },
+        { nome: "Combinando o pagamento", passo: "negotiating" },
+        { nome: "Venda fechada", passo: "won" },
+        { nome: "Não comprou", passo: "lost" },
+      ],
+    },
+  },
+  {
+    id: "celular-conserto",
+    comoSeApresenta: "Assistência técnica — consertar aparelhos",
+    proposta: {
+      nome: "Conserto",
+      etapas: [
+        { nome: "Pedido de conserto", passo: "new" },
+        { nome: "Já respondi", passo: "contacted" },
+        { nome: "Orçamento enviado", passo: "qualified" },
+        { nome: "Aprovou o conserto", passo: "negotiating" },
+        { nome: "Em conserto", passo: null },
+        { nome: "Pronto para retirar", passo: null },
+        { nome: "Entregue", passo: "won" },
+        { nome: "Não aprovou", passo: "lost" },
+      ],
+    },
+  },
+  {
+    id: "celular-pedidos",
+    comoSeApresenta: "Loja de celular — encomendas e pedidos de peças",
+    proposta: {
+      nome: "Pedidos",
+      etapas: [
+        { nome: "Pedido novo", passo: "new" },
+        { nome: "Já respondi", passo: "contacted" },
+        { nome: "Procurando com o fornecedor", passo: "qualifying" },
+        { nome: "Preço combinado", passo: "qualified" },
+        { nome: "Aguardando o pagamento", passo: "negotiating" },
+        { nome: "Peça chegou", passo: null },
+        { nome: "Entregue ao cliente", passo: "won" },
+        { nome: "Cancelado", passo: "lost" },
+      ],
+    },
+  },
+  {
     id: "clinica",
     comoSeApresenta: "Clínica, consultório ou salão",
     proposta: {
