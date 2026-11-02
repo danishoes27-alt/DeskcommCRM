@@ -8,9 +8,9 @@
 --   Novo contato · Já respondi · Escolhendo o aparelho · Vai levar · Combinando o pagamento ·
 --   Venda fechada (ganho) · Não comprou (perda)
 --
--- Cada etapa leva o `agent_stage_hint` do passo do agente que ela representa (new … lost), a mesma
--- correspondência que o passo "funil" do onboarding grava — o agente já sabe mover o cartão sem
--- ninguém abrir o mapeamento.
+-- Como o gatilho de antes, o funil nasce SEM destinos do agente (`agent_stage_hint` nulo): ensinar o
+-- assistente a percorrer o quadro é o passo "funil" do onboarding (invariante 0156). Esta migration
+-- só troca o vocabulário do que nasce, não essa regra.
 --
 -- Aditiva e reversível:
 --   * só `create or replace function`: nenhuma coluna, constraint, índice ou gatilho novo; o
@@ -40,19 +40,19 @@ begin
 
   for r in
     select * from (values
-      ('Novo contato',            'novo_contato',        'new',         false, false),
-      ('Já respondi',             'ja_respondi',         'contacted',   false, false),
-      ('Escolhendo o aparelho',   'escolhendo_aparelho', 'qualifying',  false, false),
-      ('Vai levar',               'vai_levar',           'qualified',   false, false),
-      ('Combinando o pagamento',  'combinando_pagamento','negotiating', false, false),
-      ('Venda fechada',           'venda_fechada',       'won',         true,  false),
-      ('Não comprou',             'nao_comprou',         'lost',        false, true)
-    ) as t(stage_name, stage_slug, hint, won, lost)
+      ('Novo contato',            'novo_contato',         false, false),
+      ('Já respondi',             'ja_respondi',          false, false),
+      ('Escolhendo o aparelho',   'escolhendo_aparelho',  false, false),
+      ('Vai levar',               'vai_levar',            false, false),
+      ('Combinando o pagamento',  'combinando_pagamento', false, false),
+      ('Venda fechada',           'venda_fechada',        true,  false),
+      ('Não comprou',             'nao_comprou',          false, true)
+    ) as t(stage_name, stage_slug, won, lost)
   loop
     insert into public.crm_stages
-      (organization_id, pipeline_id, name, slug, position, is_won, is_lost, agent_stage_hint)
+      (organization_id, pipeline_id, name, slug, position, is_won, is_lost)
     values
-      (new.id, v_pipeline_id, r.stage_name, r.stage_slug, v_position, r.won, r.lost, r.hint);
+      (new.id, v_pipeline_id, r.stage_name, r.stage_slug, v_position, r.won, r.lost);
     v_position := v_position + 1000;
   end loop;
 

@@ -5,9 +5,8 @@ import pg from "pg";
  * A EMPRESA NOVA NASCE COM O FUNIL "VENDA" (migration 9002).
  *
  * O gatilho `trg_seed_default_pipeline_for_org` semeava o "Pedidos" de e-commerce. Agora semeia
- * "Venda", com as sete etapas de balcão e o `agent_stage_hint` de cada uma — o que o passo "funil"
- * do onboarding também grava. O banco aceita as sete (CHECK de coerência ganho/perda) e o
- * funil nasce como o padrão da empresa.
+ * "Venda", com as sete etapas de balcão, SEM destinos do agente (a regra do invariante 0156 continua: quem
+ * ensina o assistente a percorrer o quadro é o passo "funil" do onboarding).
  */
 const container = process.env.TEST_DB_CONTAINER;
 if (!container) {
@@ -42,22 +41,23 @@ describe("o funil que nasce com a empresa", () => {
     expect(rows).toEqual([{ name: "Venda", slug: "venda", is_default: true }]);
   });
 
-  it("tem as sete etapas de balcão, em ordem, cada uma com o passo do agente", async () => {
+  it("tem as sete etapas de balcão, em ordem, sem destino do agente", async () => {
     const { rows } = await pool.query(
       `select s.name, s.agent_stage_hint as hint, s.is_won, s.is_lost
          from crm_stages s join crm_pipelines p on p.id = s.pipeline_id
         where s.organization_id = $1 order by s.position`,
       [ORG],
     );
-    expect(rows.map((r) => [r.name, r.hint])).toEqual([
-      ["Novo contato", "new"],
-      ["Já respondi", "contacted"],
-      ["Escolhendo o aparelho", "qualifying"],
-      ["Vai levar", "qualified"],
-      ["Combinando o pagamento", "negotiating"],
-      ["Venda fechada", "won"],
-      ["Não comprou", "lost"],
+    expect(rows.map((r) => r.name)).toEqual([
+      "Novo contato",
+      "Já respondi",
+      "Escolhendo o aparelho",
+      "Vai levar",
+      "Combinando o pagamento",
+      "Venda fechada",
+      "Não comprou",
     ]);
+    expect(rows.every((r) => r.hint === null)).toBe(true);
     expect(rows.filter((r) => r.is_won).map((r) => r.name)).toEqual(["Venda fechada"]);
     expect(rows.filter((r) => r.is_lost).map((r) => r.name)).toEqual(["Não comprou"]);
   });

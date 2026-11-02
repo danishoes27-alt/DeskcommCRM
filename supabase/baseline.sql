@@ -43916,6 +43916,17 @@ create trigger trg_channel_sessions_guard_waha
 
 -- ---- Funil "Venda" nasce com a empresa (migration 9002) ----
 -- 9002 (numeração do Celuzap, como a 9001): troca o corpo do gatilho de seed — a empresa nova nasce com o funil "Venda" (padrão) em vez de "Pedidos" de e-commerce. Só create or replace; empresa existente não muda; reaplicável.
+create or replace function`: nenhuma coluna, constraint, índice ou gatilho novo; o
+--     gatilho continua o mesmo e a função mantém o mesmo nome e a mesma assinatura;
+--   * NÃO toca em empresa que já existe: o gatilho dispara só em INSERT em `organizations`, então
+--     quem já tem "Pedidos" (ou qualquer funil) segue com ele, sem backfill;
+--   * reaplicável: `create or replace` não falha na segunda passada (update.sh).
+--
+-- Desfazer: reaplicar o corpo antigo da função (o do dump, em `supabase/baseline.sql`, bloco
+-- `fn_seed_default_pipeline_for_org`: funil "Pedidos", slug `pedidos`, oito etapas de e-commerce).
+-- Empresas criadas enquanto esta versão valia ficam com o "Venda", que é um funil comum e pode ser
+-- renomeado ou arquivado na tela de Funis — não há dado a migrar de volta.
+
 create or replace function public.fn_seed_default_pipeline_for_org()
 returns trigger
 language plpgsql
@@ -43932,19 +43943,19 @@ begin
 
   for r in
     select * from (values
-      ('Novo contato',            'novo_contato',        'new',         false, false),
-      ('Já respondi',             'ja_respondi',         'contacted',   false, false),
-      ('Escolhendo o aparelho',   'escolhendo_aparelho', 'qualifying',  false, false),
-      ('Vai levar',               'vai_levar',           'qualified',   false, false),
-      ('Combinando o pagamento',  'combinando_pagamento','negotiating', false, false),
-      ('Venda fechada',           'venda_fechada',       'won',         true,  false),
-      ('Não comprou',             'nao_comprou',         'lost',        false, true)
-    ) as t(stage_name, stage_slug, hint, won, lost)
+      ('Novo contato',            'novo_contato',         false, false),
+      ('Já respondi',             'ja_respondi',          false, false),
+      ('Escolhendo o aparelho',   'escolhendo_aparelho',  false, false),
+      ('Vai levar',               'vai_levar',            false, false),
+      ('Combinando o pagamento',  'combinando_pagamento', false, false),
+      ('Venda fechada',           'venda_fechada',        true,  false),
+      ('Não comprou',             'nao_comprou',          false, true)
+    ) as t(stage_name, stage_slug, won, lost)
   loop
     insert into public.crm_stages
-      (organization_id, pipeline_id, name, slug, position, is_won, is_lost, agent_stage_hint)
+      (organization_id, pipeline_id, name, slug, position, is_won, is_lost)
     values
-      (new.id, v_pipeline_id, r.stage_name, r.stage_slug, v_position, r.won, r.lost, r.hint);
+      (new.id, v_pipeline_id, r.stage_name, r.stage_slug, v_position, r.won, r.lost);
     v_position := v_position + 1000;
   end loop;
 
