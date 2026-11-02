@@ -40,6 +40,11 @@ vi.mock("@hello-pangea/dnd", () => ({
     capturado.onDragEnd = onDragEnd;
     return <div>{children}</div>;
   },
+  // O quadro agora também arrasta COLUNAS: o mock só repassa o que está dentro.
+  Droppable: ({ children }: { children: (p: unknown) => ReactNode }) =>
+    children({ innerRef: () => {}, droppableProps: {}, placeholder: null }),
+  Draggable: ({ children }: { children: (p: unknown) => ReactNode }) =>
+    children({ innerRef: () => {}, draggableProps: {}, dragHandleProps: null }),
 }));
 vi.mock("@/components/kanban/StageColumn", () => ({ StageColumn: () => null }));
 vi.mock("@/components/kanban/LeadDossier", () => ({ LeadDossier: () => null }));

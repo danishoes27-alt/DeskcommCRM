@@ -4,7 +4,7 @@ Branch `celuzap-1.69.0-r4` a partir de `celuzap-1.69.0-r3` (7ce9e4728). Sem push
 
 ## Feito
 - Paleta localizada em `C:\Users\BERG\OneDrive\Área de Trabalho\SITE WIPEVIRUS` (não estava em C:\Dev; Berg autorizou).
-- Logo-fonte copiada de `...\celuzap-completo\docs\assets\logo-celuzap.jpeg` (não existia neste worktree).
+- Logo-fonte: copiada da pasta celuzap-completo do Berg para docs/assets/logo-celuzap.jpeg (não existia neste worktree).
 - T0 spec/plano.
 
 ## Achados

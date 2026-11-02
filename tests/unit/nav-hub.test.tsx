@@ -63,19 +63,19 @@ describe("NavHub", () => {
 
   it("desenterra Conhecimento, que só existia atrás das abas", () => {
     render(<NavHub modulosLigados={[]} group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
-    const link = screen.getByRole("link", { name: /Conhecimento/ });
+    const link = screen.getByRole("link", { name: /O que o agente sabe/ });
     expect(link).toHaveAttribute("href", "/app/ai/knowledge/sources");
   });
 
   it("cada card explica para que serve — é o que o sidebar não cabe dizer", () => {
     render(<NavHub modulosLigados={[]} group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
-    const link = screen.getByRole("link", { name: /Conhecimento/ });
+    const link = screen.getByRole("link", { name: /O que o agente sabe/ });
     expect(link.textContent).toMatch(/consulta antes de responder/i);
   });
 
   it("mostra também o que já está no sidebar — é inventário, não sobra", () => {
     render(<NavHub modulosLigados={[]} group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
-    expect(screen.getByRole("link", { name: /Agentes/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Atendentes virtuais/ })).toBeTruthy();
   });
 
   it("o viewer vê Extensões e Dados externos; a seção aparece filtrada, sem API Tokens nem LGPD", () => {
@@ -102,11 +102,11 @@ describe("NavHub", () => {
       "href",
       "/app/extensions",
     );
-    expect(screen.getByRole("link", { name: /Dados externos/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Bancos de dados externos/ })).toHaveAttribute(
       "href",
       "/app/integracao-dados",
     );
-    expect(screen.queryByRole("link", { name: /API Tokens/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Chaves de acesso/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /LGPD/ })).toBeNull();
   });
 
@@ -117,8 +117,8 @@ describe("NavHub", () => {
     render(
       <NavHub group="organizacao" isPlatformAdmin={false} role="admin" title="Org" subtitle="" modulosLigados={[]} />,
     );
-    expect(screen.queryByRole("link", { name: /Dados externos/ })).toBeNull();
-    expect(screen.getByRole("link", { name: /API Tokens/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Bancos de dados externos/ })).toBeNull();
+    expect(screen.getByRole("link", { name: /Chaves de acesso/ })).toBeTruthy();
     cleanup();
 
     render(
@@ -138,7 +138,7 @@ describe("NavHub", () => {
         modulosLigados={["banco_externo"]}
       />,
     );
-    expect(screen.getByRole("link", { name: /Dados externos/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Bancos de dados externos/ })).toHaveAttribute(
       "href",
       "/app/integracao-dados",
     );
@@ -148,7 +148,7 @@ describe("NavHub", () => {
     render(
       <NavHub group="crm" isPlatformAdmin={false} role="admin" title="CRM" subtitle="" modulosLigados={[]} capacidadesLigadas={[]} />,
     );
-    expect(screen.queryByRole("link", { name: /Propostas/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Orçamentos/ })).toBeNull();
     cleanup();
 
     render(
@@ -162,13 +162,13 @@ describe("NavHub", () => {
         capacidadesLigadas={["propostas"]}
       />,
     );
-    expect(screen.getByRole("link", { name: /Propostas/ })).toHaveAttribute("href", "/app/proposals");
+    expect(screen.getByRole("link", { name: /Orçamentos/ })).toHaveAttribute("href", "/app/proposals");
   });
 
   it("agrupa os cards sob a própria seção, não numa lista solta", () => {
     render(<NavHub modulosLigados={[]} group="ia" isPlatformAdmin role={null} title="Agente de IA" subtitle="" />);
     const ensinar = screen.getByRole("region", { name: "Ensinar o agente" });
-    expect(within(ensinar).getByRole("link", { name: /Memória/ })).toBeTruthy();
+    expect(within(ensinar).getByRole("link", { name: /O que o agente lembra/ })).toBeTruthy();
     expect(within(ensinar).queryByRole("link", { name: /Credenciais/ })).toBeNull();
   });
 
@@ -193,7 +193,7 @@ describe("NavHub", () => {
       "Supervisar al agente",
     ]);
     expect(
-      screen.getByRole("link", { name: /Credenciales.*La clave del proveedor de IA/ }),
+      screen.getByRole("link", { name: /Claves de IA.*La clave del proveedor de IA/ }),
     ).toBeTruthy();
   });
 

@@ -56,9 +56,9 @@ export const PACOTES: readonly PacoteDeFunil[] = [
       etapas: [
         { nome: "Pedido de conserto", passo: "new" },
         { nome: "Já respondi", passo: "contacted" },
+        { nome: "Analisando o defeito", passo: "qualifying" },
         { nome: "Orçamento enviado", passo: "qualified" },
-        { nome: "Aprovou o conserto", passo: "negotiating" },
-        { nome: "Em conserto", passo: null },
+        { nome: "Aprovado e em conserto", passo: "negotiating" },
         { nome: "Pronto para retirar", passo: null },
         { nome: "Entregue", passo: "won" },
         { nome: "Não aprovou", passo: "lost" },

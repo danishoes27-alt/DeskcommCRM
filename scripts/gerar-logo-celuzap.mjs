@@ -1,8 +1,13 @@
 // Gera as variações da logo do Celuzap (SVG, PNG transparente, ícones, favicon)
-// a partir do desenho vetorial abaixo. Uso: node scripts/gerar-logo-celuzap.cjs
-const fs = require("node:fs");
-const path = require("node:path");
-const sharp = require(path.join(process.cwd(), "node_modules/.pnpm/sharp@0.35.4_@types+node@22.20.4/node_modules/sharp"));
+// a partir do desenho vetorial abaixo. Uso: node scripts/gerar-logo-celuzap.mjs
+import fs from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
+
+// sharp vem do store do pnpm (dependência do Next), não do package.json do projeto.
+const sharp = createRequire(import.meta.url)(
+  path.join(process.cwd(), "node_modules/.pnpm/sharp@0.35.4_@types+node@22.20.4/node_modules/sharp"),
+);
 
 const NAVY = "#1A2333";
 const pt = (cx, cy, r, deg) => {
@@ -59,5 +64,5 @@ async function png(svg, size, file, fundo) {
   fs.copyFileSync(`${dir}/icone-celuzap-512.png`, "docs/assets/icone-celuzap-512.png");
   fs.copyFileSync(`${dir}/icone-celuzap-1024.png`, "docs/assets/icone-celuzap-1024.png");
   fs.copyFileSync(`${dir}/logo-celuzap.svg`, "docs/assets/logo-celuzap.svg");
-  console.log("ok");
+  process.stdout.write("ok"+String.fromCharCode(10));
 })();

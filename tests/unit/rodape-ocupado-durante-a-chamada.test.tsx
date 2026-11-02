@@ -44,6 +44,7 @@ vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (texto: string) => texto }));
 // medir o rodapé, e não a rede delas.
 vi.mock("@/components/shell/Sidebar", () => ({ Sidebar: () => null }));
 vi.mock("@/components/shell/TopBar", () => ({ TopBar: () => null }));
+vi.mock("@/components/shell/BarraInferior", () => ({ BarraInferior: () => null }));
 vi.mock("@/components/shell/BarraDeProgressoNavegacao", () => ({
   BarraDeProgressoNavegacao: () => null,
 }));

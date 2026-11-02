@@ -69,7 +69,7 @@ describe("Sidebar agrupado", () => {
       .filter(Boolean);
     // Organização não tem título aqui: seu hub (Configurações) vive no rodapé
     // fixo, fora da área que rola — medido, ele caía fora da dobra até em 1080px.
-    expect(titulos).toEqual(["Atendimento", "CRM", "Agente de IA", "Canais", "Análise"]);
+    expect(titulos).toEqual(["Atender", "Vender", "Meu agente", "Conectar", "Resultados"]);
   });
 
   it("leva às Etapas do funil pelo CRM, e não por Configurações", () => {
@@ -83,7 +83,7 @@ describe("Sidebar agrupado", () => {
     //
     // O que este teste prende é a porta EXISTIR no grupo certo do sidebar; que
     // ela desemboca na tela é o e2e `navegacao.spec.ts` que percorre, clicando.
-    const hub = screen.getByRole("link", { name: /Ver tudo em CRM/ });
+    const hub = screen.getByRole("link", { name: /Ver tudo de Vender/ });
     expect(hub).toHaveAttribute("href", "/app/crm");
     expect(screen.queryByRole("link", { name: "Etapas do funil" })).toBeNull();
   });
@@ -108,7 +108,7 @@ describe("Sidebar agrupado", () => {
   it("e os dois itens de funil não disputam o mesmo nome", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.getByRole("link", { name: "Funis" })).toHaveAttribute("href", "/app/kanban");
+    expect(screen.getByRole("link", { name: "Funis de venda" })).toHaveAttribute("href", "/app/kanban");
   });
 
   it("desenterra Audit Log — e Nuvemshop ficou de fora, por escolha", () => {
@@ -126,7 +126,7 @@ describe("Sidebar agrupado", () => {
     //
     // Canal oficial não está aqui de propósito: virou aba de Conexões no PR
     // #105, e Conexões é a porta.
-    const hubAnalise = screen.getByRole("link", { name: /Ver tudo em Análise/ });
+    const hubAnalise = screen.getByRole("link", { name: /Ver tudo de Resultados/ });
     expect(hubAnalise).toHaveAttribute("href", "/app/analise");
     expect(screen.queryByRole("link", { name: /Audit Log/ })).toBeNull();
 
@@ -156,28 +156,28 @@ describe("Sidebar agrupado", () => {
     comoPapel("agent");
     render(<Sidebar collapsed={false} />);
     const titulos = screen.getAllByRole("heading").map((el) => el.textContent?.trim());
-    expect(titulos).not.toContain("Canais");
-    expect(titulos).toContain("Atendimento");
+    expect(titulos).not.toContain("Conectar");
+    expect(titulos).toContain("Atender");
   });
 
   it("oferece o hub dos grupos que têm um", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.getByRole("link", { name: /Ver tudo em IA/ })).toHaveAttribute("href", "/app/ai");
+    expect(screen.getByRole("link", { name: /Ver tudo do agente/ })).toHaveAttribute("href", "/app/ai");
   });
 
   it("colapsado esconde os títulos mas mantém os links", () => {
     comoPapel("admin");
     render(<Sidebar collapsed />);
     expect(screen.queryAllByRole("heading")).toHaveLength(0);
-    expect(screen.getByRole("link", { name: /Inbox/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Conversas/ })).toBeTruthy();
   });
 
   it("marca a rota atual com aria-current", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.getByRole("link", { name: /Inbox/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /Conversas/ })).toHaveAttribute("aria-current", "page");
     // "Kanban" saiu da interface; o item da mesma URL agora se chama "Funis".
-    expect(screen.getByRole("link", { name: "Funis" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Funis de venda" })).not.toHaveAttribute("aria-current");
   });
 });

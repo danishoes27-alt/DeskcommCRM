@@ -41,14 +41,14 @@ describe("CommandPalette", () => {
     const user = userEvent.setup();
     abrir();
     await user.type(screen.getByRole("combobox"), "conhec");
-    expect(screen.getByRole("option", { name: /Conhecimento/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /O que o agente sabe/ })).toBeTruthy();
   });
 
   it("ignora acento, porque ninguém digita acento com pressa", async () => {
     const user = userEvent.setup();
     abrir();
     await user.type(screen.getByRole("combobox"), "orcamento");
-    expect(screen.getByRole("option", { name: /Uso e orçamento/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Gasto com IA/ })).toBeTruthy();
   });
 
   it("busca também na descrição, não só no rótulo", async () => {
@@ -56,7 +56,7 @@ describe("CommandPalette", () => {
     abrir();
     // Ninguém procura "Radar" por esse nome; procura pelo problema que resolve.
     await user.type(screen.getByRole("combobox"), "esfriou");
-    expect(screen.getByRole("option", { name: /Radar/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Clientes esfriando/ })).toBeTruthy();
   });
 
   it("acha o Jev pelo nome, embora ele não tenha tela própria", async () => {
@@ -65,7 +65,7 @@ describe("CommandPalette", () => {
     // O cartão dele mora em Provedores; sem o nome na descrição, quem ouviu
     // falar do Jev digitava "jev" e não achava nada.
     await user.type(screen.getByRole("combobox"), "jev");
-    const opcao = screen.getByRole("option", { name: /Provedores/ });
+    const opcao = screen.getByRole("option", { name: /Serviços de IA/ });
     // E VÊ o nome: a descrição longa cortava antes do "Jev" (medido em campo).
     const descricao = opcao.querySelector("p")!.textContent!;
     expect(descricao.indexOf("Jev"), descricao).toBeGreaterThanOrEqual(0);
@@ -114,7 +114,7 @@ describe("CommandPalette", () => {
 
   it("sem texto, oferece o trabalho do dia em vez de tela vazia", () => {
     abrir();
-    expect(screen.getByRole("option", { name: /Inbox/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Conversas/ })).toBeTruthy();
   });
 
   it("diz quando não achou, em vez de sumir sem explicação", async () => {
@@ -128,11 +128,11 @@ describe("CommandPalette", () => {
   it("permite filtrar por categorias através dos botões", async () => {
     const user = userEvent.setup();
     abrir();
-    const btnAtendimento = screen.getByRole("button", { name: /Atendimento/i });
+    const btnAtendimento = screen.getByRole("button", { name: /Atender/i });
     expect(btnAtendimento).toBeTruthy();
     await user.click(btnAtendimento);
     // Ao filtrar por Atendimento, itens de CRM ou Funcionários não devem aparecer
-    expect(screen.getByRole("option", { name: /Inbox/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Conversas/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Contatos/ })).toBeNull();
   });
 

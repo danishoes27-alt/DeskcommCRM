@@ -200,7 +200,7 @@ describe("o gate de orçamento lê ai_budgets e executa o veredito", () => {
       // E diz os números, na unidade real: `cost_cents` é centavo de DÓLAR.
       expect(corpo).toContain("US$ 15,00");
       expect(corpo).toContain("US$ 10,00");
-      expect(corpo).toContain("Uso de IA");
+      expect(corpo).toContain("Gasto com IA");
     });
 
     it("a recusa vira linha de ERRO em llm_calls — a tela de Execuções a mostra", async () => {

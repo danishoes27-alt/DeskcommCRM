@@ -28,8 +28,8 @@ export interface EstadoDaDemonstracao {
 
 /** Onde a pessoa vê o que o seed criou: o nome no menu, a rota e as abas, como a tela os escreve. */
 export const TELAS_DA_DEMONSTRACAO = [
-  { tela: "Webhooks", rota: "/app/webhooks", abas: ["Automações", "Atividade"] },
-  { tela: "Follow-ups", rota: "/app/ai/followups", abas: ["Fluxos", "Fila"] },
+  { tela: "Avisos para outros sistemas", rota: "/app/webhooks", abas: ["Automações", "Atividade"] },
+  { tela: "Retomar conversas", rota: "/app/ai/followups", abas: ["Fluxos", "Fila"] },
 ] as const;
 
 function quantos(n: number, singular: string, plural: string): string {
