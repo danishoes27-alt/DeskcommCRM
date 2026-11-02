@@ -216,6 +216,11 @@
 - Varredura de RLS (`rls-completude-varredura` + `jev-observacoes`): verde, sem exceção nova (item 7).
 - **O que NÃO foi feito:** o e2e em Playwright com o dublê HTTP (`scripts/duble-jev-e2e.mjs`) não foi estendido nem rodado nesta máquina (precisa de Supabase local, servidor e navegador). O equivalente que roda aqui é o invariante acima, com o turno real e duas empresas concorrentes; falta só a prova pela tela com duas empresas.
 
+### Fechamento do Marco 3 — baterias completas
+- `pnpm test:db` (tudo, Postgres real): 346 arquivos, 2817 testes passaram, nenhuma falha.
+- `pnpm test:unit` (sem caminho): 51 falhas em 19 arquivos, as mesmas do commit-base (ambiente Windows: bash ausente, PDF, scripts de git/release); nenhuma é do Jev, de cotação, de orçamento ou do painel.
+- `pnpm typecheck` e `pnpm lint`: sem erro (lint só com os avisos de sempre).
+
 ## Pendências e coisas que só o dono pode fornecer
 
 | O quê | Quando faz falta | Tarefas |
