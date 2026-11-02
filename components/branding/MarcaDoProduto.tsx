@@ -1,4 +1,4 @@
-import { LOGOTIPO, SIMBOLO } from "@/lib/branding/desenho";
+import { LOGOTIPO, SIMBOLO, type CamadaDoSimbolo } from "@/lib/branding/desenho";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,8 +27,8 @@ type Props = {
 };
 
 const SIMBOLO_CLARO_ESCURO = "fill-[#0b7d46] dark:fill-[#4db074]";
-const NOME_CLARO_ESCURO = "fill-[#1c1a16] dark:fill-[#f5f4ef]";
-const SUFIXO_CLARO_ESCURO = "fill-[#5d594f] dark:fill-[#8e8b7f]";
+const NOME_CLARO_ESCURO = "fill-[#0c112a] dark:fill-[#e8e9f3]";
+const SUFIXO_CLARO_ESCURO = "fill-[#4a4f6e] dark:fill-[#9a9cb8]";
 
 // As classes acima repetem os hexes de `CORES_DA_MARCA` porque o Tailwind só
 // gera utilitário para valor LITERAL no fonte. Quem impede os dois de divergirem
@@ -46,6 +46,39 @@ function acessibilidade(nome: string, decorativo: boolean) {
     : ({ role: "img", "aria-label": nome } as const);
 }
 
+const CLASSE_DA_CAMADA: Record<CamadaDoSimbolo["papel"], string> = {
+  contorno: "fill-[#1a2333] dark:fill-[#5f7099]",
+  anel: "fill-white",
+  tela: "",
+  "entalhe-anel": "fill-white",
+  entalhe: "fill-[#1a2333] dark:fill-[#5f7099]",
+  letra: "fill-white",
+};
+
+function Camadas() {
+  const { degrade } = SIMBOLO;
+  return (
+    <>
+      <defs>
+        <linearGradient id={degrade.id} x1="0.85" y1="0.05" x2="0.1" y2="0.95">
+          <stop offset="0" stopColor={degrade.de} />
+          <stop offset="0.5" stopColor={degrade.meio} />
+          <stop offset="1" stopColor={degrade.ate} />
+        </linearGradient>
+      </defs>
+      {SIMBOLO.camadas.map((c, n) => {
+        const props = {
+          key: n,
+          className: CLASSE_DA_CAMADA[c.papel] || undefined,
+          fill: c.papel === "tela" ? `url(#${degrade.id})` : undefined,
+          ...c.attrs,
+        };
+        return c.forma === "rect" ? <rect {...props} /> : <path {...props} />;
+      })}
+    </>
+  );
+}
+
 /** O símbolo sozinho — para a barra recolhida, avatar e cantos apertados. */
 export function SimboloDoProduto({ nome, className, decorativo = false }: Props) {
   return (
@@ -54,36 +87,33 @@ export function SimboloDoProduto({ nome, className, decorativo = false }: Props)
       className={cn("shrink-0", className)}
       {...acessibilidade(nome, decorativo)}
     >
-      <g className={SIMBOLO_CLARO_ESCURO} transform={SIMBOLO.transform}>
-        <path d={SIMBOLO.d} />
-        <rect {...SIMBOLO.modulo} />
-      </g>
+      <Camadas />
     </svg>
   );
 }
 
 /** Símbolo + nome — para a barra aberta e a fachada de entrada. */
 export function LogotipoDoProduto({ nome, className, decorativo = false }: Props) {
+  const { texto } = LOGOTIPO;
   return (
     <svg
       viewBox={LOGOTIPO.viewBox}
       className={cn("shrink-0", className)}
       {...acessibilidade(nome, decorativo)}
     >
-      <g className={SIMBOLO_CLARO_ESCURO} transform={LOGOTIPO.simbolo.transform}>
-        <path d={LOGOTIPO.simbolo.d} />
-        <rect {...LOGOTIPO.simbolo.modulo} />
-      </g>
-      <g className={NOME_CLARO_ESCURO}>
-        {LOGOTIPO.nome.map((g) => (
-          <path key={g.transform} transform={g.transform} d={g.d} />
-        ))}
-      </g>
-      <g className={SUFIXO_CLARO_ESCURO}>
-        {LOGOTIPO.sufixo.map((g) => (
-          <path key={g.transform} transform={g.transform} d={g.d} />
-        ))}
-      </g>
+      <Camadas />
+      <text
+        x={texto.x}
+        y={texto.y}
+        fontSize={texto.tamanho}
+        fontWeight={700}
+        fontFamily="'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif"
+        textLength={nome.length * 0.58 * texto.tamanho > texto.larguraMaxima ? texto.larguraMaxima : undefined}
+        lengthAdjust="spacingAndGlyphs"
+        className={NOME_CLARO_ESCURO}
+      >
+        {nome}
+      </text>
     </svg>
   );
 }

@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
 
 import { marcaEhADoProduto } from "@/lib/branding";
-import { CORES_DA_MARCA, SIMBOLO } from "@/lib/branding/desenho";
 import { letraDoIcone } from "@/lib/branding/icone";
+import { SimboloParaImagem } from "@/lib/branding/simbolo-satori";
 import { marcaDaSaida, NEUTROS_DE_SAIDA } from "@/lib/branding/saida";
 
 /**
@@ -94,12 +94,7 @@ export default async function Icon() {
             background: NEUTROS_DE_SAIDA.fundo,
           }}
         >
-          <svg viewBox={SIMBOLO.viewBox} width={lado} height={lado}>
-            <g fill={CORES_DA_MARCA.claro.simbolo} transform={SIMBOLO.transform}>
-              <path d={SIMBOLO.d} />
-              <rect {...SIMBOLO.modulo} />
-            </g>
-          </svg>
+          <SimboloParaImagem lado={lado} />
         </div>
       ),
       { ...size, headers: CACHE },
