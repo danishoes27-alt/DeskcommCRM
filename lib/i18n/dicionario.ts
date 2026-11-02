@@ -14047,6 +14047,9 @@ export const DICIONARIO: Traducoes = {
   "Tem alguma informação errada. Confira os campos.": { es: "Hay algún dato incorrecto. Revisa los campos." },
   "Algo deu errado do nosso lado. Tente de novo em instantes.": { es: "Algo salió mal de nuestro lado. Inténtalo de nuevo en unos instantes." },
   "Esse link não vale mais. Peça um novo em “Esqueci minha senha” ou crie a conta de novo.": { es: "Ese enlace ya no vale. Pide uno nuevo en “Olvidé mi contraseña” o crea la cuenta de nuevo." },
+  // ═══ r4: arrastar colunas ═══
+  "Arrastar a coluna": { es: "Arrastrar la columna" },
+  "Arraste para mudar a coluna de lugar": { es: "Arrastra para cambiar la columna de lugar" },
 };
 
 /**

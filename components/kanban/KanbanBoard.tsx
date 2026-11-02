@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
-import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
+import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { useT } from "@/hooks/i18n/useT";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBoard } from "@/hooks/kanban/useBoard";
 import { useMoveCard, type RecusaDeCampos, type RetomadaPendente } from "@/hooks/kanban/useMoveCard";
 import { useRenameStage } from "@/hooks/kanban/useRenameStage";
+import { useReorderStage } from "@/hooks/kanban/useReorderStage";
 import { CamposObrigatoriosDialog } from "./CamposObrigatoriosDialog";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useAtRiskLeads } from "@/hooks/leads/useAtRiskLeads";
@@ -96,6 +97,7 @@ export function KanbanBoard({
   const useExternal = stagesProp !== undefined && leadsProp !== undefined;
   const queryResult = useBoard(useExternal ? null : pipelineId);
   const renameStage = useRenameStage(pipelineId);
+  const reorderStage = useReorderStage(pipelineId);
   // A RECUSA DE CAMPOS ABRE DIÁLOGO, não toast (issue #1536): o 422 traz em
   // `details.faltando` o que falta, o diálogo coleta, e o reenvio leva os
   // valores NA MESMA escrita que muda a etapa. O hook é o MESMO de antes —
@@ -202,6 +204,16 @@ export function KanbanBoard({
       if (!data || !grouped) return;
       const { source, destination, draggableId } = result;
       if (!destination) return;
+
+      // Arrasto de COLUNA (type "COLUNA"): o id da etapa vem depois do prefixo.
+      if (result.type === "COLUNA") {
+        if (!podeRenomearEtapa || source.index === destination.index) return;
+        const stageId = draggableId.replace(/^coluna:/, "");
+        const resto = data.stages.filter((s) => s.id !== stageId);
+        const depoisDe = destination.index > 0 ? (resto[destination.index - 1]?.id ?? null) : null;
+        reorderStage.mutate({ stageId, depoisDe });
+        return;
+      }
       if (
         source.droppableId === destination.droppableId &&
         source.index === destination.index
@@ -238,7 +250,7 @@ export function KanbanBoard({
         expectedUpdatedAt: lead.updated_at,
       });
     },
-    [data, grouped, moveCard],
+    [data, grouped, moveCard, podeRenomearEtapa, reorderStage],
   );
 
   if (isLoading) {
@@ -288,29 +300,51 @@ export function KanbanBoard({
           de 16px acima dele por onde os cards apareciam rolando (medido no e2e
           "o quadro cabe na tela"). O respiro até os filtros vem do `gap-4` da
           página. */}
-      <div
-        className="flex min-h-0 flex-1 items-start gap-3 overflow-auto px-4 pb-4"
-        data-quadro-do-funil
-      >
-        {data.stages.map((stage) => (
-          <StageColumn
-            key={stage.id}
-            stage={stage}
-            leads={grouped.get(stage.id) ?? []}
-            pipelineId={pipelineId}
-            ownerNames={ownerNames}
-            coolingIds={coolingIds}
-            reactivations={reactivations}
-            pulses={pulsesProp ?? queryResult.pulses}
-            canonicalTags={canonicalTags}
-            selectedLeadIds={selectedLeadIds}
-            onSelectMany={handleSelectMany}
-            onOpen={setDossieId}
-            podeRenomear={podeRenomearEtapa}
-            onRenomear={(nome) => renameStage.mutate({ stageId: stage.id, name: nome })}
-          />
-        ))}
-      </div>
+      <Droppable droppableId="colunas-do-quadro" direction="horizontal" type="COLUNA" isDropDisabled={!podeRenomearEtapa}>
+        {(colunas) => (
+          <div
+            ref={colunas.innerRef}
+            {...colunas.droppableProps}
+            className="flex min-h-0 flex-1 items-start gap-3 overflow-auto px-4 pb-4"
+            data-quadro-do-funil
+          >
+            {data.stages.map((stage, indice) => (
+              <Draggable
+                key={stage.id}
+                draggableId={`coluna:${stage.id}`}
+                index={indice}
+                isDragDisabled={!podeRenomearEtapa}
+              >
+                {(arrasto) => (
+                  <div
+                    ref={arrasto.innerRef}
+                    {...arrasto.draggableProps}
+                    className="flex min-h-full shrink-0"
+                  >
+                    <StageColumn
+                      stage={stage}
+                      leads={grouped.get(stage.id) ?? []}
+                      pipelineId={pipelineId}
+                      ownerNames={ownerNames}
+                      coolingIds={coolingIds}
+                      reactivations={reactivations}
+                      pulses={pulsesProp ?? queryResult.pulses}
+                      canonicalTags={canonicalTags}
+                      selectedLeadIds={selectedLeadIds}
+                      onSelectMany={handleSelectMany}
+                      onOpen={setDossieId}
+                      podeRenomear={podeRenomearEtapa}
+                      onRenomear={(nome) => renameStage.mutate({ stageId: stage.id, name: nome })}
+                      alcaDeArrasto={podeRenomearEtapa ? arrasto.dragHandleProps : null}
+                    />
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {colunas.placeholder}
+          </div>
+        )}
+      </Droppable>
       {leadDoDossie && (
         <LeadDossier
           open

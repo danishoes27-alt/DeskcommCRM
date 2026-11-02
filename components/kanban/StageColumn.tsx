@@ -1,5 +1,5 @@
 "use client";
-import { Droppable } from "@hello-pangea/dnd";
+import { Droppable, type DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 import { useRef, useState, type CSSProperties } from "react";
 import { useT } from "@/hooks/i18n/useT";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import type { Stage } from "@/lib/kanban/types";
 import { buildCardInput } from "@/lib/kanban/card-state";
 import { intervaloDaColuna } from "@/lib/kanban/selecao";
 import { formatSomaPorMoeda, formatValorDoNegocio, MOEDA_PADRAO, somaPorMoeda } from "@/lib/money";
+import { DotsSixVertical } from "@/lib/ui/icons";
 import { KanbanCard, type GestoDeSelecao } from "./KanbanCard";
 
 interface StageColumnProps {
@@ -37,6 +38,11 @@ interface StageColumnProps {
   /** `manager`+ — mesmo corte de papel da rota que renomeia a etapa. */
   podeRenomear?: boolean;
   onRenomear?: (nome: string) => void;
+  /**
+   * Alça para ARRASTAR A COLUNA INTEIRA (só quem pode reordenar etapas recebe). Sem ela
+   * a coluna não tem alça nenhuma: os cards continuam arrastáveis como sempre.
+   */
+  alcaDeArrasto?: DraggableProvidedDragHandleProps | null;
 }
 
 export function StageColumn({
@@ -53,6 +59,7 @@ export function StageColumn({
   onOpen,
   podeRenomear = false,
   onRenomear,
+  alcaDeArrasto,
 }: StageColumnProps) {
   const t = useT();
   // O TOTAL É POR MOEDA (#1531). Antes ele somava todos os `value_cents` e
@@ -152,6 +159,17 @@ export function StageColumn({
             Indeterminado quando a seleção é parcial: "alguns" e "nenhum" não
             podem ter a mesma aparência num controle que o próximo clique
             inverte. */}
+            {alcaDeArrasto && (
+              <span
+                {...alcaDeArrasto}
+                aria-label={`${t("Arrastar a coluna")} «${stage.name}»`}
+                title={t("Arraste para mudar a coluna de lugar")}
+                data-testid="alca-da-coluna"
+                className="-ml-1 flex h-6 w-5 shrink-0 cursor-grab items-center justify-center rounded-sm text-text-muted hover:bg-surface"
+              >
+                <DotsSixVertical size={16} aria-hidden />
+              </span>
+            )}
             <input
               type="checkbox"
               checked={todosSelecionados}
