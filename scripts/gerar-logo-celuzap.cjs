@@ -35,7 +35,7 @@ const svgSimbolo = (fundo) =>
 const svgIcone = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Celuzap"><rect width="1024" height="1024" rx="224" fill="#0C112A"/><g transform="translate(512 512) scale(1.05) translate(-512 -511)">${simbolo.split(NAVY).join("#33466e")}</g></svg>`;
 
 const svgHorizontal = (texto) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="270 150 1480 722" width="1480" height="722" role="img" aria-label="Celuzap">${simbolo}<text x="760" y="560" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif" font-size="230" font-weight="700" fill="${texto}">Celu<tspan fill="#0F9D58">zap</tspan></text></svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="270 150 1900 722" width="1900" height="722" role="img" aria-label="Celuzap">${simbolo}<text x="760" y="630" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif" font-size="330" font-weight="700" fill="${texto}">Celu<tspan fill="#0F9D58">zap</tspan></text></svg>`;
 
 async function png(svg, size, file, fundo) {
   await sharp(Buffer.from(svg)).resize(size, size, { fit: "contain", background: fundo ?? { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(file);
@@ -54,7 +54,7 @@ async function png(svg, size, file, fundo) {
   await png(svgIcone, 180, `${dir}/apple-touch-icon.png`);
   await png(svgIcone, 32, `${dir}/favicon-32.png`);
   await png(svgIcone, 48, `${dir}/favicon-48.png`);
-  await sharp(Buffer.from(svgHorizontal(NAVY))).resize({ width: 1480 }).png().toFile(`${dir}/logo-celuzap-horizontal.png`);
+  await sharp(Buffer.from(svgHorizontal(NAVY))).resize({ width: 1900 }).png().toFile(`${dir}/logo-celuzap-horizontal.png`);
   fs.copyFileSync(`${dir}/logo-celuzap-transparente.png`, "docs/assets/logo-celuzap-transparente.png");
   fs.copyFileSync(`${dir}/icone-celuzap-512.png`, "docs/assets/icone-celuzap-512.png");
   fs.copyFileSync(`${dir}/icone-celuzap-1024.png`, "docs/assets/icone-celuzap-1024.png");

@@ -68,12 +68,11 @@ function Camadas() {
       </defs>
       {SIMBOLO.camadas.map((c, n) => {
         const props = {
-          key: n,
           className: CLASSE_DA_CAMADA[c.papel] || undefined,
           fill: c.papel === "tela" ? `url(#${degrade.id})` : undefined,
           ...c.attrs,
         };
-        return c.forma === "rect" ? <rect {...props} /> : <path {...props} />;
+        return c.forma === "rect" ? <rect key={n} {...props} /> : <path key={n} {...props} />;
       })}
     </>
   );

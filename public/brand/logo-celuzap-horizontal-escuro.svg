@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="270 150 1480 722" width="1480" height="722" role="img" aria-label="Celuzap">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="270 150 1900 722" width="1900" height="722" role="img" aria-label="Celuzap">
   <defs>
     <linearGradient id="verde" x1="0.85" y1="0.05" x2="0.1" y2="0.95">
       <stop offset="0" stop-color="#00C853"/><stop offset="0.5" stop-color="#0F9D58"/><stop offset="1" stop-color="#0A6E57"/>
@@ -9,4 +9,4 @@
   <rect x="348" y="212" width="328" height="600" rx="34" fill="url(#verde)"/>
   <path d="M402 188 H622 V214 Q622 252 584 252 H440 Q402 252 402 214 Z" fill="#fff"/>
   <path d="M418 188 H606 V212 Q606 236 582 236 H442 Q418 236 418 212 Z" fill="#1A2333"/>
-  <path d="M600.7 433.0 A118 118 0 1 0 600.7 591.0 L562.0 556.2 A66 66 0 1 1 562.0 467.8 Z M408 566 L397 645 L478 622 Z" fill="#fff" fill-rule="evenodd"/><text x="760" y="560" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif" font-size="230" font-weight="700" fill="#E8E9F3">Celu<tspan fill="#0F9D58">zap</tspan></text></svg>
+  <path d="M600.7 433.0 A118 118 0 1 0 600.7 591.0 L562.0 556.2 A66 66 0 1 1 562.0 467.8 Z M408 566 L397 645 L478 622 Z" fill="#fff" fill-rule="evenodd"/><text x="760" y="630" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif" font-size="330" font-weight="700" fill="#E8E9F3">Celu<tspan fill="#0F9D58">zap</tspan></text></svg>

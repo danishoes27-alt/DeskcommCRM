@@ -46,15 +46,15 @@ export const SIMBOLO = {
     { papel: "tela", forma: "rect", attrs: { x: 348, y: 212, width: 328, height: 600, rx: 34 } },
     { papel: "entalhe-anel", forma: "path", attrs: { d: "M402 188 H622 V214 Q622 252 584 252 H440 Q402 252 402 214 Z" } },
     { papel: "entalhe", forma: "path", attrs: { d: "M418 188 H606 V212 Q606 236 582 236 H442 Q418 236 418 212 Z" } },
-    { papel: "letra", forma: "path", attrs: { d: LETRA_C, "fill-rule": "evenodd" } },
+    { papel: "letra", forma: "path", attrs: { d: LETRA_C, fillRule: "evenodd" } },
   ] as readonly CamadaDoSimbolo[],
 } as const;
 
 /** Símbolo + nome. O nome é texto (a tela já resolveu `nome`), não caminhos. */
 export const LOGOTIPO = {
-  viewBox: "296 156 1190 710",
-  proporcao: 1190 / 710,
-  texto: { x: 760, y: 560, tamanho: 230, larguraMaxima: 700 },
+  viewBox: "296 156 1850 710",
+  proporcao: 1850 / 710,
+  texto: { x: 760, y: 630, tamanho: 330, larguraMaxima: 1380 },
 } as const;
 
 /**
