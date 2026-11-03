@@ -448,10 +448,14 @@ test.describe("a moldura do logo no tema escuro", () => {
     expect(m.sombra, "no tema claro a moldura não pode ter sombra").toBe("none");
   });
 
-  test("(3) a TELA DE ENTRADA repete as duas medidas, sem sessão nenhuma", async ({ browser }) => {
-    // Contexto novo e deslogado: é o estado de quem só recebeu o endereço. O tema
-    // é semeado antes do primeiro byte porque a fachada não tem controle — é o
-    // que o navegador de quem escolheu escuro e saiu da conta já faz sozinho.
+  test("(3) a TELA DE ENTRADA mostra a logo FIXA do produto, sem moldura, nos dois temas (r6)", async ({
+    browser,
+  }) => {
+    // Desde a r6 a fachada não desenha o logo enviado pela empresa nem pela instalação: são duas
+    // imagens fixas do produto (`logo-celuzap-auth-claro.svg` e `logo-celuzap-auth-escuro.svg`),
+    // trocadas por tema. Não há chip branco no escuro — o texto da variante escura é branco e o
+    // símbolo não tem moldura —, então a medida é a OPOSTA da antiga: fundo transparente e folga
+    // zero nos dois temas. Contexto novo e deslogado, com o tema semeado antes do primeiro byte.
     for (const tema of ["dark", "light"] as const) {
       const contexto = await browser.newContext();
       try {
@@ -460,29 +464,24 @@ test.describe("a moldura do logo no tema escuro", () => {
         await pagina.goto("/login");
         expect(await temaDaPagina(pagina), `a fachada não ficou em ${tema}`).toBe(tema);
 
-        const m = await medirMoldura(pagina.getByTestId("logo-da-fachada"));
+        const idVisivel = tema === "dark" ? "logo-escuro-da-fachada" : "logo-da-fachada";
+        const idOculto = tema === "dark" ? "logo-da-fachada" : "logo-escuro-da-fachada";
+        const visivel = pagina.getByTestId(idVisivel);
+        const oculto = pagina.getByTestId(idOculto);
+        const srcEsperado =
+          tema === "dark" ? "/brand/logo-celuzap-auth-escuro.svg" : "/brand/logo-celuzap-auth-claro.svg";
+
+        const m = await medirMoldura(visivel);
         anotar(`3-fachada-${tema}.json`, m);
         await pagina.screenshot({ path: evidencia(`3-fachada-${tema}.png`) });
 
-        if (tema === "dark") {
-          expect(
-            fundoEClaro(m.fundo),
-            `a fachada no escuro desenhou o logo CRU (fundo=${m.fundo}) — o defeito ` +
-              `volta inteiro na tela de primeira impressão`,
-          ).toBe(true);
-          expect(
-            m.padding.every((p) => p > 0),
-            `fachada escura sem folga: ${m.padding}`,
-          ).toBe(true);
-          expect(m.caixaDoPai.largura).toBeGreaterThan(m.caixaDoLogo.largura);
-          expect(m.caixaDoPai.altura).toBeGreaterThan(m.caixaDoLogo.altura);
-        } else {
-          expect(
-            fundoETransparente(m.fundo),
-            `a fachada no claro ganhou moldura (${m.fundo})`,
-          ).toBe(true);
-          expect(m.padding).toEqual([0, 0, 0, 0]);
-        }
+        await expect(visivel).toHaveAttribute("src", srcEsperado);
+        await expect(oculto, `a variante do outro tema ficou visível no ${tema}`).toBeHidden();
+        expect(
+          fundoETransparente(m.fundo),
+          `a fachada no ${tema} ganhou moldura (${m.fundo}) — a logo fixa não tem chip`,
+        ).toBe(true);
+        expect(m.padding, `a fachada no ${tema} não pode ter folga`).toEqual([0, 0, 0, 0]);
       } finally {
         await contexto.close();
       }

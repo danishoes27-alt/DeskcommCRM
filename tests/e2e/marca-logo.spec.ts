@@ -13,13 +13,13 @@
  *
  * ═══ AS QUATRO PROPRIEDADES, E A ORDEM EM QUE ELAS SE PROVAM ═══
  *
- *   1. **A camada da instalação pinta a fachada.** O logo do dono do servidor
- *      aparece na barra lateral E no `/login` de quem não entrou — a P0 de
- *      primeira impressão.
- *   2. **A camada da organização NÃO vaza para a fachada.** O logo do cliente
- *      final troca a barra lateral dele e o `/login` continua sendo o do
- *      revendedor. É a propriedade que separa "marca própria" de "qualquer um
- *      repinta a instalação".
+ *   1. **A camada da instalação pinta a barra, e a fachada é FIXA (r6).** O logo do
+ *      dono do servidor aparece na barra lateral; o `/login` de quem não entrou
+ *      mostra sempre a logo fixa do produto (`/brand/logo-celuzap-auth-*.svg`),
+ *      nunca o logo enviado.
+ *   2. **Nenhuma camada alcança a fachada.** O logo do cliente final troca a
+ *      barra lateral dele e o `/login` continua sendo a logo fixa. É a propriedade
+ *      que separa "marca própria dentro do app" de "o que se vê antes de entrar".
  *   3. **O que não é imagem não entra.** Um SVG renomeado para `.png` é recusado
  *      pelos BYTES, com a razão dita em português, e nada muda na tela.
  *   4. **Logo grande é ajustado antes de subir, e o teto continua de pé.** Um
@@ -595,10 +595,9 @@ async function logoDoLogin(browser: Browser): Promise<LogoNaTela | null> {
     const pagina = await contexto.newPage();
     await pagina.goto("/login");
     const img = pagina.getByTestId("logo-da-fachada");
-    // Ausência é resposta legítima: sem logo em nenhuma camada, o layout não
-    // renderiza `<img>` nenhum e a fachada aparece com o nome em texto. Mas
-    // `count()` puro tornava "ausente" indistinguível de "ainda não montou" —
-    // é a mesma classe do helper da barra, consertada junto por isso.
+    // Desde a r6 a fachada SEMPRE renderiza a logo fixa (variante clara, no tema padrão do
+    // contexto); `null` aqui quer dizer "a página não montou a imagem", que é falha — e
+    // `count()` puro tornava "ausente" indistinguível de "ainda não montou".
     try {
       await expect(img).toBeAttached({ timeout: 5_000 });
     } catch {
@@ -617,8 +616,16 @@ function evidencia(nome: string): string {
   return path.join(EVIDENCIA, nome);
 }
 
-/** Mede só a apresentação; trocar src no navegador não grava arquivos no banco. */
-async function provarTamanhosNaFachada(browser: Browser): Promise<void> {
+/**
+ * A logo FIXA da fachada, nos dois temas e em dois tamanhos de tela (r6).
+ *
+ * Antes da r6 este bloco trocava o `src` da imagem por canvases de vários tamanhos para provar o
+ * recorte do logo ENVIADO. A fachada deixou de desenhar logo enviado: são duas imagens fixas do
+ * produto, com altura fixa (`h-12`), trocadas por `dark:`. Aqui se mede o que sobrou a provar:
+ * qual variante aparece em cada tema, que ela tem altura fixa e que a página não estoura de lado.
+ * Só apresentação; nada é gravado no banco.
+ */
+async function provarLogoFixaNaFachada(browser: Browser): Promise<void> {
   for (const tema of ["light", "dark"] as const) {
     for (const larguraDaTela of [360, 1280]) {
       const contexto = await browser.newContext({
@@ -632,44 +639,23 @@ async function provarTamanhosNaFachada(browser: Browser): Promise<void> {
         );
         const pagina = await contexto.newPage();
         await pagina.goto("/login");
-        const img = pagina.getByTestId("logo-da-fachada");
+        const img = pagina.getByTestId(tema === "dark" ? "logo-escuro-da-fachada" : "logo-da-fachada");
         await expect(img).toBeVisible();
-        for (const [largura, altura] of [
-          [368, 182],
-          [256, 256],
-          [640, 80],
-          [64, 512],
-          [32, 16],
-        ]) {
-          const medida = await img.evaluate(
-            async (elemento, tamanho) => {
-              const canvas = document.createElement("canvas");
-              canvas.width = tamanho.largura;
-              canvas.height = tamanho.altura;
-              const pincel = canvas.getContext("2d")!;
-              pincel.fillStyle = "#276ba4";
-              pincel.fillRect(0, 0, canvas.width, canvas.height);
-              const imagem = elemento as HTMLImageElement;
-              imagem.src = canvas.toDataURL("image/png");
-              await imagem.decode();
-              const caixa = imagem.getBoundingClientRect();
-              return { largura: caixa.width, altura: caixa.height };
-            },
-            { largura: largura!, altura: altura! },
-          );
-          const escala = Math.min(1, 192 / largura!, 80 / altura!);
-          expect(
-            medida.largura,
-            `${tema}/${larguraDaTela}: largura de ${largura}×${altura}`,
-          ).toBeCloseTo(largura! * escala, 1);
-          expect(
-            medida.altura,
-            `${tema}/${larguraDaTela}: altura de ${largura}×${altura}`,
-          ).toBeCloseTo(altura! * escala, 1);
-          expect(
-            await pagina.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-          ).toBe(true);
-        }
+        await expect(img).toHaveAttribute(
+          "src",
+          tema === "dark" ? "/brand/logo-celuzap-auth-escuro.svg" : "/brand/logo-celuzap-auth-claro.svg",
+        );
+        const caixa = await img.evaluate((elemento) => {
+          const r = elemento.getBoundingClientRect();
+          return { largura: r.width, altura: r.height };
+        });
+        expect(caixa.altura, `${tema}/${larguraDaTela}: a logo fixa tem 48px de altura`).toBeCloseTo(48, 0);
+        expect(caixa.largura, `${tema}/${larguraDaTela}: a logo fixa cabe na coluna`).toBeLessThanOrEqual(
+          larguraDaTela,
+        );
+        expect(
+          await pagina.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        ).toBe(true);
         await pagina.screenshot({ path: evidencia(`tamanho-logo-${tema}-${larguraDaTela}.png`) });
       } finally {
         await contexto.close();
@@ -822,25 +808,25 @@ test.describe("o logo subido pela tela chega à tela", () => {
     // limpa as duas camadas para as specs seguintes do mesmo banco.
   });
 
-  test("(2) quem NÃO entrou vê o logo do dono na tela de acesso — a P0", async ({
+  test("(2) quem NÃO entrou vê a logo FIXA do produto, mesmo com logo enviado pelo dono (r6)", async ({
     page,
     browser,
   }) => {
     // ── A PRECONDIÇÃO QUE ESTE CASO MONTA PARA SI MESMO (issue #306) ──────────
-    // "O logo do dono" só está nesta tela se a camada da INSTALAÇÃO estiver
-    // pintada, e quem a pinta é este caso. Antes ele media o que o caso (1)
-    // tivesse deixado: "o logo do dono" e "a sobra do caso (1)" eram
-    // indistinguíveis daqui, e o caso reprovava por causa de outro.
+    // Desde a r6 a fachada ignora o logo enviado: antes do login não há empresa, e a logo e a cor
+    // das telas de acesso são fixas do produto. Para o caso medir isso de verdade, a camada da
+    // INSTALAÇÃO tem de ESTAR pintada com um logo próprio — se ela estivesse vazia, "a fachada não
+    // mostra o logo do dono" seria verde pelo motivo errado.
     await entrarNaCamada(page, "instalacao");
     await subirLogoDaCamada(page, "instalacao");
 
-    await provarTamanhosNaFachada(browser);
+    await provarLogoFixaNaFachada(browser);
 
     const fachada = await logoDoLogin(browser);
-    expect(fachada, "a tela de acesso não renderizou logo nenhum").not.toBeNull();
-    expect(fachada!.src).toContain(`${PREFIXO_PUBLICO}platform/`);
-    // A P0 é ver o logo, não ter o endereço dele escrito: é aqui que um bucket
-    // privado apareceria, e é a única tela onde ninguém está logado para ver.
+    expect(fachada, "a tela de acesso não renderizou a logo fixa").not.toBeNull();
+    expect(fachada!.src).toContain("/brand/logo-celuzap-auth-claro.svg");
+    expect(fachada!.src, "a fachada mostrou o logo enviado pelo dono").not.toContain(PREFIXO_PUBLICO);
+    // A logo fixa vem de `public/`, aberto a quem não entrou: é aqui que um 404 apareceria.
     baixou(fachada!, "tela de acesso");
 
     const contexto = await browser.newContext();
@@ -887,16 +873,18 @@ test.describe("o logo subido pela tela chega à tela", () => {
       );
       await page.screenshot({ path: evidencia("4-sidebar-da-empresa.png") });
 
-      // A camada de cima NÃO alcança a fachada: quem não entrou continua vendo o
-      // logo do revendedor. Sem esta asserção, o caso (1) e o (3) seriam
+      // Nenhuma camada alcança a fachada: quem não entrou continua vendo a logo FIXA do produto,
+      // nem a da instalação nem a da empresa. Sem esta asserção, o caso (1) e o (3) seriam
       // indistinguíveis de "o último upload repinta tudo".
       const noLogin = await logoDoLogin(browser);
       expect(noLogin, "a tela de acesso ficou sem logo depois do upload da empresa").not.toBeNull();
-      expect(noLogin!.src).toContain(`${PREFIXO_PUBLICO}platform/`);
+      expect(noLogin!.src).toContain("/brand/logo-celuzap-auth-claro.svg");
+      expect(noLogin!.src).not.toContain(`${PREFIXO_PUBLICO}platform/`);
       expect(noLogin!.src).not.toContain(`${PREFIXO_PUBLICO}${creds.org_id}/`);
 
       // Sem `limparCamada` aqui: o teto de trocas por usuário do produto — ver a
       // NOTA DO TETO no caso (1).
+
     } finally {
       await ctxInstalacao.close();
     }
@@ -1027,37 +1015,30 @@ test.describe("o logo subido pela tela chega à tela", () => {
     }
   });
 
-  test("(6) o dono remove o logo da instalação e a fachada volta ao que era", async ({
+  test("(6) o dono remove o logo da instalação e a fachada continua a mesma logo fixa (r6)", async ({
     page,
     browser,
   }) => {
     // ── A PRECONDIÇÃO DESTE CASO, MONTADA AQUI (issue #306) ──────────────────
-    // "Volta ao que era" precisa dizer o que era, e o ANTES é medido por este
-    // caso: a fachada como ela está agora (sem logo nenhum, ou com o
-    // `APP_LOGO_URL` do `.env`, se houver). Antes, o que ele pressupunha era o
-    // logo que o caso (1) tinha subido — e um estouro no (1) derrubava ESTE caso,
-    // num PR que não toca marca.
-    //
-    // E o "agora" tem de ser medido com a instalação SEM logo PRÓPRIO: os casos
-    // acima terminam com o logo DELES no ar (não limpam mais — ver a NOTA DO TETO
-    // no caso (1)), e um `fachadaAntes` que já fosse o arquivo desta spec faria a
-    // asserção final comparar o padrão do sistema com ele mesmo. Uma requisição
-    // quando há logo para tirar; nenhuma quando não há.
+    // Antes da r6 a fachada "voltava ao que era" quando o dono removia o logo. Agora ela não
+    // depende do logo da instalação: é a mesma antes de subir, com o logo no ar e depois de
+    // removê-lo. O caso prova as TRÊS pontas, e a do meio é a que impede um falso verde — com a
+    // instalação de fato pintada, uma fachada que ainda lesse a camada mudaria de endereço ali.
     await entrarNaCamada(page, "instalacao");
     await removerLogoSeHouver(page, "/admin/marca", "instalacao");
     const fachadaAntes = await logoDoLogin(browser);
+    expect(fachadaAntes, "a fachada não renderizou a logo fixa antes do upload").not.toBeNull();
+    expect(fachadaAntes!.src).toContain("/brand/logo-celuzap-auth-claro.svg");
     await subirLogoDaCamada(page, "instalacao");
 
-    // A subida chegou à fachada: sem esta medição, "voltou ao que era" ficaria
-    // verde numa fachada que nunca mudou. É o mesmo elo que o caso (2) mede — e
-    // aqui ele é precondição da asserção, não a asserção.
     const comLogo = await logoDoLogin(browser);
-    expect(comLogo, "a fachada não mostrou o logo depois de o dono subi-lo").not.toBeNull();
-    expect(comLogo!.src).toContain(`${PREFIXO_PUBLICO}platform/`);
+    expect(comLogo, "a fachada sumiu depois de o dono subir o logo").not.toBeNull();
+    expect(comLogo!.src, "a fachada passou a mostrar o logo enviado").not.toContain(PREFIXO_PUBLICO);
+    expect(comLogo!.src).toBe(fachadaAntes!.src);
     baixou(comLogo!, "tela de acesso depois de o dono subir o logo");
 
-    // A remoção é a AÇÃO deste caso, não a restauração — quem garante a
-    // restauração num estouro no meio é o `afterAll` abaixo.
+    // A remoção é a AÇÃO deste caso — quem garante a restauração num estouro no meio é o
+    // `afterAll` abaixo.
     await page.goto("/admin/marca");
     const remover = page.locator("[data-campo-de-logo='instalacao']").getByRole("button", {
       name: /^remover$/i,
@@ -1071,20 +1052,7 @@ test.describe("o logo subido pela tela chega à tela", () => {
     await expect(page.getByText(/logo removido/i)).toBeVisible({ timeout: 15_000 });
 
     const noLogin = await logoDoLogin(browser);
-    if (fachadaAntes === null) {
-      // `null` (nenhuma imagem): o que NÃO pode sobrar é o arquivo desta spec.
-      expect(
-        noLogin === null || !noLogin.src.includes(PREFIXO_PUBLICO),
-        "a fachada ficou com o logo do bucket depois de o dono removê-lo",
-      ).toBe(true);
-    } else {
-      // Havia algo antes (o `APP_LOGO_URL` do `.env`, se houver): a fachada tem de
-      // voltar EXATAMENTE àquele endereço.
-      expect(
-        noLogin?.src,
-        `a fachada não voltou ao estado de partida — antes era ${fachadaAntes.src}`,
-      ).toBe(fachadaAntes.src);
-    }
+    expect(noLogin?.src, "a fachada mudou depois de o dono remover o logo").toBe(fachadaAntes!.src);
   });
 
   test("(7) logo acima do teto é recortado e reduzido no navegador, e o que chega cabe", async ({
