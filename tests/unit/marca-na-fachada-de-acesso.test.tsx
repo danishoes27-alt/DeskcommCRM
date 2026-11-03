@@ -59,24 +59,27 @@ describe("a casca das telas de acesso", () => {
     marcaDaSaida.mockReset();
   });
 
-  it("com logo configurado, a fachada o desenha", async () => {
+  it("com logo configurado, a fachada IGNORA o logo enviado e mostra a logo fixa do produto (r6)", async () => {
     const html = await fachada({ ...MARCA, logoUrl: "https://cdn.exemplo.test/revenda.png" });
 
-    expect(html).toContain('src="https://cdn.exemplo.test/revenda.png"');
-    // Legendado com a marca DESTA resolução: é ela que produziu a imagem.
+    // Antes do login não há empresa: a logo enviada em Configurações › Logo e cores vale
+    // só dentro do app. A fachada mostra sempre as duas variantes fixas, trocadas por tema.
+    expect(html).not.toContain("revenda.png");
+    expect(html).toContain('src="/brand/logo-celuzap-auth-claro.svg"');
+    expect(html).toContain('src="/brand/logo-celuzap-auth-escuro.svg"');
+    // Legendado com a marca DESTA resolução.
     expect(html).toContain('alt="Vendas Turbo"');
     // Guarda de vacuidade: sem o conteúdo, a asserção de cima poderia estar
     // medindo uma casca que engoliu o formulário de login.
     expect(html).toContain("formulário");
   });
 
-  it("sem logo, nenhuma imagem — e nunca um `src` vazio", async () => {
+  it("sem logo configurado, a mesma logo fixa — e nunca um `src` vazio", async () => {
     const html = await fachada(MARCA);
 
-    // `<img src="">` faz o navegador pedir a própria página e desenhar o ícone
-    // de imagem quebrada no topo do login. É o estado de fábrica de TODA
-    // instalação nova, então o caminho normal não pode ter esse defeito.
-    expect(html).not.toContain("<img");
+    // `<img src="">` faria o navegador pedir a própria página. As duas imagens têm src fixo.
+    expect(html).not.toContain('src=""');
+    expect(html).toContain('src="/brand/logo-celuzap-auth-claro.svg"');
     expect(html).toContain("formulário");
   });
 

@@ -42,6 +42,11 @@ const svgIcone = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024
 const svgHorizontal = (texto) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="270 150 1900 722" width="1900" height="722" role="img" aria-label="Celuzap">${simbolo}<text x="760" y="630" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif" font-size="330" font-weight="700" fill="${texto}">Celu<tspan fill="${texto === NAVY ? "#2347b8" : "#5482fb"}">zap</tspan></text></svg>`;
 
+// Variantes das telas ANTES do login (r6): sem moldura nem fundo, símbolo de uma cor só, entalhe vazado.
+// escuro = símbolo #5482fb e texto branco; claro = símbolo #2347b8 e texto #0c112a.
+const svgAuth = (simboloCor, textoCor) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="296 156 1850 710" width="1850" height="710" role="img" aria-label="Celuzap"><defs><mask id="recorte"><rect x="296" y="156" width="1850" height="710" fill="#fff"/><path d="M402 188 H622 V214 Q622 252 584 252 H440 Q402 252 402 214 Z" fill="#000"/></mask></defs><rect x="308" y="170" width="408" height="682" rx="66" fill="${simboloCor}" mask="url(#recorte)"/><path d="${letraC}" fill="#fff" fill-rule="evenodd"/><text x="760" y="630" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif" font-size="330" font-weight="700" fill="${textoCor}">Celuzap</text></svg>`;
+
 async function png(svg, size, file, fundo) {
   await sharp(Buffer.from(svg)).resize(size, size, { fit: "contain", background: fundo ?? { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(file);
 }
@@ -52,6 +57,10 @@ async function png(svg, size, file, fundo) {
   fs.writeFileSync(`${dir}/icone-celuzap.svg`, svgIcone);
   fs.writeFileSync(`${dir}/logo-celuzap-horizontal.svg`, svgHorizontal(NAVY));
   fs.writeFileSync(`${dir}/logo-celuzap-horizontal-escuro.svg`, svgHorizontal("#E8E9F3"));
+  fs.writeFileSync(`${dir}/logo-celuzap-auth-escuro.svg`, svgAuth("#5482fb", "#ffffff"));
+  fs.writeFileSync(`${dir}/logo-celuzap-auth-claro.svg`, svgAuth("#2347b8", "#0c112a"));
+  await sharp(Buffer.from(svgAuth("#5482fb", "#ffffff")), { density: 900 }).resize({ height: 120 }).png().toFile(`${dir}/logo-celuzap-auth-escuro.png`);
+  await sharp(Buffer.from(svgAuth("#2347b8", "#0c112a")), { density: 900 }).resize({ height: 120 }).png().toFile(`${dir}/logo-celuzap-auth-claro.png`);
   await png(svgSimbolo(), 1024, `${dir}/logo-celuzap-transparente.png`);
   await png(svgIcone, 512, `${dir}/icone-celuzap-512.png`);
   await png(svgIcone, 1024, `${dir}/icone-celuzap-1024.png`);

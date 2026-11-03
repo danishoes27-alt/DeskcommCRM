@@ -85,16 +85,15 @@ describe("o logo do operador não some no tema escuro", () => {
     ).toBe(true);
   });
 
-  it("a TELA DE ENTRADA desenha o logo sobre o mesmo chip", () => {
-    // O login também respeita `data-theme` — o `ThemeProvider` embrulha a raiz
-    // inteira (`app/layout.tsx`), a fachada inclusa.
+  it("a TELA DE ENTRADA usa a logo fixa, com variante própria para o tema escuro (r6)", () => {
+    // Desde a r6 a fachada não desenha o logo enviado pelo operador: usa duas imagens fixas do
+    // produto, sem moldura, trocadas por `dark:`. Sem chip branco — o texto da variante escura é branco.
     const fonte = semComentario(leia("app/(public)/layout.tsx"));
 
-    expect(fonte, "sumiu o chip `dark:bg-white` da tela de entrada").toMatch(/dark:bg-white/);
-    expect(
-      imgDoLogoEstaDentroDoChip(fonte, /dark:bg-white/),
-      "o `<img>` do logo saiu de dentro do chip `dark:bg-white`",
-    ).toBe(true);
+    expect(fonte).toMatch(/logo-celuzap-auth-claro.svg/);
+    expect(fonte).toMatch(/logo-celuzap-auth-escuro.svg/);
+    expect(fonte).toMatch(/dark:hidden/);
+    expect(fonte).toMatch(/hidden[^"]*dark:block/);
   });
 
   it("a PRÉVIA da tela de marca mostra o chip na caixa da aparência escura", () => {

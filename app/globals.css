@@ -971,3 +971,43 @@
     transform: none;
   }
 }
+
+/* ---- Telas ANTES do login: cor de ação FIXA do produto (r6) -------------------
+ * `app/(public)/layout.tsx` marca o wrapper com `data-superficie-auth`. Antes do login não há
+ * empresa, e a cor SALVA da instalação (`<style id="marca-instalacao">`, que sobrescreve
+ * `--color-accent*` em `:root`) não vale aqui: estas telas mostram sempre o azul do produto.
+ * Variável declarada no próprio elemento vence a herdada, qualquer que seja a especificidade.
+ * Os apelidos do shadcn (`--primary`, `--ring`) são resolvidos em `:root`, por isso são
+ * redeclarados aqui. Os literais são a rampa do produto (régua) — `tests/unit/auth-azul-fixo.test.ts`
+ * vigia que continuem iguais a ela. */
+[data-superficie-auth] {
+  --color-accent-50: #f0f5ff;
+  --color-accent-100: #dce7ff;
+  --color-accent-200: #b6cdff;
+  --color-accent-300: #82a8ff;
+  --color-accent-400: #5482fb;
+  --color-accent-500: #3663e5;
+  --color-accent-600: #2347b8;
+  --color-accent-700: #1f3c91;
+  --color-accent-800: #1d3475;
+  --color-accent-900: #1b2e61;
+  --color-accent-950: #0e1a39;
+  --color-accent: #2347b8;
+  --color-accent-fg: #ffffff;
+  --color-accent-hover: #1f3c91;
+  --color-accent-soft: #dce7ff;
+  --primary: #2347b8;
+  --primary-foreground: #ffffff;
+  --accent-foreground: #ffffff;
+  --ring: #3663e5;
+}
+[data-theme="dark"] [data-superficie-auth] {
+  --color-accent: #5482fb;
+  --color-accent-fg: #0c112a;
+  --color-accent-hover: #82a8ff;
+  --color-accent-soft: rgba(84, 130, 251, 0.16);
+  --primary: #5482fb;
+  --primary-foreground: #0c112a;
+  --accent-foreground: #0c112a;
+  --ring: #5482fb;
+}
