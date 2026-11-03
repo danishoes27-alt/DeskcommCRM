@@ -102,7 +102,7 @@ export function MfaForm({ next }: MfaFormProps) {
       </Button>
 
       <div className="text-center text-sm">
-        <Link href={recoveryHref} className="text-muted-foreground underline-offset-4 hover:underline">
+        <Link href={recoveryHref} className="text-primary underline-offset-4 hover:underline">
           {t("Perdi acesso ao autenticador")}
         </Link>
       </div>

@@ -115,7 +115,7 @@ export default async function SignupPage({
 
       <p className="text-center text-sm text-muted-foreground">
         {t("Já tem conta?")}{" "}
-        <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
+        <Link href="/login" className="font-medium text-primary underline underline-offset-4 hover:text-accent-hover">
           {t("Entrar")}
         </Link>
       </p>
