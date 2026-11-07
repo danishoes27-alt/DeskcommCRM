@@ -1,6 +1,6 @@
 # Spec 23 — Consulta de aparelhos (`crm_search_aparelhos`)
 
-Estado: **DESENHO** (r7). Nenhuma linha de código, de teste ou de migration existe ainda.
+Estado: **EM IMPLEMENTAÇÃO** (r7), com as decisões D7–D10 de 2026-11-07 e o formato real confirmado na T0.
 Modelo de estilo e de rigor: `docs/specs/20-spec-banco-de-dados-externo.md`.
 Plano de construção: `docs/specs/23-plano-consulta-aparelhos.md`.
 
@@ -27,6 +27,10 @@ organização, uma allowlist de host dentro do código, nenhum parâmetro de red
 | D4 | Desatualizado | `geradoEm` mais velho que 30 dias vira erro `desatualizado`. |
 | D5 | Nasce desligada | A ferramenta existe no catálogo mas nenhum agente a tem; o dono liga numa versão nova do agente. |
 | D6 | Branch | `celuzap-1.69.0-r7`, criada de `refs/heads/celuzap-1.69.0-r6`. |
+| D7 | Gravar a URL (decisão de 2026-11-07, substitui o §1) | Um `UPDATE` único em `organizations.settings`, **sem rota e sem tela de configuração**. O SQL é preparado nesta entrega e **só é executado com o "confirmo" por escrito**. A opção C (rota + cartão) **não será construída**. |
+| D8 | Cache vencido com a leitura falhando | **Nunca** serve preço vencido: devolve erro e o agente chama um atendente. |
+| D9 | Tolerância de digitação | 1 letra em palavras de **5 ou mais letras**; **número nunca é aproximado** ("Redmi Note 15" jamais casa com "Redmi Note 14"); casou por aproximação ⇒ `aproximado: true`. |
+| D10 | Teto de ferramentas | O Atendente IA da Grau Cell tem 14 capacidades ligadas; com a nova são 15, abaixo de 27 (`TETO_TOOLS_POR_AGENTE`). Conferido na T4; se não couber, para e avisa. |
 
 ## Destino da mudança (DoD 18, `docs/doctrine/extensoes.md`)
 
@@ -36,7 +40,7 @@ Pela doutrina isso é **extensão**, mas o contrato de extensões v1 não permit
 ligação inerte (`nao_configurado`) para qualquer organização que não configure a URL. **Não vai
 para o upstream** (`melgarafael/DeskcommCRM`); este desenho não pede PR lá.
 
-## Formato do arquivo (CONFIRMADO só pela descrição do dono — o arquivo de produção não foi baixado)
+## Formato do arquivo
 
 ```
 { geradoEm, totalAparelhos, totalVariantes, nota,
@@ -49,12 +53,52 @@ para o upstream** (`melgarafael/DeskcommCRM`); este desenho não pede PR lá.
 `geradoEm` é ISO com fuso `-03:00`. `preco.avista` é **texto** ("R$ 1.429") e `preco.parcelas` é
 **texto** ("até 18x no boleto"). `observacao` é `null` quando não se aplica.
 
-**Não sei** (e a implementação não deve presumir): os valores reais de `categoria`, `condicao` e
-`oferta`; se `oferta` é texto, booleano ou objeto; se algum campo além dos listados existe; se
-`nfc` é booleano ou texto. O schema abaixo é tolerante a isso nos campos que não influenciam
-decisão, e o primeiro passo da construção é conferir contra o arquivo real (ver plano, T0).
+### Formato CONFIRMADO em 2026-11-07 (T0: uma leitura GET do arquivo público)
+
+Medido no arquivo real (43.496 bytes, `Content-Type: application/json` **sem** `charset`,
+`HTTP/1.1 200`, servidor nginx, `geradoEm = 2026-11-07T19:25:17-03:00`, 34 aparelhos, 93 variantes,
+`nota = "Aparelho que não está nesta lista não está disponível no site."`):
+
+| Campo | Real |
+|---|---|
+| `aparelho.categoria` | `"android"` (8) ou `"iphone"` (26) |
+| `aparelho.marca` | Apple, Xiaomi, realme, Motorola, Tecno |
+| `aparelho.condicao` | `"novo"` (15), `"seminovo"` (12), `"cpo"` (7) |
+| `aparelho.oferta` | **booleano** (`true` em 3) |
+| `aparelho.id` | único (34 de 34), ex.: `iphone-16-lacrado`, `iphone-16-seminovo`, `redmi-note-15` |
+| `variante.nome`, `cor`, `armazenamento` | sempre string (`"8 GB + 256 GB"`, `"256 GB"`) |
+| `variante.rede`, `processador`, `ram` | string em 13 variantes, **`null` em 80** (só os Android trazem) |
+| `variante.nfc` | `"Sim"` / `"Não"` / `null` (texto, não booleano) |
+| `variante.bateria` | `null` em 50, string em 43 (`"84%"`, seminovos) |
+| `variante.observacao` | `null` em 83, string em 10 (`"Garantia Apple: +R$ 100,00"`) |
+| `preco.avista` | texto **sem centavos**: `R$ 999`, `R$ 1.429`, `R$ 14.900` |
+| `preco.parcelas` | sempre `"até 18x no boleto"` |
+
+**Divergências em relação ao desenho original, e o que mudou na spec:**
+
+1. **O mesmo `nome` aparece em mais de um aparelho, com `condicao` diferente** (ex.: "iPhone 16"
+   tem três entradas: `novo`, `cpo`, `seminovo`; o mesmo vale para 15, 14 Pro Max etc.). Logo "exato
+   primeiro" devolve **todas** as entradas de mesmo nome (até o limite), e o agente precisa
+   mostrá-las **com a condição** de cada uma (§4 e a v3 do agente).
+2. `rede`, `nfc`, `processador`, `ram` e `bateria` são `string | null` (não só `observacao`).
+   `oferta` é booleano. O schema (§5) foi ajustado.
+3. `condicao` é um atributo pesquisável ("iphone 16 seminovo"): entra na regra de atributos do §4.
+4. O maior aparelho do arquivo real tem ~1,4 KB (6 variantes): 5 aparelhos ≈ 7 KB, folgado frente
+   ao teto de 24 KB da resposta; o teto de 512 KB do arquivo tem folga de ~12×.
+5. O `Content-Type` real não traz `charset`: a regra aceita `application/json` com ou sem
+   parâmetros.
+6. Nomes reais que testam a normalização: `iPhone 17e` (letra colada ao número), `iPhone Duo`,
+   `Poco M8`, `Moto G06`, `Redmi A7 Pro`, `realme Note 60x`, `Tecno Spark Go 1S`.
 
 ## 1. Configuração
+
+> **DECISÃO DE 2026-11-07 (D7) — substitui o restante desta seção.** A URL é gravada por **um
+> `UPDATE` único** em `organizations.settings`, sem rota e sem tela. O schema Zod, a allowlist e o
+> leitor que nunca lança (abaixo) continuam valendo. A tabela de opções e a opção **C** ficam como
+> histórico e **não serão construídas**: não há `app/api/v1/settings/aparelhos/`, nem cartão de
+> tela, nem entrada em `lib/navigation/catalogo.ts`, nem `T-CFG-02`/`P-01`/`P-02`. O SQL (antes,
+> depois, desfazer) está em `docs/specs/23-gravar-url-aparelhos.md` e **não é executado** sem o
+> "confirmo" por escrito.
 
 ### Onde e com que forma
 
@@ -166,15 +210,18 @@ arquivo traz (não há enum no código: o vocabulário é do arquivo).
 
 ### Normalização (função pura `normalizar`)
 
-1. Minúsculas; Unicode NFD; remove marcas combinantes (acentos); `ß`→`ss` não se aplica.
+1. Minúsculas; Unicode NFD; remove marcas combinantes (acentos).
 2. Tudo que não é `a-z0-9` vira espaço; espaços repetidos viram um.
-3. Separa **letra↔dígito** com espaço quando colados (`a56`→`a 56`, `s24ultra`→`s 24 ultra`,
-   `16promax`→`16 promax`), e guarda também a forma **compacta** (sem espaços) de cada texto.
-4. Tokens = pedaços separados por espaço. Descarta **palavras vazias**:
+3. Tokens = pedaços separados por espaço. Descarta **palavras vazias da busca** (só da busca, e
+   **antes** do passo 4 — assim `a7` e `g06` não são palavras vazias, mas o `a` solto de "tem a
+   iphone" é):
    `o a os as um uma de do da dos das no na em com para pra por quero queria tem tenho
    voces vcs ai ola oi bom dia tarde noite celular cel aparelho telefone smartphone
    modelo preco valor quanto custa fica sai` (lista fechada no código; lista vazia depois do
    descarte = `nao_listado`, sem varrer o arquivo).
+4. Separa **letra↔dígito** com espaço quando colados (`a56`→`a 56`, `s24ultra`→`s 24 ultra`,
+   `16promax`→`16 promax`, `17e`→`17 e`, `g06`→`g 06`) e guarda também a forma **compacta** (sem
+   espaços) de cada texto. Depois do passo 4 todo token é **só letras** ou **só dígitos**.
 
 ### Casamento
 
@@ -188,8 +235,9 @@ Um aparelho **casa** quando **todo token da busca** é satisfeito por um destes,
 | ↳ o mesmo, mas `1` ou `6` em "iPhone 16" | `1`, `6` | **não** |
 | Prefixo de token do aparelho, quando o token da busca tem ≥ 3 letras e não é numérico | `note` em "notebook"; `pro` em "promax" | sim |
 | Forma compacta da busca contida na forma compacta do aparelho, com ≥ 4 caracteres e **fronteira de dígito** (se a busca começa/termina em dígito, o caractere vizinho no aparelho não pode ser dígito) | `16promax` em `iphone16promax`; `iphone1` em `iphone16` | `16promax` sim; `iphone1` **não** |
-| Um erro de digitação (distância de edição 1) em token **alfabético** com ≥ 5 letras; marca o resultado `aproximado: true` | `ifone`→`iphone`, `xaomi`→`xiaomi` | sim, aproximado |
-| Token **não** casado com `marca`/`nome` mas idêntico a um atributo de variante (`cor`, `armazenamento`, `ram`, `rede`, `processador`) | `azul`, `256gb` | sim, **desde que ao menos um token tenha casado com marca/nome** |
+| Um erro de digitação em token **só de letras** com ≥ 5 letras — distância de Damerau-Levenshtein 1: uma letra a mais, a menos, trocada, ou duas vizinhas trocadas; marca o resultado `aproximado: true`. **Nunca** em token numérico | `ifone`→`iphone`, `xaomi`→`xiaomi`, `tenco`→`tecno` | sim, aproximado |
+| Token numérico com qualquer diferença | `15` contra "Redmi Note 14"; `14` contra "Redmi Note 15" | **nunca**, aproximado ou não |
+| Token **não** casado com `marca`/`nome` mas idêntico a um atributo do aparelho ou da variante (`condicao`, `categoria`, `cor`, `armazenamento`, `ram`, `rede`, `processador`) | `azul`, `256gb` | sim, **desde que ao menos um token tenha casado com marca/nome** |
 
 **Não casa:** sinônimos ("iPhone" ⇄ "Apple"; só o texto do arquivo conta), tokens numéricos
 parciais, erros de digitação em tokens curtos (<5 letras) ou numéricos, busca em que **nenhum**
@@ -212,7 +260,8 @@ Exemplos pedidos (aparelho de teste = nomes plausíveis, não os do arquivo real
 ### Ordem e limite
 
 - **Exato primeiro:** se a busca normalizada (sem palavras vazias) é igual ao nome normalizado de
-  um ou mais aparelhos, devolve **só esses** (mais `outros_modelos_parecidos`, só nomes).
+  um ou mais aparelhos, devolve **só esses** — no arquivo real são vários quando o modelo existe
+  em mais de uma `condicao` ("iPhone 16": novo, cpo, seminovo) (mais `outros_modelos_parecidos`, só nomes).
 - Senão, ordena por: sem `aproximado` antes de com; mais tokens idênticos; menos tokens sobrando
   no nome do aparelho; ordem do arquivo.
 - Filtros `categoria`/`condicao`, quando passados, são aplicados **antes** do casamento. Valor que
@@ -291,6 +340,8 @@ nada.
   metade).
 - `aparelhos`: até 500; `variantes`: até 50 por aparelho; strings com teto (nome 200,
   observação 500, nota 1000).
+- Campos reais: `oferta` booleano; `rede`, `nfc`, `processador`, `ram`, `bateria`, `observacao`
+  `string | null`; `nome`, `cor`, `armazenamento` string (ver "Formato confirmado").
 - `preco.avista` e `preco.parcelas`: **string não vazia, nunca interpretada** (sem `parseFloat`,
   sem regex de formato). Preço que o arquivo escrever de um jeito diferente passa idêntico.
 - Chaves desconhecidas são **preservadas** (`passthrough`), para o arquivo poder ganhar campo sem

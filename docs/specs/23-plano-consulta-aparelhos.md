@@ -1,8 +1,19 @@
 # Plano 23 — Consulta de aparelhos (`crm_search_aparelhos`)
 
-Estado: **DESENHO** (r7). Spec: `docs/specs/23-spec-consulta-aparelhos.md`.
+Estado: **EM IMPLEMENTAÇÃO** (r7). Spec: `docs/specs/23-spec-consulta-aparelhos.md`.
 Nada abaixo foi executado. Branch de trabalho: `refs/heads/celuzap-1.69.0-r7`, criada de
 `refs/heads/celuzap-1.69.0-r6` (`08c32b5`). Remote: só `fork`; **nunca `origin`**; nunca `--force`.
+
+## Decisões de 2026-11-07 que mudam este plano
+
+- **T5 (rota + cartão) foi CANCELADA** (D7): a URL é gravada por um `UPDATE` único, preparado em
+  `docs/specs/23-gravar-url-aparelhos.md` e executado só com o "confirmo" por escrito. Não há rota,
+  tela, entrada de navegação nem `T-CFG-02`/`P-01`/`P-02`.
+- **T0 foi executada**: formato real na spec ("Formato CONFIRMADO"). Fixture de teste = 3 a 4
+  aparelhos reais, nunca o arquivo inteiro.
+- **T4**: a conta do teto de ferramentas é 14 + 1 = 15 ≤ 27; conferida de novo por teste.
+- A v3 do agente está em `docs/specs/23-instrucoes-agente-v3.md`.
+- A publicação (push, tag, deploy, nova versão do agente) **não faz parte desta entrega**.
 
 ## Ordem de trabalho
 
@@ -57,7 +68,7 @@ Cada tarefa de código começa pelo teste que a prova (vermelho) e só então es
   `tests/unit/preview-scenario-reads-security.test.ts`, `tests/unit/busca-vazia-nao-e-sucesso.test.ts`
   e os testes de `selecao-por-pacote`.
 
-### T5 — Rota e cartão de configuração (opção C da spec §1)
+### T5 — (CANCELADA, D7) Rota e cartão de configuração
 - **Testes primeiro:** `T-CFG-02`.
 - **Cria:** `app/api/v1/settings/aparelhos/route.ts` (+ `route.test.ts`): `GET` (manager) lê, `PATCH`
   (admin) valida pelo schema da T1, faz merge **só da chave `aparelhos`**, `requireSupportWrite(`
