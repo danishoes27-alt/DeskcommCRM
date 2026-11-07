@@ -211,7 +211,7 @@ feito. O padrão é o das r3–r6.
    com aviso. Pergunta: o que dói mais, mandar um cliente a um atendente quando o site da loja
    falha, ou arriscar dizer um preço de 10 minutos atrás?
 4. **Tolerância a erro de digitação** — a spec aceita 1 letra errada em palavras de 5+ letras
-   (`ifone`→`iphone`) e marca como "aproximado". Se prefere **zero** tolerância (mais "em falta"
+   (`ipone`→`iphone`) e marca como "aproximado". Se prefere **zero** tolerância (mais "em falta"
    por engano, nenhum modelo trocado), diga.
 5. **Teto de 27 ferramentas** — se o agente da Grau Cell já está perto, a ferramenta nova pode não
    caber; só se sabe na T4. Você decide o que sai.

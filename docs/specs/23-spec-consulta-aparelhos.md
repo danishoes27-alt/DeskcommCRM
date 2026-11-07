@@ -233,9 +233,9 @@ Um aparelho **casa** quando **todo token da busca** é satisfeito por um destes,
 | Token idêntico a um token do aparelho | `redmi` em "Redmi Note 15" | sim |
 | Token numérico: **só** idêntico a um token numérico inteiro | `15` em "Redmi Note 15" | sim |
 | ↳ o mesmo, mas `1` ou `6` em "iPhone 16" | `1`, `6` | **não** |
-| Prefixo de token do aparelho, quando o token da busca tem ≥ 3 letras e não é numérico | `note` em "notebook"; `pro` em "promax" | sim |
-| Forma compacta da busca contida na forma compacta do aparelho, com ≥ 4 caracteres e **fronteira de dígito** (se a busca começa/termina em dígito, o caractere vizinho no aparelho não pode ser dígito) | `16promax` em `iphone16promax`; `iphone1` em `iphone16` | `16promax` sim; `iphone1` **não** |
-| Um erro de digitação em token **só de letras** com ≥ 5 letras — distância de Damerau-Levenshtein 1: uma letra a mais, a menos, trocada, ou duas vizinhas trocadas; marca o resultado `aproximado: true`. **Nunca** em token numérico | `ifone`→`iphone`, `xaomi`→`xiaomi`, `tenco`→`tecno` | sim, aproximado |
+| Prefixo de token do aparelho, quando o token da busca tem ≥ 3 letras e não é numérico | `note` em "notebook"; `moto` em "motorola" | sim |
+| **Junção de palavras**: uma palavra da busca igual a duas ou três palavras seguidas do nome (só letras), ou duas palavras da busca iguais a uma do nome | `promax` = "Pro"+"Max"; `pro max` = "promax" | sim. Como letra e dígito já foram separados (passo 4), `iphone1` vira `iphone`+`1` e `1` não casa `16` |
+| Um erro de digitação em token **só de letras** com ≥ 5 letras — distância de Damerau-Levenshtein 1: uma letra a mais, a menos, trocada, ou duas vizinhas trocadas; marca o resultado `aproximado: true`. **Nunca** em token numérico | `ipone`→`iphone`, `xaomi`→`xiaomi`, `tenco`→`tecno` | sim, aproximado |
 | Token numérico com qualquer diferença | `15` contra "Redmi Note 14"; `14` contra "Redmi Note 15" | **nunca**, aproximado ou não |
 | Token **não** casado com `marca`/`nome` mas idêntico a um atributo do aparelho ou da variante (`condicao`, `categoria`, `cor`, `armazenamento`, `ram`, `rede`, `processador`) | `azul`, `256gb` | sim, **desde que ao menos um token tenha casado com marca/nome** |
 
@@ -254,7 +254,7 @@ Exemplos pedidos (aparelho de teste = nomes plausíveis, não os do arquivo real
 | `Iphone16ProMax` | `iphone 16 pro max` | idem (passo 3) |
 | `redmi note 15` | `redmi note 15` | "Redmi Note 15" e "Redmi Note 15 Pro" (todos os tokens); o exato vem primeiro |
 | `galaxy s24 ultra` | `galaxy s 24 ultra` | "Galaxy S24 Ultra" |
-| `ifone 16` | `ifone 16` | "iPhone 16", `aproximado: true` |
+| `ipone 16` | `ipone 16` | "iPhone 16", `aproximado: true` (uma letra a menos). `ifone` **não** casa: são duas edições |
 | `moto g` | `moto g` | só se existir token `g` (um token de 1 letra só casa idêntico) |
 
 ### Ordem e limite
@@ -531,10 +531,10 @@ Só nomes e o que cada um prova. Nenhum teste foi escrito.
 - `T-NOR-01 caixa e acento` — `iPhone`, `IPHONE`, `iphone` iguais; `Galáxy` = `galaxy`.
 - `T-NOR-02 letra↔dígito` — `a56`, `A 56`, `a-56` iguais.
 - `T-NOR-03 "16 promax"` — casa "iPhone 16 Pro Max"; **não** casa "iPhone 16" nem "iPhone 16 Pro".
-- `T-NOR-04 fronteira de dígito` — `iphone 1` não casa "iPhone 16".
+- `T-NOR-04 número exato` — `iphone 1` e `iphone 6` não casam "iPhone 16".
 - `T-NOR-05 "redmi note 15"` — casa "Redmi Note 15" e "Redmi Note 15 Pro", com o exato primeiro.
 - `T-NOR-06 exato exclusivo` — "iPhone 16" existindo, devolve só ele (+ `outros_modelos_parecidos`).
-- `T-NOR-07 erro de digitação` — `ifone 16` casa "iPhone 16" com `aproximado: true`; `ifon` (curto) não casa.
+- `T-NOR-07 erro de digitação` — `ipone 16` casa "iPhone 16" com `aproximado: true`; `ifon` (curto) não casa.
 - `T-NOR-08 atributo de variante` — `iphone 16 azul` casa e `azul` não casa sozinha.
 - `T-NOR-09 sem sinônimo` — `apple 16` só casa se "apple" for a `marca` do arquivo.
 - `T-NOR-10 palavras vazias` — `quero um celular iphone 16` = `iphone 16`.
