@@ -140,6 +140,8 @@ export const SCENARIO_READS = new Set([
   // Testar (que roda sem contato) não responde preço nem agenda e o agente cai
   // em "vou confirmar e te retorno". Dado de contato/lead continua fora daqui.
   'crm_search_products',
+  // O Testar precisa responder preço de celular sem contato, como o catálogo da loja.
+  'crm_search_aparelhos',
   'crm_search_knowledge',
 ]);
 /** Unknown tools fail closed. A write proposal never calls its original execute. */

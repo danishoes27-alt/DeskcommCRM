@@ -137,8 +137,9 @@ Papel exigido para gravar: `admin`. Para ler/testar: `manager`.
 Toda leitura, nesta ordem, e qualquer falha para ali:
 
 1. A URL vem de `lerConfiguracaoDeAparelhos(settings)`. **O modelo não tem argumento de URL, host,
-   cabeçalho, método ou caminho.** O schema de entrada da ferramenta é `.strict()`: argumento
-   desconhecido (inclusive `url`) é recusado pelo Zod antes do handler (ver teste T-ARGS-02).
+   cabeçalho, método ou caminho.** O schema de entrada é um raw shape de três campos (`busca`, `categoria`, `condicao`): o runtime o
+   envolve em `z.object`, que DESCARTA chave desconhecida (inclusive `url`), e o handler lê só esses três
+   (teste T-ARGS-02).
 2. Só `https:`. Recusa `http:` **mesmo fora de produção** (a guarda existente só recusa http em
    produção; aqui a regra é mais estrita, de propósito).
 3. Host exatamente igual a um item de `HOSTS_PERMITIDOS_APARELHOS = ["aparelhos.graucell.com"]`,
@@ -304,6 +305,8 @@ estão aqui; se um dado não estiver aqui, ele não existe para você."*
 ```
 
 O arquivo **foi lido e é recente**, e o modelo não está nele ⇒ o agente trata como **"em falta"**.
+
+**Quarto vazio, que NÃO é "em falta": `{ itens: [], motivo: "busca_vazia", mensagem, gerado_em }`** — a busca só trouxe palavras sem modelo ("quero um celular"). O agente pergunta qual modelo; não diz "em falta". No audit é vazio (`success:false`, código `busca_vazia`) e **não** conta como consulta feita para o Jev.
 `motivoDoVazio` devolve `"nao_listado"`, então o audit grava **`success: false`** (vazio não é
 sucesso, #484 — mesmo contrato de `motivoDoVazioDaBusca`, `lib/mcp/tools/comercio.ts:150`).
 
@@ -314,12 +317,12 @@ sucesso, #484 — mesmo contrato de `motivoDoVazioDaBusca`, `lib/mcp/tools/comer
   detalhe: "<código fixo>", gerado_em?: "...", idade_dias?: N, mensagem: "<para o modelo>" }
 ```
 
-Nunca traz `itens`. `detalhe` é um vocabulário fechado, sem dado do arquivo e sem URL:
+Nunca traz `itens` (nem `motivo`). `detalhe` é um vocabulário fechado, sem dado do arquivo e sem URL:
 
 | `erro` | `detalhe` possíveis |
 |---|---|
 | `nao_configurado` | `sem_url` |
-| `falha_na_leitura` | `url_nao_permitida`, `destino_bloqueado`, `dns`, `timeout`, `redirect`, `http_<3 dígitos>`, `rede` (usa `classificarFalhaDeAlcance`, `lib/net/alcance.ts`) |
+| `falha_na_leitura` | `url_nao_permitida`, `destino_bloqueado`, `dns`, `timeout`, `tls`, `redirect`, `http_<3 dígitos>`, `rede`, `configuracao` (não leu o `settings`) (usa `classificarFalhaDeAlcance`, `lib/net/alcance.ts`) |
 | `arquivo_invalido` | `arquivo_grande`, `tipo_de_conteudo`, `json_invalido`, `schema_invalido`, `contagem_nao_confere`, `data_invalida` |
 | `desatualizado` | `mais_de_30_dias` (acompanha `gerado_em` e `idade_dias`) |
 
@@ -369,7 +372,7 @@ nada.
 |---|---|
 | `lib/mcp/tools/aparelhos.ts` (novo) | a definição `crmSearchAparelhos`: `category: "read"`, `requiresRole: "agent"`, `requiresScope: "mcp:read"`, `motivoDoVazio` |
 | `lib/mcp/tools/index.ts` | importar e acrescentar a `allTools` (junto de `crmSearchProducts`). O trecho final lança em desenvolvimento se faltar o catálogo (`index.ts:150-160`) |
-| `lib/mcp/tools/catalogo/comercio.ts` | entrada de apresentação: rótulo "Consultar aparelhos e preços da loja", `explicacao` ≥ 40 caracteres, `oQueToca: "Catálogo de aparelhos"`, `risco: "seguro"`, `pacotes: ["vender","atender"]` (a checagem de português simples está em `tests/unit/catalogo-tools-leigo-friendly.test.ts`) |
+| `lib/mcp/tools/catalogo/comercio.ts` | entrada de apresentação: rótulo "Consultar aparelhos e preços da loja", `explicacao` ≥ 40 caracteres, `oQueToca: "Catálogo de aparelhos"`, `risco: "seguro"`, `pacotes: ["organizar"]` (**mudou na T4**: em `atender`/`vender` a vaga a mais reprova `pacote-reserva-vaga-da-critica` e `teto-do-atender-bate-com-a-recusa-da-spec`, que guardam o teto do agente que nasce hoje; o banco externo faz o mesmo e o motivo está no comentário de `catalogo/dados-externos.ts`; a capacidade é ligada à mão, por agente) (a checagem de português simples está em `tests/unit/catalogo-tools-leigo-friendly.test.ts`) |
 | `lib/agent-engine/agent/tool-breaker.ts` (`READ_ONLY_TOOLS`) | leitura pura: o detector de repetição trata como leitura |
 | `lib/agent-engine/agent/preview.ts` (`SCENARIO_READS`) | o botão **Testar** (sem contato) consegue chamá-la |
 | `lib/atendimento/fronteira-server.ts` (`reads`) | leitura de dado público, sem efeito no CRM, não precisa da fronteira de atendimento |
@@ -523,8 +526,8 @@ Só nomes e o que cada um prova. Nenhum teste foi escrito.
 - `T-ISO-01 organização sem URL` — `nao_configurado`/`sem_url`, `fetch` não chamado.
 - `T-ISO-02 a org vem do contexto` — o filtro `organizations.id = ctx.organizationId` é o usado; um `organization_id` no argumento é recusado.
 - `T-ISO-03 duas organizações, duas URLs` — cada uma lê a sua; uma não enxerga o arquivo da outra.
-- `T-ARGS-01 argumento desconhecido recusado` — o schema é `.strict()`.
-- `T-ARGS-02 URL vinda do modelo é ignorada/recusada` — `url`, `host`, `endpoint` nos argumentos ⇒ recusa antes do handler; nenhum `fetch`.
+- `T-ARGS-01 só três argumentos` — o schema declara apenas `busca`, `categoria`, `condicao`; chave desconhecida some.
+- `T-ARGS-02 URL vinda do modelo é ignorada` — `url`, `host`, `endpoint` nos argumentos: o Zod do runtime descarta a chave (`z.object` sem `.strict()`, que um raw shape não permite) e o handler só lê `busca`/`categoria`/`condicao`; a leitura usa só a URL da configuração.
 - `T-ARGS-03 busca vazia ou só palavras vazias` — ⇒ `nao_listado`, sem varrer.
 
 **Normalização e casamento** (`lib/aparelhos/busca.test.ts`)
@@ -546,7 +549,7 @@ Só nomes e o que cada um prova. Nenhum teste foi escrito.
 **Registro e ligação**
 - `T-REG-01 catálogo e handlers 1:1` — `crm_search_aparelhos` em `allTools` e em `TOOL_CATALOG`; o gate de alcançabilidade e `catalogo-tools-leigo-friendly` passam.
 - `T-REG-02 listas de leitura` — nome presente em `READ_ONLY_TOOLS`, `SCENARIO_READS`, `reads` da fronteira e `ORIGEM_DA_FERRAMENTA`.
-- `T-REG-03 evidência` — `achou` registra evidência; `nao_listado` e `erro` não registram.
+- `T-REG-03 evidência` — `achou` registra uma evidência por variante; `nao_listado` registra a CONSULTA sem evidência (sustenta o "em falta", como o catálogo faz com `produtos: []`); `erro` e `busca_vazia` não contam como consulta feita.
 - `T-REG-04 nasce desligada` — nenhum `tool_ids` existente a contém; `selecao-por-pacote` continua dentro do teto de 27.
 - `T-CFG-01 schema da configuração` — aceita a URL da Grau Cell; recusa http, outro host, credencial, porta, `javascript:`.
 - `T-CFG-02 rota de configuração` — admin grava; manager recebe 403; merge preserva `routing`, `branding`, `campanhas`; audit emitido; `requireSupportWrite` presente (gate `suporte-cobertura-de-efeitos`).

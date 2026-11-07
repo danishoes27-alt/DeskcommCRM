@@ -173,3 +173,57 @@ describe("comEvidenciaDoTurno: o wrapper que o turno usa", () => {
     expect(e.consultou("catalogo")).toBe(false);
   });
 });
+
+describe("evidências das ferramentas: catálogo de aparelhos (spec 23)", () => {
+  const ACHOU = {
+    itens: [
+      {
+        id: "redmi-note-15",
+        nome: "Redmi Note 15",
+        marca: "Xiaomi",
+        condicao: "novo",
+        variantes: [
+          { nome: "8 GB + 256 GB", cor: "Azul Glacial", preco: { avista: "R$ 1.429", parcelas: "até 18x no boleto" } },
+          { nome: "8 GB + 256 GB", cor: "Preto", preco: { avista: "R$ 1.429", parcelas: "até 18x no boleto" } },
+        ],
+      },
+    ],
+    gerado_em: "2026-11-07T19:25:17-03:00",
+  };
+
+  it("a ferramenta tem origem 'catalogo'", () => {
+    expect(ORIGEM_DA_FERRAMENTA.crm_search_aparelhos).toBe("catalogo");
+  });
+
+  it("cada variante vira uma evidência com modelo, condição, cor e o preço e as parcelas COMO NO ARQUIVO", () => {
+    const e = criarEvidenciasDoTurno(ORG_A);
+    expect(registrarEvidenciaDaFerramenta(e, "crm_search_aparelhos", ACHOU, ORG_A)).toBe(true);
+    const textos = e.daOrigem("catalogo").map((x) => x.texto);
+    expect(textos).toEqual([
+      "Redmi Note 15 (novo) — 8 GB + 256 GB, Azul Glacial — à vista R$ 1.429 — até 18x no boleto",
+      "Redmi Note 15 (novo) — 8 GB + 256 GB, Preto — à vista R$ 1.429 — até 18x no boleto",
+    ]);
+    expect(e.daOrigem("catalogo")[0]!.fonte).toBe("Redmi Note 15");
+  });
+
+  it("nao_listado: a consulta aconteceu, sem evidência (é o que sustenta dizer 'em falta')", () => {
+    const e = criarEvidenciasDoTurno(ORG_A);
+    expect(registrarEvidenciaDaFerramenta(e, "crm_search_aparelhos", { itens: [], motivo: "nao_listado", gerado_em: "x" }, ORG_A)).toBe(true);
+    expect(e.consultou("catalogo")).toBe(true);
+    expect(e.vazia()).toBe(true);
+  });
+
+  it("erro e busca_vazia NÃO contam como consulta feita", () => {
+    const e = criarEvidenciasDoTurno(ORG_A);
+    expect(registrarEvidenciaDaFerramenta(e, "crm_search_aparelhos", { erro: "falha_na_leitura", detalhe: "timeout" }, ORG_A)).toBe(false);
+    expect(registrarEvidenciaDaFerramenta(e, "crm_search_aparelhos", { erro: "desatualizado", detalhe: "mais_de_30_dias" }, ORG_A)).toBe(false);
+    expect(registrarEvidenciaDaFerramenta(e, "crm_search_aparelhos", { itens: [], motivo: "busca_vazia" }, ORG_A)).toBe(false);
+    expect(e.consultou("catalogo")).toBe(false);
+  });
+
+  it("organização diferente da do turno: descartado", () => {
+    const e = criarEvidenciasDoTurno(ORG_A);
+    expect(registrarEvidenciaDaFerramenta(e, "crm_search_aparelhos", ACHOU, ORG_B)).toBe(false);
+    expect(e.vazia()).toBe(true);
+  });
+});

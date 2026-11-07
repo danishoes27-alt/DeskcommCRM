@@ -7,6 +7,8 @@
  *
  *  - `crm_search_products` — o catálogo da loja (origem `catalogo`): nome, código,
  *    preço exato e se está disponível;
+ *  - `crm_search_aparelhos` — o arquivo de aparelhos que a loja publica (origem `catalogo`): cada
+ *    variante com o preço e as parcelas como estão no arquivo;
  *  - `crm_query_external_data` — o banco de dados externo que a empresa conectou
  *    (origem `bling`: é por ele que o estoque e o preço do ERP chegam ao agente).
  *
@@ -30,6 +32,8 @@ export const TEXTO_DA_EVIDENCIA_NO_MAXIMO = 600;
 export const ORIGEM_DA_FERRAMENTA: Readonly<Record<string, OrigemDaEvidencia>> = {
   crm_search_products: "catalogo",
   crm_query_external_data: "bling",
+  /** O arquivo de aparelhos que a loja publica (spec 23): mesma origem do catálogo, é preço de loja. */
+  crm_search_aparelhos: "catalogo",
 };
 
 const registro = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -72,6 +76,35 @@ function doCatalogo(resultado: Record<string, unknown>): EvidenciaParaRegistrar[
   return itens;
 }
 
+/**
+ * `crm_search_aparelhos`: cada VARIANTE vira uma evidência, com preço e parcelas copiados do
+ * resultado (que os copiou do arquivo). `nao_listado` volta como lista vazia: o arquivo foi lido e
+ * o modelo não está nele, que é o que sustenta "em falta". `busca_vazia` NÃO é consulta feita.
+ */
+function dosAparelhos(resultado: Record<string, unknown>): EvidenciaParaRegistrar[] | null {
+  if (!Array.isArray(resultado.itens)) return null;
+  if (resultado.motivo === "busca_vazia") return null;
+  const evidencias: EvidenciaParaRegistrar[] = [];
+  for (const a of resultado.itens) {
+    if (!registro(a)) continue;
+    const nome = valorEmTexto(a.nome);
+    if (nome === "") continue;
+    const modelo = valorEmTexto(a.condicao) === "" ? nome : `${nome} (${valorEmTexto(a.condicao)})`;
+    const variantes = Array.isArray(a.variantes) ? a.variantes : [];
+    for (const v of variantes) {
+      if (!registro(v)) continue;
+      const preco = registro(v.preco) ? v.preco : {};
+      const partes = [modelo];
+      const variante = [valorEmTexto(v.nome), valorEmTexto(v.cor)].filter((x) => x !== "").join(", ");
+      if (variante !== "") partes.push(variante);
+      if (valorEmTexto(preco.avista) !== "") partes.push(`à vista ${valorEmTexto(preco.avista)}`);
+      if (valorEmTexto(preco.parcelas) !== "") partes.push(valorEmTexto(preco.parcelas));
+      evidencias.push({ fonte: nome, texto: aparar(partes.join(" — ")) });
+    }
+  }
+  return evidencias;
+}
+
 function doBancoExterno(resultado: Record<string, unknown>): EvidenciaParaRegistrar[] | null {
   if (!Array.isArray(resultado.linhas)) return null;
   const tabela = valorEmTexto(resultado.tabela);
@@ -106,7 +139,12 @@ export function registrarEvidenciaDaFerramenta(
     if (organizationId !== evidencias.organizationId) return false;
     if (typeof resultado.erro === "string" || typeof resultado.error === "string") return false;
     if (resultado.permitido === false) return false;
-    const itens = origem === "catalogo" ? doCatalogo(resultado) : doBancoExterno(resultado);
+    const itens =
+      ferramenta === "crm_search_aparelhos"
+        ? dosAparelhos(resultado)
+        : origem === "catalogo"
+          ? doCatalogo(resultado)
+          : doBancoExterno(resultado);
     if (itens === null) return false;
     evidencias.registrar(origem, itens, organizationId);
     return evidencias.consultou(origem);

@@ -28,6 +28,20 @@ export const TOOLS_COMERCIO = declararTools([
     pacotes: ["vender", "atender"],
   },
   {
+    name: "crm_search_aparelhos",
+    category: "read",
+    rotulo: "Consultar aparelhos e preços da loja",
+    explicacao:
+      "Lê o catálogo de celulares que a loja publica no site e responde modelo, cor, preço à vista e parcelas exatamente como estão lá, ou diz que o modelo está em falta — sem inventar nem estimar valor.",
+    oQueToca: "Catálogo de aparelhos do site",
+    risco: "seguro",
+    // Em "Organizar a operação" e não em "Atender"/"Vender": os pacotes de conversa já operam
+    // colados no teto de ferramentas por agente (ver o comentário idêntico em
+    // `dados-externos.ts`), e uma vaga a mais ali recusaria as outras jornadas. Esta
+    // capacidade é ligada à mão, por agente, no painel — não vem por pacote.
+    pacotes: ["organizar"],
+  },
+  {
     name: "crm_draft_proposal",
     category: "write",
     rotulo: "Rascunhar proposta comercial",

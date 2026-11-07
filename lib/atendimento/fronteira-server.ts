@@ -147,6 +147,8 @@ export function guardServiceTools(tools: ToolSet | undefined): ToolSet | undefin
     // somente-leitura no banco de origem.
     "crm_describe_external_data",
     "crm_query_external_data",
+    // Catálogo de aparelhos (spec 23): lê um arquivo público, não toca o CRM.
+    "crm_search_aparelhos",
   ]);
   return Object.fromEntries(
     Object.entries(tools).map(([name, definition]) => {

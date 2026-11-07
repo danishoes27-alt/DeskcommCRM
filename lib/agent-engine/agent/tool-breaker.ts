@@ -67,6 +67,8 @@ export const READ_ONLY_TOOLS = [
   // detectar a repetição idêntica sem confundir com mutação.
   'crm_describe_external_data',
   'crm_query_external_data',
+  // Catálogo de aparelhos da loja (spec 23): leitura de um arquivo público, sem efeito.
+  'crm_search_aparelhos',
 ] as const;
 
 /** Resultado sintético de bloqueio — mesma convenção de ensino das tools do run. */
