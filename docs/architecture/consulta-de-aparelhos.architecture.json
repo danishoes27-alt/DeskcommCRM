@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "titulo": "Consulta de aparelhos (crm_search_aparelhos)",
+  "descricao": "O Atendente IA responde modelo, cor, preço à vista e parcelas lendo o aparelhos.json que a loja publica, e diz 'em falta' quando o modelo não está nele. Um arquivo público por organização, uma allowlist de host dentro do código, nenhum parâmetro de rede vindo do modelo. Spec 23.",
+  "lanes": [
+    { "id": "config", "label": "Configuração (Supabase)" },
+    { "id": "nucleo", "label": "Núcleo lib/aparelhos" },
+    { "id": "ferramenta", "label": "Ferramenta MCP" },
+    { "id": "agente", "label": "Agente (turno)" },
+    { "id": "fora", "label": "Fora do servidor" }
+  ],
+  "mainPath": ["settings", "configuracao", "ferramenta", "cache", "leitura", "arquivoPublico", "busca", "retorno", "turno"],
+  "nodes": [
+    { "id": "settings", "lane": "config", "label": "organizations.settings.aparelhos.url", "sublabel": "gravada por um UPDATE único; sem tabela nova, sem migration", "type": "table", "dot": "sky" },
+    { "id": "versaoAgente", "lane": "config", "label": "ai_agent_versions.tool_ids", "sublabel": "quem liga a capacidade: versão nova do agente (publicada é imutável)", "type": "table", "dot": "sky" },
+    { "id": "configuracao", "lane": "nucleo", "label": "configuracao.ts", "sublabel": "schema Zod central + allowlist (constante) + leitor que nunca lança", "type": "lib", "dot": "red" },
+    { "id": "leitura", "lane": "nucleo", "label": "leitura.ts", "sublabel": "o ÚNICO fetch: 2 guardas anti-SSRF, redirect manual, 5 s, 512 KB em stream", "type": "lib", "dot": "red" },
+    { "id": "cache", "lane": "nucleo", "label": "cache.ts", "sublabel": "5 min, chave organização+URL, falha 30 s, single-flight, nunca preço vencido", "type": "lib", "dot": "blue" },
+    { "id": "schemaArquivo", "lane": "nucleo", "label": "schema.ts", "sublabel": "contrato do arquivo; preço é texto e nunca é interpretado; 30 dias = desatualizado", "type": "lib", "dot": "blue" },
+    { "id": "busca", "lane": "nucleo", "label": "busca.ts", "sublabel": "número sempre exato, 1 letra de tolerância em 5+ letras, aproximado é dito", "type": "lib", "dot": "blue" },
+    { "id": "ferramenta", "lane": "ferramenta", "label": "crm_search_aparelhos", "sublabel": "achou / nao_listado / erro; organização do contexto, nunca do argumento", "type": "tool", "dot": "green" },
+    { "id": "retorno", "lane": "ferramenta", "label": "retorno com gerado_em + aviso fixo", "sublabel": "itens são os objetos do arquivo, byte a byte; erro nunca traz itens", "type": "tool", "dot": "green" },
+    { "id": "auditoria", "lane": "ferramenta", "label": "api_audit_log (motivoDoVazio)", "sublabel": "nao_listado, busca_vazia e erro gravam success:false com código", "type": "table", "dot": "slate" },
+    { "id": "evidencia", "lane": "agente", "label": "evidencias-das-ferramentas.ts", "sublabel": "uma evidência por variante (origem catalogo); nao_listado = consulta feita sem evidência", "type": "lib", "dot": "blue" },
+    { "id": "turno", "lane": "agente", "label": "turno do Atendente IA", "sublabel": "instruções v3: erro = não afirma nada e chama um atendente", "type": "service", "dot": "green" },
+    { "id": "jev", "lane": "agente", "label": "conferência do Jev (L6)", "sublabel": "diferencia 'procurei e não achei' de 'nem procurei'", "type": "service", "dot": "green" },
+    { "id": "arquivoPublico", "lane": "fora", "label": "aparelhos.graucell.com/aparelhos.json", "sublabel": "arquivo público estático; sem dado pessoal", "type": "external", "dot": "slate" },
+    { "id": "atendente", "lane": "fora", "label": "atendente humano (Inbox)", "sublabel": "recebe o cliente quando a ferramenta devolve erro", "type": "service", "dot": "green" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "settings", "to": "configuracao", "label": "lê a URL da organização do contexto" },
+    { "id": "e2", "from": "configuracao", "to": "ferramenta", "label": "url validada ou nao_configurado" },
+    { "id": "e3", "from": "ferramenta", "to": "cache", "label": "obter(organização|url)" },
+    { "id": "e4", "from": "cache", "to": "leitura", "label": "miss: lê o arquivo" },
+    { "id": "e5", "from": "leitura", "to": "arquivoPublico", "label": "GET https, host na allowlist" },
+    { "id": "e6", "from": "leitura", "to": "schemaArquivo", "label": "valida contagem, data e campos" },
+    { "id": "e7", "from": "ferramenta", "to": "busca", "label": "busca / categoria / condicao" },
+    { "id": "e8", "from": "busca", "to": "retorno", "label": "itens do arquivo, intactos" },
+    { "id": "e9", "from": "ferramenta", "to": "retorno", "label": "erro ou desatualizado, sem itens" },
+    { "id": "e10", "from": "retorno", "to": "auditoria", "label": "vazio e erro não são sucesso" },
+    { "id": "e11", "from": "retorno", "to": "evidencia", "label": "cada variante vira evidência" },
+    { "id": "e12", "from": "retorno", "to": "turno", "label": "o agente responde com o texto do arquivo" },
+    { "id": "e13", "from": "evidencia", "to": "jev", "label": "o que foi consultado no turno" },
+    { "id": "e14", "from": "versaoAgente", "to": "turno", "label": "tool_ids liga a capacidade" },
+    { "id": "e15", "from": "turno", "to": "atendente", "label": "erro ⇒ chama um atendente (laço de retorno)" },
+    { "id": "e16", "from": "jev", "to": "turno", "label": "preço dito sem consulta é barrado" }
+  ],
+  "cards": [
+    { "id": "card-ssrf", "tone": "red", "title": "Quem decide o endereço não é o modelo", "body": "A URL vem só de organizations.settings da organização do contexto, passa pela allowlist (constante no código) e pelas duas guardas anti-SSRF antes de qualquer fetch. O schema da ferramenta tem três campos: busca, categoria e condicao." },
+    { "id": "card-preco", "tone": "blue", "title": "Preço e parcelas saem como estão no arquivo", "body": "Preço é texto e nunca é interpretado: sem parse, sem conta, sem reescrita. Um teste compara byte a byte cada aparelho devolvido com o do arquivo." },
+    { "id": "card-vencido", "tone": "red", "title": "Nunca preço vencido", "body": "Cache de 5 min; se a releitura falha, a entrada vencida já foi descartada e a ferramenta devolve erro. Arquivo com geradoEm de mais de 30 dias devolve desatualizado, sem itens." },
+    { "id": "card-naoligado", "tone": "slate", "title": "Não-ligação declarada", "body": "A ferramenta não escreve em lugar nenhum, não grava o arquivo no banco e não alimenta o RAG. Não há rota nem tela de configuração: a URL é gravada uma vez por UPDATE (decisão de 2026-11-07)." }
+  ]
+}
