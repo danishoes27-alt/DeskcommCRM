@@ -15,7 +15,8 @@ especificações) usando **somente** o arquivo público `https://aparelhos.grauc
 e diz **"em falta"** quando o modelo não está nele. Nunca estima preço, cor ou parcela.
 
 A ferramenta é um **leitor de um arquivo estático**, não um conector genérico: uma URL por
-organização, uma allowlist de host dentro do código, nenhum parâmetro de rede vindo do modelo.
+organização, uma lista de hosts permitidos **na configuração da organização** (nunca no código), nenhum
+parâmetro de rede vindo do modelo.
 
 ## Decisões (fechadas pelo dono do produto)
 
@@ -30,6 +31,7 @@ organização, uma allowlist de host dentro do código, nenhum parâmetro de red
 | D7 | Gravar a URL (decisão de 2026-11-07, substitui o §1) | Um `UPDATE` único em `organizations.settings`, **sem rota e sem tela de configuração**. O SQL é preparado nesta entrega e **só é executado com o "confirmo" por escrito**. A opção C (rota + cartão) **não será construída**. |
 | D8 | Cache vencido com a leitura falhando | **Nunca** serve preço vencido: devolve erro e o agente chama um atendente. |
 | D9 | Tolerância de digitação | 1 letra em palavras de **5 ou mais letras**; **número nunca é aproximado** ("Redmi Note 15" jamais casa com "Redmi Note 14"); casou por aproximação ⇒ `aproximado: true`. |
+| D11 | Hosts na configuração (decisão de 2026-11-08, substitui a allowlist constante) | `settings.aparelhos = { url, hosts }`. A ferramenta só lê se o host da URL estiver em `hosts` **da mesma organização**. Sem url, sem hosts, hosts vazio/inválido ou host fora da lista ⇒ `nao_configurado`, sem rede. **Nenhum domínio de loja fica em código nem em teste varrido por `tests/unit/branding.test.ts`** (o Celuzap é multicliente; esse teste não foi alterado). |
 | D10 | Teto de ferramentas | O Atendente IA da Grau Cell tem 14 capacidades ligadas; com a nova são 15, abaixo de 27 (`TETO_TOOLS_POR_AGENTE`). Conferido na T4; se não couber, para e avisa. |
 
 ## Destino da mudança (DoD 18, `docs/doctrine/extensoes.md`)
@@ -102,17 +104,23 @@ Medido no arquivo real (43.496 bytes, `Content-Type: application/json` **sem** `
 
 ### Onde e com que forma
 
-`organizations.settings.aparelhos = { "url": "https://aparelhos.graucell.com/aparelhos.json" }`.
+`organizations.settings.aparelhos = { "url": "https://<host>/aparelhos.json", "hosts": ["<host>"] }` (D11). Para a Grau Cell:
+`url = https://aparelhos.graucell.com/aparelhos.json` e `hosts = ["aparelhos.graucell.com"]` — valores que moram **no banco
+e no SQL de `23-gravar-url-aparelhos.md`**, nunca no código.
 
 - Schema Zod **central** em `lib/aparelhos/configuracao.ts`, `.strict()`, exportado e usado pela
   rota que grava **e** pela ferramenta que lê (o mesmo vocabulário nos dois lados, como
   `lib/external-db/schemas.ts`).
-- O validador da URL é o mesmo que a ferramenta aplica na leitura: https, host na allowlist,
+- O validador da URL é o mesmo que a ferramenta aplica na leitura: https, host **dentro de `hosts`**,
   sem credencial embutida (`user:senha@`), sem porta que não seja a padrão, sem fragmento.
-- Leitor `lerConfiguracaoDeAparelhos(settings)` **nunca lança**: ausente, malformado ou fora da
-  allowlist devolve `null`, e a ferramenta responde `nao_configurado` (ausente) ou
-  `falha_na_leitura` com detalhe `url_nao_permitida` (presente, mas fora da regra — sinal de
-  adulteração e gera alerta no logger).
+- `hosts`: lista **não vazia** (até 10) de hostnames em minúsculas, **sem esquema, porta, caminho nem
+  credencial**, com ponto e TLD de letras (IP e `localhost` não passam), sem repetição. A ordem de
+  validação é do schema Zod central; a lista **não é argumento da ferramenta**.
+- Leitor `lerConfiguracaoDeAparelhos(settings)` **nunca lança**. Sem `url` (`sem_url`), sem `hosts` ou
+  `hosts` vazio (`sem_hosts`), `hosts` malformado (`hosts_invalidos`) ou host da URL fora da lista
+  (`url_fora_da_regra`): a ferramenta responde `{ erro: "nao_configurado", detalhe }` **sem chamada de
+  rede**. Os dois últimos casos, em que há configuração mas ela não fecha, geram alerta no logger
+  (sinal de erro ou adulteração), sem a URL.
 - Não é `jsonb` lido por path solto: a leitura passa por esse schema (anti-pattern 6 do
   `CLAUDE.md`).
 
@@ -142,9 +150,10 @@ Toda leitura, nesta ordem, e qualquer falha para ali:
    (teste T-ARGS-02).
 2. Só `https:`. Recusa `http:` **mesmo fora de produção** (a guarda existente só recusa http em
    produção; aqui a regra é mais estrita, de propósito).
-3. Host exatamente igual a um item de `HOSTS_PERMITIDOS_APARELHOS = ["aparelhos.graucell.com"]`,
-   constante no código. Comparação exata, sem sufixo/curinga (`evil-aparelhos.graucell.com.x`
-   e `aparelhos.graucell.com.evil.io` não passam). Mudar a lista exige release — é o ponto.
+3. Host exatamente igual a um item de `hosts` **da configuração da mesma organização**. Comparação
+   exata, sem sufixo/curinga/subdomínio implícito (`<host>.evil.io`, `evil-<host>` e `x.<host>` não
+   passam). A lista só muda por UPDATE do administrador do servidor; o modelo não tem como escrevê-la
+   nem como passá-la (teste T-HOST-02).
 4. `assertSafeOutboundUrl(url)` (`lib/automation/outbound-url.ts`) — guarda textual.
 5. `await assertDestinoResolvidoSeguro(hostname)` (`lib/automation/outbound-ip.ts:95`) — resolve o
    nome e recusa IP privado/loopback/link-local. Falha de DNS = recusa (fail-closed).
@@ -160,11 +169,12 @@ Toda leitura, nesta ordem, e qualquer falha para ali:
 
 Limites que ficam declarados, como na spec 20: entre o passo 5 e o `fetch` o nome é resolvido de
 novo (janela de DNS-rebinding, a mesma dívida de `outbound-ip.ts`). Ela é mitigada pelo passo 3:
-para explorá-la o atacante teria de controlar o DNS de `graucell.com`. O corpo do arquivo é
+para explorá-la o atacante teria de controlar o DNS do domínio que o administrador declarou em `hosts`. O corpo do arquivo é
 **entrada não confiável** (mesma postura de `dados-externos.ts:9-16`): `nota` e `observacao` são
 texto livre; recebem o aviso fixo e têm teto de tamanho no schema.
 
-Sem variável de ambiente nova (a allowlist é constante): `.env.example` e `lib/env.ts` não mudam.
+Sem variável de ambiente nova (a lista de hosts é configuração da organização): `.env.example` e
+`lib/env.ts` não mudam. Nenhum domínio de loja no código: `tests/unit/branding.test.ts` passa sem alteração.
 
 ## 3. Cache
 
@@ -321,7 +331,7 @@ Nunca traz `itens` (nem `motivo`). `detalhe` é um vocabulário fechado, sem dad
 
 | `erro` | `detalhe` possíveis |
 |---|---|
-| `nao_configurado` | `sem_url` |
+| `nao_configurado` | `sem_url`, `sem_hosts`, `hosts_invalidos`, `url_fora_da_regra` |
 | `falha_na_leitura` | `url_nao_permitida`, `destino_bloqueado`, `dns`, `timeout`, `tls`, `redirect`, `http_<3 dígitos>`, `rede`, `configuracao` (não leu o `settings`) (usa `classificarFalhaDeAlcance`, `lib/net/alcance.ts`) |
 | `arquivo_invalido` | `arquivo_grande`, `tipo_de_conteudo`, `json_invalido`, `schema_invalido`, `contagem_nao_confere`, `data_invalida` |
 | `desatualizado` | `mais_de_30_dias` (acompanha `gerado_em` e `idade_dias`) |
@@ -429,10 +439,14 @@ acessórios, conserto, financeiro e garantia como na v2.
 Só nomes e o que cada um prova. Nenhum teste foi escrito.
 
 **Segurança de saída** (`lib/aparelhos/leitura.test.ts`, com `fetch` simulado)
-- `T-SEG-01 host fora da allowlist` — `https://evil.example/aparelhos.json` ⇒ `falha_na_leitura`/`url_nao_permitida`; `fetch` **não** é chamado.
-- `T-SEG-02 host parecido não passa` — `aparelhos.graucell.com.evil.io` e `evil-aparelhos.graucell.com` recusados.
-- `T-SEG-03 http recusado` — `http://aparelhos.graucell.com/...` recusado, inclusive com `NODE_ENV=test`.
-- `T-SEG-04 credencial na URL` — `https://u:s@aparelhos.graucell.com/` recusada.
+- `T-SEG-01 host fora da lista` — `https://evil.example/aparelhos.json` com `hosts` de outro domínio ⇒ recusado (`url_nao_permitida` no leitor, `nao_configurado` na ferramenta); `fetch` **não** é chamado.
+- `T-SEG-02 host parecido não passa` — `<host>.evil.io`, `evil-<host>`, `<host>.`, `x.<host>` e o domínio pai recusados.
+- `T-SEG-03 http recusado` — `http://<host>/...` recusado, inclusive com `NODE_ENV=test`.
+- `T-SEG-04 credencial na URL` — `https://u:s@<host>/` recusada.
+- `T-HOST-01 configuração que não fecha` — sem `hosts`, `hosts` vazio, não-lista, com esquema/porta/caminho/maiúsculas, host da URL fora da lista, lista com host parecido ⇒ `nao_configurado`, **zero chamada de rede**.
+- `T-HOST-02 a lista não vem do modelo` — `hosts`/`url` no argumento não destravam um host fora da lista da organização; `hosts` não existe no schema da ferramenta.
+- `T-HOST-03 lista da organização` — host dentro da lista lê normalmente e a leitura recebe `url` + `hosts` da configuração.
+- `T-HOST-04 leitor com lista vazia ou sem o host` — recusa sem rede nem DNS.
 - `T-SEG-05 porta diferente` — `:8443` recusada.
 - `T-SEG-06 redirect é erro` — resposta 301/302 ⇒ `falha_na_leitura`/`redirect`, e nenhum segundo `fetch` ao `Location`.
 - `T-SEG-07 DNS para IP privado` — `assertDestinoResolvidoSeguro` recusa ⇒ `destino_bloqueado`, `fetch` não chamado.
@@ -500,7 +514,7 @@ Só nomes e o que cada um prova. Nenhum teste foi escrito.
 - `T-REG-02 listas de leitura` — nome presente em `READ_ONLY_TOOLS`, `SCENARIO_READS`, `reads` da fronteira e `ORIGEM_DA_FERRAMENTA`.
 - `T-REG-03 evidência` — `achou` registra uma evidência por variante; `nao_listado` registra a CONSULTA sem evidência (sustenta o "em falta", como o catálogo faz com `produtos: []`); `erro` e `busca_vazia` não contam como consulta feita.
 - `T-REG-04 nasce desligada` — nenhum `tool_ids` existente a contém; `selecao-por-pacote` continua dentro do teto de 27.
-- `T-CFG-01 schema da configuração` — aceita a URL da Grau Cell; recusa http, outro host, credencial, porta, `javascript:`.
+- `T-CFG-01 schema da configuração` — aceita `url` + `hosts` coerentes; recusa http, host fora da lista, lista vazia/malformada, credencial, porta, `javascript:`.
 - `T-CFG-02 rota de configuração` — admin grava; manager recebe 403; merge preserva `routing`, `branding`, `campanhas`; audit emitido; `requireSupportWrite` presente (gate `suporte-cobertura-de-efeitos`).
 - `T-CFG-03 leitor nunca lança` — `settings` nulo, string ou lixo ⇒ `null`.
 
@@ -510,8 +524,8 @@ Só nomes e o que cada um prova. Nenhum teste foi escrito.
 ## 10. Segurança e LGPD
 
 - O arquivo é público e não traz dado pessoal. O que **mudaria** o risco: arquivo passar a trazer
-  cliente/pedido (a ferramenta passaria a lidar com PII e o audit com ela); a allowlist ganhar
-  host que não é da loja; a ferramenta passar a aceitar parâmetro de rede do modelo.
+  cliente/pedido (a ferramenta passaria a lidar com PII e o audit com ela); `hosts` ganhar
+  um host que não é da loja; a ferramenta passar a aceitar parâmetro de rede do modelo.
 - O texto livre do arquivo (`nota`, `observacao`, nomes) é vetor de prompt injection — tratado com
   o aviso fixo, a PARTE 1 item 8 e o teto de tamanho.
 - Audit: o MCP já registra cada chamada em `api_audit_log`; `busca` é uma frase sobre um modelo de

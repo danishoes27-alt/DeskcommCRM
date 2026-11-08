@@ -7,7 +7,7 @@
  *
  * ─── O que o modelo NÃO controla ────────────────────────────────────────────────
  * Endereço, host, método, cabeçalho: nada disso é argumento. A URL vem de
- * `organizations.settings.aparelhos.url` da organização do CONTEXTO (`ctx.organizationId`, que o
+ * `organizations.settings.aparelhos` (`url` + `hosts`) da organização do CONTEXTO (`ctx.organizationId`, que o
  * servidor resolve — nunca o corpo da chamada). O handler lê EXATAMENTE `busca`, `categoria` e
  * `condicao` de `input`; qualquer outra chave que o modelo mande é ignorada (o Zod do runtime
  * descarta chave desconhecida, e este handler não olharia para ela de qualquer jeito).
@@ -116,17 +116,19 @@ export async function consultarAparelhos(
   if (settings === "falhou") return erro("falha_na_leitura", "configuracao");
   const configuracao = lerConfiguracaoDeAparelhos(settings);
   if (!configuracao.ok) {
-    if (configuracao.motivo === "sem_url") {
-      return erro("nao_configurado", "sem_url");
+    // Sem url, sem hosts, hosts vazio/inválido ou host da URL fora da lista: não configurado, e
+    // NENHUMA chamada de rede. Quando há configuração mas ela não fecha (host fora da lista, lista
+    // malformada), pode ser adulteração: alerta, sem a URL.
+    if (configuracao.motivo !== "sem_url" && configuracao.motivo !== "sem_hosts") {
+      logger.warn("aparelhos: configuração inválida", { organizationId: ctx.organizationId, motivo: configuracao.motivo });
     }
-    // Há URL e ela está fora da regra: configuração adulterada ou errada. Alerta, sem a URL.
-    logger.warn("aparelhos: url configurada fora da allowlist", { organizationId: ctx.organizationId });
-    return erro("falha_na_leitura", "url_nao_permitida");
+    return erro("nao_configurado", configuracao.motivo);
   }
 
   // 2. O arquivo, pelo cache (chave: organização + URL) e pelo leitor seguro.
-  const leitura = await cacheDeAparelhos.obter(`${ctx.organizationId}|${configuracao.url}`, () =>
-    lerArquivoDeAparelhos(configuracao.url),
+  const leitura = await cacheDeAparelhos.obter(
+    `${ctx.organizationId}|${configuracao.url}|${configuracao.hosts.join(",")}`,
+    () => lerArquivoDeAparelhos(configuracao.url, configuracao.hosts),
   );
   if (!leitura.ok) return erro(leitura.erro, leitura.detalhe);
 
@@ -194,7 +196,7 @@ export async function consultarAparelhos(
 export const crmSearchAparelhos: McpToolDefinition<typeof inputShape> = {
   name: "crm_search_aparelhos",
   description:
-    "Consulta o catálogo de celulares que a loja publica (aparelhos.graucell.com) e devolve modelo, " +
+    "Consulta o catálogo de celulares que a loja publica no site e devolve modelo, " +
     "condição (novo, seminovo...), cor, PREÇO À VISTA, PARCELAS e especificações de cada variante. " +
     "É a ÚNICA fonte de verdade sobre celular: use SEMPRE que a pessoa perguntar de aparelho, modelo, " +
     "cor, preço ou parcela, e diga preço e parcelas EXATAMENTE como voltarem — nunca com um valor que " +

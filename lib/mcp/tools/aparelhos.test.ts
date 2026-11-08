@@ -12,7 +12,7 @@ import type { McpContext } from "@/lib/mcp/types";
 
 import { AVISO_APARELHOS, consultarAparelhos, crmSearchAparelhos, motivoDoVazioAparelhos } from "./aparelhos";
 
-const URL_A = "https://aparelhos.graucell.com/aparelhos.json";
+const URL_A = "https://catalogo.example.com/aparelhos.json";
 const AGORA = new Date("2026-11-08T12:00:00-03:00");
 
 function arquivoValidado(bruto: unknown = ARQUIVO_EXEMPLO): ArquivoDeAparelhos {
@@ -52,7 +52,8 @@ function ctxFake(organizationId: string, settingsPorOrg: Record<string, unknown>
   return { ctx, filtros };
 }
 
-const CONFIG_OK = { aparelhos: { url: URL_A } };
+const HOSTS_A = ["catalogo.example.com"];
+const CONFIG_OK = { aparelhos: { url: URL_A, hosts: HOSTS_A } };
 
 beforeEach(() => {
   cacheDeAparelhos.limpar();
@@ -229,7 +230,7 @@ describe("retorno (c): erro", () => {
     cacheDeAparelhos.limpar();
     const ruim = JSON.stringify(await consultarAparelhos({ busca: "iphone 16" }, ctx, AGORA));
     for (const t of [ok, ruim]) {
-      expect(t).not.toContain("graucell.com");
+      expect(t).not.toContain("example.com");
       expect(t).not.toContain("https://");
     }
   });
@@ -261,13 +262,13 @@ describe("isolamento entre organizações e argumentos do modelo", () => {
   });
 
   it("T-ISO-02 a organização vem do contexto: o filtro usa ctx.organizationId, ignorando organization_id do input", async () => {
-    const { ctx, filtros } = ctxFake("org-1", { "org-1": CONFIG_OK, "org-2": { aparelhos: { url: "https://evil.example/x.json" } } });
+    const { ctx, filtros } = ctxFake("org-1", { "org-1": CONFIG_OK, "org-2": { aparelhos: { url: "https://evil.example/x.json", hosts: ["evil.example"] } } });
     const entradaMaliciosa = { busca: "iphone 16", organization_id: "org-2", organizationId: "org-2" } as never;
     const r = await crmSearchAparelhos.handler(entradaMaliciosa, ctx);
     expect(filtros).toEqual([["id", "org-1"]]);
     expect((r as { itens: unknown[] }).itens.length).toBeGreaterThan(0);
     expect(lerArquivoDeAparelhos).toHaveBeenCalledTimes(1);
-    expect(lerArquivoDeAparelhos).toHaveBeenCalledWith(URL_A);
+    expect(lerArquivoDeAparelhos).toHaveBeenCalledWith(URL_A, HOSTS_A);
   });
 
   it("T-ISO-03 duas organizações com a mesma URL leem (e guardam) separado; com URLs diferentes, cada uma a sua", async () => {
@@ -286,12 +287,12 @@ describe("isolamento entre organizações e argumentos do modelo", () => {
     cacheDeAparelhos.limpar();
     vi.mocked(lerArquivoDeAparelhos).mockReset();
     const so17e = { ...ARQUIVO_EXEMPLO, totalAparelhos: 1, totalVariantes: ARQUIVO_EXEMPLO.aparelhos[3]!.variantes.length, aparelhos: [ARQUIVO_EXEMPLO.aparelhos[3]!] };
-    vi.mocked(lerArquivoDeAparelhos).mockImplementation(async (url: string) =>
+    vi.mocked(lerArquivoDeAparelhos).mockImplementation(async (url: string, _hosts: readonly string[]) =>
       url === URL_A ? leituraOk() : leituraOk(arquivoValidado(so17e)),
     );
-    const outraUrl = "https://aparelhos.graucell.com/aparelhos.json?loja=2";
+    const outraUrl = "https://catalogo.example.com/aparelhos.json?loja=2";
     const lojaA = ctxFake("org-a", { "org-a": CONFIG_OK }).ctx;
-    const lojaB = ctxFake("org-b", { "org-b": { aparelhos: { url: outraUrl } } }).ctx;
+    const lojaB = ctxFake("org-b", { "org-b": { aparelhos: { url: outraUrl, hosts: HOSTS_A } } }).ctx;
     const ra = await consultarAparelhos({ busca: "iphone 16" }, lojaA, AGORA);
     const rb = await consultarAparelhos({ busca: "iphone 16" }, lojaB, AGORA);
     expect((ra.itens as unknown[]).length).toBe(2);
@@ -303,7 +304,7 @@ describe("isolamento entre organizações e argumentos do modelo", () => {
     const entrada = { busca: "iphone 16", url: "https://evil.example/x.json", host: "evil.example", endpoint: "http://169.254.169.254/" } as never;
     await crmSearchAparelhos.handler(entrada, ctx);
     expect(lerArquivoDeAparelhos).toHaveBeenCalledTimes(1);
-    expect(lerArquivoDeAparelhos).toHaveBeenCalledWith(URL_A);
+    expect(lerArquivoDeAparelhos).toHaveBeenCalledWith(URL_A, HOSTS_A);
     expect(JSON.stringify(vi.mocked(lerArquivoDeAparelhos).mock.calls)).not.toContain("evil");
   });
 
@@ -315,12 +316,51 @@ describe("isolamento entre organizações e argumentos do modelo", () => {
     expect(z.object(crmSearchAparelhos.inputSchema).safeParse({ busca: "x".repeat(121) }).success).toBe(false);
   });
 
-  it("URL configurada fora da allowlist: falha_na_leitura/url_nao_permitida, sem rede", async () => {
-    const { ctx } = ctxFake("org-1", { "org-1": { aparelhos: { url: "https://evil.example/aparelhos.json" } } });
-    const r = await consultarAparelhos({ busca: "iphone 16" }, ctx, AGORA);
-    expect(r.erro).toBe("falha_na_leitura");
-    expect(r.detalhe).toBe("url_nao_permitida");
+  it("T-HOST-01 sem hosts, hosts vazio, hosts inválido ou host da URL fora da lista: nao_configurado, SEM rede", async () => {
+    const casos: Array<[string, unknown]> = [
+      ["sem a chave hosts", { aparelhos: { url: URL_A } }],
+      ["hosts vazio", { aparelhos: { url: URL_A, hosts: [] } }],
+      ["hosts que não é lista", { aparelhos: { url: URL_A, hosts: "catalogo.example.com" } }],
+      ["host com esquema", { aparelhos: { url: URL_A, hosts: ["https://catalogo.example.com"] } }],
+      ["host com porta", { aparelhos: { url: URL_A, hosts: ["catalogo.example.com:443"] } }],
+      ["host com caminho", { aparelhos: { url: URL_A, hosts: ["catalogo.example.com/aparelhos.json"] } }],
+      ["host em maiúsculas", { aparelhos: { url: URL_A, hosts: ["Catalogo.Example.com"] } }],
+      ["host da URL fora da lista", { aparelhos: { url: URL_A, hosts: ["outro.example.com"] } }],
+      ["lista com host parecido", { aparelhos: { url: URL_A, hosts: ["example.com", "catalogo.example.com.evil.io"] } }],
+      ["url sem hosts nem nada", { aparelhos: { url: "https://evil.example/aparelhos.json" } }],
+    ];
+    for (const [nome, settings] of casos) {
+      vi.mocked(lerArquivoDeAparelhos).mockClear();
+      const { ctx } = ctxFake("org-1", { "org-1": settings });
+      const r = await consultarAparelhos({ busca: "iphone 16" }, ctx, AGORA);
+      expect(r.erro, nome).toBe("nao_configurado");
+      expect("itens" in r, nome).toBe(false);
+      expect("motivo" in r, nome).toBe(false);
+    }
     expect(lerArquivoDeAparelhos).not.toHaveBeenCalled();
+  });
+
+  it("T-HOST-02 a lista de hosts NÃO pode vir do modelo: hosts/url no argumento não mudam a leitura nem destravam o bloqueio", async () => {
+    const { ctx } = ctxFake("org-1", { "org-1": { aparelhos: { url: URL_A, hosts: ["outro.example.com"] } } });
+    const entrada = { busca: "iphone 16", hosts: ["catalogo.example.com"], url: URL_A } as never;
+    const r = (await crmSearchAparelhos.handler(entrada, ctx)) as Record<string, unknown>;
+    expect(r.erro).toBe("nao_configurado");
+    expect(lerArquivoDeAparelhos).not.toHaveBeenCalled();
+    expect(Object.keys(crmSearchAparelhos.inputSchema)).not.toContain("hosts");
+  });
+
+  it("T-HOST-03 com a lista da organização e o host dentro dela, lê normalmente e repassa url + hosts", async () => {
+    const { ctx } = ctxFake("org-1", { "org-1": { aparelhos: { url: URL_A, hosts: ["x.example.com", "catalogo.example.com"] } } });
+    const r = await consultarAparelhos({ busca: "iphone 16" }, ctx, AGORA);
+    expect(r.erro).toBeUndefined();
+    expect(lerArquivoDeAparelhos).toHaveBeenCalledWith(URL_A, ["x.example.com", "catalogo.example.com"]);
+  });
+
+  it("cada organização usa a PRÓPRIA lista: o host liberado numa não vale na outra", async () => {
+    const a = ctxFake("org-a", { "org-a": CONFIG_OK }).ctx;
+    const b = ctxFake("org-b", { "org-b": { aparelhos: { url: URL_A, hosts: ["so-da-b.example.com"] } } }).ctx;
+    expect((await consultarAparelhos({ busca: "iphone 16" }, a, AGORA)).erro).toBeUndefined();
+    expect((await consultarAparelhos({ busca: "iphone 16" }, b, AGORA)).erro).toBe("nao_configurado");
   });
 
   it("falha ao ler a configuração: erro, não 'em falta'", async () => {

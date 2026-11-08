@@ -4,6 +4,11 @@ Estado: **EM IMPLEMENTAÇÃO** (r7). Spec: `docs/specs/23-spec-consulta-aparelho
 Nada abaixo foi executado. Branch de trabalho: `refs/heads/celuzap-1.69.0-r7`, criada de
 `refs/heads/celuzap-1.69.0-r6` (`08c32b5`). Remote: só `fork`; **nunca `origin`**; nunca `--force`.
 
+## Decisões de 2026-11-08 (ajuste 1)
+
+- **Hosts na configuração, não no código (D11):** `settings.aparelhos = { url, hosts }`. O SQL de
+  `23-gravar-url-aparelhos.md` grava os dois juntos numa única chave. Testes novos `T-HOST-01..04`.
+
 ## Decisões de 2026-11-07 que mudam este plano
 
 - **T5 (rota + cartão) foi CANCELADA** (D7): a URL é gravada por um `UPDATE` único, preparado em
@@ -35,8 +40,8 @@ Cada tarefa de código começa pelo teste que a prova (vermelho) e só então es
 ### T1 — Schema do arquivo e da configuração
 - **Testes primeiro:** `T-VAL-01..06`, `T-CFG-01`, `T-CFG-03`.
 - **Cria:** `lib/aparelhos/schema.ts` (Zod do arquivo + `idadeEmDias` + checagem de contagem),
-  `lib/aparelhos/configuracao.ts` (Zod `.strict()` da configuração, `HOSTS_PERMITIDOS_APARELHOS`,
-  `validarUrlDeAparelhos`, `lerConfiguracaoDeAparelhos`), `lib/aparelhos/schema.test.ts`,
+  `lib/aparelhos/configuracao.ts` (Zod `.strict()` de `{ url, hosts }`, `hostsDeAparelhosSchema`,
+  `validarUrlDeAparelhos(url, hosts)`, `lerConfiguracaoDeAparelhos`; **nenhum domínio de loja no código**), `lib/aparelhos/schema.test.ts`,
   `lib/aparelhos/configuracao.test.ts`.
 - **Não toca:** nenhum arquivo existente.
 
@@ -142,7 +147,9 @@ independente (ver "O que o auditor confere"). Achados viram commits na própria 
 2. **Sem rede fora da regra:** o único `fetch` novo está em `lib/aparelhos/leitura.ts`; precedido
    das duas guardas; `redirect: "manual"`; `AbortSignal.timeout(5000)`; leitura em stream com teto;
    nenhuma URL, host ou cabeçalho vem de argumento do modelo (`grep` por `input.url`).
-3. **Allowlist:** constante no código, comparação exata; teste do host parecido.
+3. **Lista de hosts:** vem de `settings.aparelhos.hosts` da MESMA organização, nunca do modelo; comparação
+   exata; sem url/hosts/lista vazia/host fora da lista ⇒ `nao_configurado` sem rede; `grep` por domínio de
+   loja em `app components hooks lib workers` volta vazio e `tests/unit/branding.test.ts` passa **sem alteração**.
 4. **Isolamento:** `ctx.organizationId` em toda leitura de configuração; chave de cache com org;
    nenhum `organization_id` aceito em argumento.
 5. **Honestidade do retorno:** os três retornos exatamente como a spec §5; `erro` nunca com

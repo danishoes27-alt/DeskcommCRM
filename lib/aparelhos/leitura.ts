@@ -3,7 +3,8 @@
  *
  * Spec 23 §2. É o ÚNICO `fetch` da funcionalidade. Os passos, nesta ordem — falhou um, para:
  *
- *   1. a URL passa por `validarUrlDeAparelhos` (https, host na allowlist, sem credencial/porta);
+ *   1. a URL passa por `validarUrlDeAparelhos` (https, host dentro de `hosts` — a lista da
+ *      configuração DA organização —, sem credencial/porta);
  *   2. `assertSafeOutboundUrl` — guarda textual do repositório;
  *   3. `assertDestinoResolvidoSeguro` — resolve o nome e recusa IP privado/loopback/link-local
  *      (falha de DNS = recusa);
@@ -17,10 +18,10 @@
  * Uma segunda tentativa só em erro de rede, timeout ou 5xx. 3xx, 4xx, tipo errado, tamanho e JSON
  * ruim não melhoram tentando de novo.
  *
- * A URL vem SÓ da configuração da organização (`lerConfiguracaoDeAparelhos`); este módulo não tem
- * como receber endereço do modelo. A janela de DNS-rebinding entre a resolução (passo 3) e o
- * `fetch` permanece declarada, como em `outbound-ip.ts`; ela é mitigada pela allowlist: para
- * explorá-la seria preciso controlar o DNS de `graucell.com`.
+ * A URL e os `hosts` vêm SÓ da configuração da organização (`lerConfiguracaoDeAparelhos`); este
+ * módulo não tem como receber endereço do modelo. A janela de DNS-rebinding entre a resolução
+ * (passo 3) e o `fetch` permanece declarada, como em `outbound-ip.ts`; ela é mitigada pela lista de
+ * hosts: para explorá-la seria preciso controlar o DNS do domínio que o administrador declarou.
  *
  * Nunca lança, e nenhum resultado carrega a URL.
  */
@@ -139,13 +140,17 @@ async function tentarUmaVez(url: string, fetchImpl: typeof fetch, timeoutMs: num
   return { final: { ok: true, arquivo: validado.arquivo, geradoEm: validado.geradoEm } };
 }
 
-export async function lerArquivoDeAparelhos(url: string, deps: DepsDeLeitura = {}): Promise<ResultadoDaLeitura> {
+export async function lerArquivoDeAparelhos(
+  url: string,
+  hosts: readonly string[],
+  deps: DepsDeLeitura = {},
+): Promise<ResultadoDaLeitura> {
   try {
     const fetchImpl = deps.fetchImpl ?? fetch;
     const agora = (deps.agora ?? (() => new Date()))();
     const timeoutMs = deps.timeoutMs ?? TIMEOUT_MS;
 
-    const permitida = validarUrlDeAparelhos(url);
+    const permitida = validarUrlDeAparelhos(url, hosts);
     if (!permitida.ok) return falha("url_nao_permitida");
 
     try {
