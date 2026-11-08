@@ -159,47 +159,46 @@ independente (ver "O que o auditor confere"). Achados viram commits na própria 
 10. **O que a auditoria não cobre e deve dizer:** `pnpm test:db` e `test:e2e` não rodam o
     caminho novo; a leitura real do arquivo só é provada em produção.
 
-## Plano de publicação
+## Plano de publicação (versão para quem não usa terminal)
 
-Tudo abaixo só começa com o seu "aprovado" **por escrito** nesta etapa seguinte. Nada disto foi
-feito. O padrão é o das r3–r6.
+Nada disto foi feito. Cada passo só acontece depois do seu "confirmo" **daquele passo**. "Eu" é o Claude;
+"você" é o Berg no painel.
 
-**Antes**
-1. Guardar o texto da **v2** do agente em `C:\Dev\segredos\prompt-v2-grau-cell.txt` (para o
-   desfazer) e as 6 linhas atuais das imagens em `C:\Dev\segredos\imagens-antes-da-r7.txt`.
-2. Conferir `git status` limpo e a branch r7 em dia com a r6.
+**A. Antes de mexer em qualquer coisa (eu)**
+1. Guardar o texto da v2 do agente em `C:\Dev\segredos\prompt-v2-grau-cell.txt` e as 6 linhas atuais das
+   imagens em `C:\Dev\segredos\imagens-antes-da-r7.txt` (é o que permite voltar).
+2. Resolver a pendência do teste de marca (ver "Decisões que dependem de você", item 1): sem isso o CI
+   (`verify`) fica vermelho e a imagem não deve ser publicada.
 
-**Publicar**
-3. Verificar T7 inteira verde. `git push fork refs/heads/celuzap-1.69.0-r7` (só `fork`).
-4. Criar a tag `celuzap-1.69.0-r7` no commit final e `git push fork refs/tags/celuzap-1.69.0-r7`.
-5. Esperar o CI publicar as três imagens no GHCR (`deskcommcrm`, `deskcomm-worker`,
-   `deskcomm-scheduler`) com a tag `celuzap-1.69.0-r7`; conferir que as três existem.
-6. EasyPanel › Environment: trocar as 3 imagens para `celuzap-1.69.0-r7` em **todos** os blocos
-   duplicados, `*_PULL_POLICY=missing`; **Deploy**; conferir `/api/v1/health` (`healthy`, versão
-   nova) e que o domínio responde 307 no login.
-7. **A r7 não tem migration.** O deploy não altera dados, e a ferramenta nasce desligada:
-   até aqui **o atendimento é idêntico ao da r6**.
+**B. Publicar a versão nova do sistema (eu, só fork)**
+3. Enviar a branch e criar a tag `celuzap-1.69.0-r7` **só no fork** (`danishoes27-alt`), nunca no `origin`.
+4. Esperar o CI publicar as três imagens (app, worker, scheduler) com a tag `celuzap-1.69.0-r7`.
+5. No EasyPanel › Environment, trocar as 3 imagens para `celuzap-1.69.0-r7` em todos os blocos duplicados,
+   manter `*_PULL_POLICY=missing`, e dar **Deploy**. Conferir `/api/v1/health` = `healthy` com a versão nova
+   e o domínio respondendo normalmente.
+6. **A r7 não tem migration** e a ferramenta vem **desligada**: até aqui o atendimento é idêntico ao da r6.
 
-**Ligar (depois, com a sua conferência)**
-8. Gravar a URL (cartão da T5, ou T5-alt) e usar "Testar leitura": deve mostrar `geradoEm` e os
-   totais (34 aparelhos / 93 variantes, segundo você).
-9. No painel do agente: nova versão (rascunho) → ligar a capacidade → colar a v3 → **Testar** com
-   os três cenários → **Publicar** (passos do §7 da spec).
-10. Prova real pelo seu número (`+5562993509792`), que é o único autorizado no modo de teste.
+**C. Dizer onde fica o arquivo (eu, com seu "confirmo")**
+7. Gravar a URL com o SQL de `docs/specs/23-gravar-url-aparelhos.md` (antes, gravar, depois, e o comando de
+   desfazer). Mostro o antes e o depois.
 
-**Como desfazer (voltar para a r6) sem perder a configuração do cliente**
-- **Só a IA (mais comum):** criar um rascunho com a **v2** (texto guardado no passo 1) e
-  **publicar**. A configuração `settings.aparelhos` fica; é inofensiva.
-- **A versão do app:** restaurar as 6 linhas de `imagens-antes-da-r7.txt` no Environment e
-  **Deploy**. Como a r7 **não tem migration**, não há nada no banco para desfazer. A r6 ignora a
-  chave `settings.aparelhos` (o `jsonb` guarda chaves desconhecidas) e **ignora ferramenta que não
-  conhece**: o carregador pula id de ferramenta ausente do catálogo
-  (`lib/ai/runtime/tools.ts:427-429`, `if (!def) continue`). Cuidado: se voltar a r6 **mantendo a
-  v3 publicada**, o texto da v3 manda usar uma ferramenta que a r6 não tem; o atendente deve cair
-  em "vou confirmar com a equipe", mas **a ordem segura é publicar a v2 primeiro e só depois
-  voltar a imagem**.
-- **Nada** do que o cliente configurou (agente, capacidades, lista de teste, canal) é tocado em
-  nenhum dos dois caminhos.
+**D. Ligar no Atendente IA (você, no painel)**
+8. Abrir o Atendente IA da Grau Cell → criar **nova versão (rascunho)**.
+9. Em **Capacidades**, ligar **"Consultar aparelhos e preços da loja"** (ficam 15 de 27).
+10. Em **Instruções**, apagar o texto e colar o de `docs/specs/23-instrucoes-agente-v3.md`.
+11. Usar o botão **Testar** com: "quanto custa o iphone 16 pro max?", "tem redmi note 15?", "tem um iphone 99?".
+    Esperado: preço no formato do site; um modelo em falta; e para o inexistente, "em falta" com o site.
+12. **Publicar.** O canal continua em modo de teste (só `+5562993509792` recebe resposta da IA): faça a
+    prova real pelo seu número antes de liberar para mais gente.
+
+**E. Como voltar para a r6 sem perder configuração**
+- **Só a IA (mais comum):** criar um rascunho com o texto da v2 (guardado no passo 1) e publicar. A URL
+  gravada fica no banco, inofensiva.
+- **O sistema:** colocar de volta as 6 linhas de `imagens-antes-da-r7.txt` no Environment e dar Deploy. A r7
+  não tem migration, então não há nada no banco para desfazer. **Ordem segura: primeiro publicar a v2 do
+  agente, depois voltar a imagem** (a r6 ignora uma ferramenta que não conhece, mas a v3 mandaria usá-la).
+- **Para tirar a URL:** o comando "DESFAZER" do SQL remove só a chave `aparelhos`.
+- Nada do que o cliente configurou (agente, capacidades, lista de teste, canal) é tocado por nenhum caminho.
 
 ## Riscos e decisões que dependem de você
 
